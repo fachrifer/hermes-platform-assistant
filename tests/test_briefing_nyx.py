@@ -3,6 +3,18 @@ import pytest
 from config.persona import display_name
 from core.briefing import BriefingService
 
+_INBOX_STYLE_MARKERS = (
+    "surat masuk",
+    "kotak masuk",
+    "unread",
+    "📧 *",
+)
+
+
+def _has_inbox_style_gmail_content(text: str) -> bool:
+    lowered = text.casefold()
+    return any(marker in lowered for marker in _INBOX_STYLE_MARKERS)
+
 
 class FakeAgent:
     def __init__(self):
@@ -25,10 +37,19 @@ async def test_brief_is_nyx_not_squire(monkeypatch):
     text = await BriefingService(FakeAgent()).build()
     assert "Nyx Assistant" in text
     assert "Master" in text
-    assert "Surat Masuk" not in text
-    assert "Gmail" not in text
+    assert not _has_inbox_style_gmail_content(text)
     for marker in ("squire", "titah", "kulaksanakan", "dengan segala hormat", "siap sedia"):
         assert marker not in text.casefold()
+
+
+@pytest.mark.asyncio
+async def test_brief_allows_gmail_in_status_only(monkeypatch):
+    monkeypatch.setattr("core.briefing.settings.address", "Master")
+    monkeypatch.setattr("core.briefing.display_name", lambda: "Nyx Assistant")
+    health = {"Google Calendar": True, "Agenda Manual": True, "Gmail": True}
+    text = await BriefingService(FakeAgent()).build(health=health)
+    assert "✅ Gmail" in text
+    assert not _has_inbox_style_gmail_content(text)
 
 
 @pytest.mark.asyncio
