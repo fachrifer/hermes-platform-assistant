@@ -1,7 +1,7 @@
 """Briefing composer.
 
 Builds startup + on-demand /brief: agenda + financial summary + connector status.
-Nyx voice — calm, clear, no squire diction. No Gmail.
+Nyx voice — calm, clear, no squire diction.
 """
 
 from __future__ import annotations

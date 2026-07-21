@@ -16,6 +16,7 @@ from config.security_policy import looks_like_harmful_request, refusal_for_harmf
 from config.settings import settings
 from connectors.agenda_manual import ManualAgendaConnector
 from connectors.gcal import GoogleCalendarConnector
+from connectors.gmail import GmailConnector
 from connectors.outlook import OutlookConnector
 from connectors.tavily import TavilyConnector
 from core.db import Database
@@ -55,7 +56,8 @@ class HermesAgent:
         self.llm = LLMClient()
         self.memory = Memory(self.db)
 
-        # Connectors (Gmail removed — finance is paste/upload only)
+        # Connectors (Gmail for finance scan; Calendar + local agenda)
+        self.gmail = GmailConnector()
         self.gcal = GoogleCalendarConnector()
         self.outlook = OutlookConnector() if settings.ms_outlook_enabled else None
         self.agenda = ManualAgendaConnector(self.db)
@@ -64,10 +66,10 @@ class HermesAgent:
         self.spreadsheet_finance = SpreadsheetFinanceService()
         self.category_reference = CategoryReference()
         self.finance_import = FinanceImportService(
-            self.db, self.llm, spreadsheet_service=self.spreadsheet_finance
+            self.db, self.llm, gmail=self.gmail, spreadsheet_service=self.spreadsheet_finance
         )
 
-        self.connectors = [self.gcal, self.agenda]
+        self.connectors = [self.gmail, self.gcal, self.agenda]
         if self.outlook:
             self.connectors.append(self.outlook)
 
