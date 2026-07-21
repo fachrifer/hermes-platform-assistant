@@ -199,6 +199,8 @@ account JSON.
 | `GEMINI_API_KEY` | API key Gemini dari AI Studio |
 | `GEMINI_MODEL` | Model Gemini yang dipakai, misalnya `gemini-3.1-flash-lite` |
 | `TAVILY_API_KEY` | API key Tavily untuk web search dan berita real-time |
+| `TAVILY_COUNTRY` | Boost negara untuk search general (default `indonesia`) |
+| `TAVILY_SEARCH_DEPTH` | `basic` atau `advanced` (default `advanced`, lebih ketat) |
 | `GEMINI_QUOTA_PROJECT_ID` | Project Google Cloud untuk pembacaan quota resmi Gemini |
 | `GEMINI_QUOTA_CREDENTIALS` | Path container ke service account quota Gemini |
 

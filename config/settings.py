@@ -65,6 +65,14 @@ class Settings:
     gemini_api_key: str = field(default_factory=lambda: _get("GEMINI_API_KEY"))
     gemini_model: str = field(default_factory=lambda: _get("GEMINI_MODEL", "gemini-1.5-flash"))
     tavily_api_key: str = field(default_factory=lambda: _get("TAVILY_API_KEY"))
+    # Boost general-search results from this country (Tavily country param).
+    tavily_country: str = field(
+        default_factory=lambda: _get("TAVILY_COUNTRY", "indonesia").casefold()
+    )
+    # basic | advanced — advanced ranks more strictly, uses more credits.
+    tavily_search_depth: str = field(
+        default_factory=lambda: _get("TAVILY_SEARCH_DEPTH", "advanced").casefold()
+    )
     gemini_quota_project_id: str = field(default_factory=lambda: _get("GEMINI_QUOTA_PROJECT_ID"))
     gemini_quota_credentials: str = field(
         default_factory=lambda: _get("GEMINI_QUOTA_CREDENTIALS")

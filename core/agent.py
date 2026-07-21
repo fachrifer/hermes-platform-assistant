@@ -39,7 +39,10 @@ _TOOLS_DESC = (
     "- advice: user minta saran/analisis keuangan. args: {}\n"
     "- scan_email: user ingin mencatat transaksi via paste/upload "
     "(arahkan ke /import). args: {}\n"
-    '- web_search: cari informasi web atau berita terbaru. args: {"query": string, "news": boolean}\n'
+    '- web_search: cari informasi web (fokus Indonesia). '
+    'args: {"query": string, "news": boolean}. '
+    "news=true HANYA jika user secara eksplisit minta berita/headline/terkini; "
+    "untuk fakta, definisi, cara, atau topik Indonesia biasa pakai news=false.\n"
     '- calendar_query: user ingin membaca agenda Google Calendar. args: {"question": string, "range": "today"|"tomorrow"|"week"}\n'
     '- calendar_update_reminders: user ingin mengubah reminder event Calendar. args: {"title": string, "minutes": number}\n'
     '- agenda_add: user ingin membuat agenda. args: {"title": string, "date": "YYYY-MM-DD", "start_time": "HH:MM", "end_time": "HH:MM", "location": string, "notes": string, "reminder_text": string}\n'
@@ -249,8 +252,12 @@ class HermesAgent:
         )
         prompt = (
             "Jawab pertanyaan berdasarkan hasil pencarian web berikut. "
-            "Gunakan Bahasa Indonesia yang ringkas dan jujur. Sertakan nomor sumber "
-            "([1], [2], dst.) pada klaim penting dan daftar URL sumber di akhir.\n\n"
+            "Gunakan Bahasa Indonesia yang ringkas dan jujur. "
+            "Prioritaskan sumber yang relevan dengan Indonesia; "
+            "abaikan hasil yang jelas tentang India, Asia Timur, atau negara lain "
+            "kecuali pertanyaan memang meminta itu. "
+            "Sertakan nomor sumber ([1], [2], dst.) pada klaim penting dan daftar "
+            "URL sumber di akhir.\n\n"
             f"Pertanyaan: {query}\n\nHasil pencarian:\n{sources}"
         )
         return await self.llm.summarize(prompt)
