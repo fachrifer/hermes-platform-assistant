@@ -1,0 +1,26 @@
+# Secrets & state
+.env
+deploy/cloud.env
+credentials/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Private finance workbooks (keep out of git; mount at runtime)
+/Kategori Money Manager.xlsx
+/MoneyManager-2025.xlsx
+/*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

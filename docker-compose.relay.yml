@@ -1,0 +1,18 @@
+services:
+  office-relay:
+    build:
+      context: .
+      dockerfile: Dockerfile.relay
+    image: hermes-office-relay:latest
+    container_name: hermes-office-relay
+    env_file: "${OFFICE_RELAY_ENV_FILE:-deploy/relay.env}"
+    ports:
+      - "${OFFICE_RELAY_BIND_ADDRESS:?set OFFICE_RELAY_BIND_ADDRESS}:${OFFICE_RELAY_PORT:-8443}:8443"
+    volumes:
+      - "${OFFICE_RELAY_CERT_DIR:?set OFFICE_RELAY_CERT_DIR}:/certs:ro"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped

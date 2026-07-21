@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && useradd --create-home --uid 10001 --shell /usr/sbin/nologin hermes
+
+COPY config/ ./config/
+COPY core/ ./core/
+COPY office_observer/ ./office_observer/
+RUN mkdir -p /var/lib/hermes-observer /certs \
+    && chown -R hermes:hermes /app /var/lib/hermes-observer
+
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app
+USER hermes
+CMD ["python", "-m", "office_observer.run"]

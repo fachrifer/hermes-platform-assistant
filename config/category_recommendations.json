@@ -1,0 +1,3531 @@
+{
+  "version": 1,
+  "generated_at": "2026-07-16T14:23:29Z",
+  "source": {
+    "history": "MoneyManager-2025.xlsx",
+    "categories": "Kategori Money Manager.xlsx",
+    "history_rows_used": 418,
+    "valid_category_pairs": 68
+  },
+  "pairs": [
+    [
+      "Apparel",
+      "Baju"
+    ],
+    [
+      "Apparel",
+      "Lain - Lain"
+    ],
+    [
+      "Apparel",
+      "Sepatu"
+    ],
+    [
+      "Apparel",
+      "Tas"
+    ],
+    [
+      "Belanja",
+      "-"
+    ],
+    [
+      "Belanja",
+      "Lain - Lain"
+    ],
+    [
+      "Biaya Sosial",
+      "Hadiah"
+    ],
+    [
+      "Biaya Sosial",
+      "Infaq"
+    ],
+    [
+      "Biaya Sosial",
+      "Sumbangan"
+    ],
+    [
+      "Biaya Sosial",
+      "Uang Kas dan Iuran"
+    ],
+    [
+      "Bonus",
+      "Tukin Tahunan"
+    ],
+    [
+      "Elektronik",
+      "Aksesoris"
+    ],
+    [
+      "Elektronik",
+      "Gadget"
+    ],
+    [
+      "Gaji",
+      "Gaji Pokok"
+    ],
+    [
+      "Gaji",
+      "Honorarium"
+    ],
+    [
+      "Gaji",
+      "Lembur"
+    ],
+    [
+      "Gaji",
+      "Tunjangan"
+    ],
+    [
+      "Gaji",
+      "Uang makan"
+    ],
+    [
+      "Hiburan dan Hobi",
+      "Bioskop"
+    ],
+    [
+      "Hiburan dan Hobi",
+      "Game"
+    ],
+    [
+      "Hiburan dan Hobi",
+      "Olahraga"
+    ],
+    [
+      "Hiburan dan Hobi",
+      "Otomotif"
+    ],
+    [
+      "Hiburan dan Hobi",
+      "Peliharaan"
+    ],
+    [
+      "Jual Beli",
+      "-"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Appliances"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Furnitur"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Kitchen"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Lain - Lain"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Laundry"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Perawatan"
+    ],
+    [
+      "Kebutuhan Rumah",
+      "Perbaikan"
+    ],
+    [
+      "Keluarga",
+      "Istri"
+    ],
+    [
+      "Keluarga",
+      "Orang Tua"
+    ],
+    [
+      "Kesehatan",
+      "Asuransi Kesehatan"
+    ],
+    [
+      "Kesehatan",
+      "Dokter / Rumah Sakit"
+    ],
+    [
+      "Kesehatan",
+      "Lain - Lain"
+    ],
+    [
+      "Kesehatan",
+      "Obat"
+    ],
+    [
+      "Kesehatan",
+      "Vitamin"
+    ],
+    [
+      "Lain-lain",
+      "-"
+    ],
+    [
+      "Lainnya",
+      "-"
+    ],
+    [
+      "Makanan",
+      "Cafe"
+    ],
+    [
+      "Makanan",
+      "Grocery"
+    ],
+    [
+      "Makanan",
+      "Makan Siang"
+    ],
+    [
+      "Makanan",
+      "Makanan"
+    ],
+    [
+      "Makanan",
+      "Restoran"
+    ],
+    [
+      "Penarikan Dana dan Transfer",
+      "Biaya Admin"
+    ],
+    [
+      "Penarikan Dana dan Transfer",
+      "Biaya Transfer"
+    ],
+    [
+      "Penarikan Dana dan Transfer",
+      "Uang Elektronik"
+    ],
+    [
+      "Personal Care",
+      "-"
+    ],
+    [
+      "Self-development",
+      "Kuliah"
+    ],
+    [
+      "Self-development",
+      "Pernikahan"
+    ],
+    [
+      "Tagihan dan Langganan",
+      "Air"
+    ],
+    [
+      "Tagihan dan Langganan",
+      "Internet"
+    ],
+    [
+      "Tagihan dan Langganan",
+      "Listrik"
+    ],
+    [
+      "Tagihan dan Langganan",
+      "Pulsa"
+    ],
+    [
+      "Tagihan dan Langganan",
+      "Seluler"
+    ],
+    [
+      "Tagihan dan Langganan",
+      "Subscription"
+    ],
+    [
+      "Transportasi",
+      "Bahan Bakar"
+    ],
+    [
+      "Transportasi",
+      "Kendaraan Pribadi"
+    ],
+    [
+      "Transportasi",
+      "Kendaraan Umum"
+    ],
+    [
+      "Transportasi",
+      "Parkir"
+    ],
+    [
+      "Transportasi",
+      "Servis Kendaraan"
+    ],
+    [
+      "Transportasi",
+      "Surat - Surat"
+    ],
+    [
+      "Travel",
+      "Oleh - oleh"
+    ],
+    [
+      "Travel",
+      "Penginapan"
+    ],
+    [
+      "Travel",
+      "Tiket Kereta"
+    ],
+    [
+      "Travel",
+      "Tiket Pesawat"
+    ],
+    [
+      "Travel",
+      "Tiket Travel"
+    ]
+  ],
+  "phrases": [
+    {
+      "match": "dja go kopi reman ols",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 23,
+      "confidence": 1.0,
+      "example": "dja go kopi reman ols"
+    },
+    {
+      "match": "fmi qr kepu selatan",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 12,
+      "confidence": 1.0,
+      "example": "fmi qr kepu selatan"
+    },
+    {
+      "match": "top-up ovo",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 12,
+      "confidence": 1.0,
+      "example": "top-up ovo"
+    },
+    {
+      "match": "transfer dengan bi fast ke fachri ferdian achmad",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 8,
+      "confidence": 1.0,
+      "example": "transfer dengan bi fast ke fachri ferdian achmad"
+    },
+    {
+      "match": "familymart kepu selatan",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 7,
+      "confidence": 1.0,
+      "example": "familymart kepu selatan"
+    },
+    {
+      "match": "sate ayam bang nurul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 7,
+      "confidence": 1.0,
+      "example": "sate ayam bang nurul"
+    },
+    {
+      "match": "transaksi makanan",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 7,
+      "confidence": 1.0,
+      "example": "transaksi makanan"
+    },
+    {
+      "match": "transfer ke ratna ningsih",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 7,
+      "confidence": 1.0,
+      "example": "transfer ke ratna ningsih"
+    },
+    {
+      "match": "mie gondrong",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "confidence": 1.0,
+      "example": "mie gondrong"
+    },
+    {
+      "match": "mis kelapa jeruk",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "confidence": 1.0,
+      "example": "mis kelapa jeruk"
+    },
+    {
+      "match": "pembayaran bpjs kesehatan keluarga",
+      "category": "Kesehatan",
+      "subcategory": "Asuransi Kesehatan",
+      "count": 6,
+      "confidence": 1.0,
+      "example": "pembayaran bpjs kesehatan keluarga"
+    },
+    {
+      "match": "pembayaran myrepublic retail",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Internet",
+      "count": 6,
+      "confidence": 1.0,
+      "example": "pembayaran myrepublic retail"
+    },
+    {
+      "match": "pembayaran qr dja go kopi reman ols",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 6,
+      "confidence": 1.0,
+      "example": "pembayaran qr dja go kopi reman ols"
+    },
+    {
+      "match": "top up flazz",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 6,
+      "confidence": 1.0,
+      "example": "top up flazz"
+    },
+    {
+      "match": "idm indomaret d",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 5,
+      "confidence": 1.0,
+      "example": "idm indomaret d"
+    },
+    {
+      "match": "sindi soto bang yos",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 5,
+      "confidence": 1.0,
+      "example": "sindi soto bang yos"
+    },
+    {
+      "match": "warung mbak inul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 5,
+      "confidence": 1.0,
+      "example": "warung mbak inul"
+    },
+    {
+      "match": "kk ubertos",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 4,
+      "confidence": 1.0,
+      "example": "kk ubertos"
+    },
+    {
+      "match": "shell gunung sahari ry",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 4,
+      "confidence": 1.0,
+      "example": "shell gunung sahari ry"
+    },
+    {
+      "match": "alfamart regular d",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "alfamart regular d"
+    },
+    {
+      "match": "blue doors coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "blue doors coffee"
+    },
+    {
+      "match": "buah super segar amanda",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "buah super segar amanda"
+    },
+    {
+      "match": "cilor aisyah",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "cilor aisyah"
+    },
+    {
+      "match": "pembayaran qr toko kopi tuku, cempaka p",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "pembayaran qr toko kopi tuku, cempaka p"
+    },
+    {
+      "match": "steaku",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "steaku"
+    },
+    {
+      "match": "superindo ujungbrung t",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "superindo ujungbrung t"
+    },
+    {
+      "match": "transfer dengan bi fast ke nurizka khoerani",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "transfer dengan bi fast ke nurizka khoerani"
+    },
+    {
+      "match": "transfer ke shopee",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 3,
+      "confidence": 1.0,
+      "example": "transfer ke shopee"
+    },
+    {
+      "match": "masjid al amin kemenkeu",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 3,
+      "confidence": 0.6,
+      "example": "masjid al amin kemenkeu"
+    },
+    {
+      "match": "jago coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "jago coffee"
+    },
+    {
+      "match": "kk stasiun kcjb halim",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "kk stasiun kcjb halim"
+    },
+    {
+      "match": "kopi anjis",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "kopi anjis"
+    },
+    {
+      "match": "pembayaran qr google play",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Game",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "pembayaran qr google play"
+    },
+    {
+      "match": "pembayaran qr kcic",
+      "category": "Transportasi",
+      "subcategory": "Kendaraan Umum",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "pembayaran qr kcic"
+    },
+    {
+      "match": "pembayaran qr point coffee indomaret",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "pembayaran qr point coffee indomaret"
+    },
+    {
+      "match": "pt dompet anak bangsa / gopay topup",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "pt dompet anak bangsa / gopay topup"
+    },
+    {
+      "match": "rm yanti",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "rm yanti"
+    },
+    {
+      "match": "shell phh mustofa",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "shell phh mustofa"
+    },
+    {
+      "match": "tokopedia va payment",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "tokopedia va payment"
+    },
+    {
+      "match": "top up ovo",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "top up ovo"
+    },
+    {
+      "match": "top-up paket data indosat",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Pulsa",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "top-up paket data indosat"
+    },
+    {
+      "match": "top-up shopeepay",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "top-up shopeepay"
+    },
+    {
+      "match": "transfer ke dwi parmawati (calf coffee)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (calf coffee)"
+    },
+    {
+      "match": "transfer ke m. ridho mubaroq (buah an fachri)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "transfer ke m. ridho mubaroq (buah an fachri)"
+    },
+    {
+      "match": "transfer ke ratna ningsih (marugame)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "transfer ke ratna ningsih (marugame)"
+    },
+    {
+      "match": "transfer ke wiliyanti (ajung tetfai)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (ajung tetfai)"
+    },
+    {
+      "match": "warung bude radinem",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "warung bude radinem"
+    },
+    {
+      "match": "warung sate abang nurul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "confidence": 1.0,
+      "example": "warung sate abang nurul"
+    },
+    {
+      "match": "access by kai",
+      "category": "Transportasi",
+      "subcategory": "Kendaraan Umum",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "access by kai"
+    },
+    {
+      "match": "aeon health and beauty gr",
+      "category": "Kesehatan",
+      "subcategory": "Lain - Lain",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "aeon health and beauty gr"
+    },
+    {
+      "match": "aoera green pramuka",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "aoera green pramuka"
+    },
+    {
+      "match": "asia parking - mag motor",
+      "category": "Transportasi",
+      "subcategory": "Parkir",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "asia parking - mag motor"
+    },
+    {
+      "match": "ayam penyet sambel ijo wa",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "ayam penyet sambel ijo wa"
+    },
+    {
+      "match": "azko green pramuka s",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "azko green pramuka s"
+    },
+    {
+      "match": "azko mal artha gdg",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "azko mal artha gdg"
+    },
+    {
+      "match": "bagi kopi, ujung berung",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "bagi kopi, ujung berung"
+    },
+    {
+      "match": "baked and brewed",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "baked and brewed"
+    },
+    {
+      "match": "bebek arjuna kalibaru",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "bebek arjuna kalibaru"
+    },
+    {
+      "match": "berkah vending utama gbk",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "berkah vending utama gbk"
+    },
+    {
+      "match": "bniqr ketoprak mgl",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "bniqr ketoprak mgl"
+    },
+    {
+      "match": "cardless - tarik tunai",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "cardless - tarik tunai"
+    },
+    {
+      "match": "century chc-cm itc cempak",
+      "category": "Kesehatan",
+      "subcategory": "Obat",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "century chc-cm itc cempak"
+    },
+    {
+      "match": "cfc stasiun bogor",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "cfc stasiun bogor"
+    },
+    {
+      "match": "djournal kota kasablank",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "djournal kota kasablank"
+    },
+    {
+      "match": "dreezel coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "dreezel coffee"
+    },
+    {
+      "match": "dreezel coffee hasanudin",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "dreezel coffee hasanudin"
+    },
+    {
+      "match": "esb restaurant technology",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "esb restaurant technology"
+    },
+    {
+      "match": "everyday co-kitchen",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "everyday co-kitchen"
+    },
+    {
+      "match": "familymart oasis mitra ap",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "familymart oasis mitra ap"
+    },
+    {
+      "match": "fmi juanda",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "fmi juanda"
+    },
+    {
+      "match": "fmi oasis mitra apt",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "fmi oasis mitra apt"
+    },
+    {
+      "match": "fmi padjajaran bogor",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "fmi padjajaran bogor"
+    },
+    {
+      "match": "fmi qr matraman raya",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "fmi qr matraman raya"
+    },
+    {
+      "match": "gado gado maleber",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "gado gado maleber"
+    },
+    {
+      "match": "guardian bandung ubrtos",
+      "category": "Kesehatan",
+      "subcategory": "Obat",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "guardian bandung ubrtos"
+    },
+    {
+      "match": "hass carwash and cafe",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "hass carwash and cafe"
+    },
+    {
+      "match": "henims kitchen",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "henims kitchen"
+    },
+    {
+      "match": "hhb 907 botani",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "hhb 907 botani"
+    },
+    {
+      "match": "hitam manis auri",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "hitam manis auri"
+    },
+    {
+      "match": "human greatness lab",
+      "category": "Self-development",
+      "subcategory": "Kuliah",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "human greatness lab"
+    },
+    {
+      "match": "jagocoffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "jagocoffee"
+    },
+    {
+      "match": "kairos gunung bakaran",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kairos gunung bakaran"
+    },
+    {
+      "match": "kantin bubur ayam dja",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kantin bubur ayam dja"
+    },
+    {
+      "match": "kantin hasanah",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kantin hasanah"
+    },
+    {
+      "match": "kantin mba mar",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kantin mba mar"
+    },
+    {
+      "match": "kantin vije",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kantin vije"
+    },
+    {
+      "match": "kf.0001",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kf.0001"
+    },
+    {
+      "match": "kfc cempaka mas",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kfc cempaka mas"
+    },
+    {
+      "match": "kk jkt spbstrkmyrn",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kk jkt spbstrkmyrn"
+    },
+    {
+      "match": "kk pramuka",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kk pramuka"
+    },
+    {
+      "match": "kk shell gunung sahari",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kk shell gunung sahari"
+    },
+    {
+      "match": "kk.bdg.ubertos",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kk.bdg.ubertos"
+    },
+    {
+      "match": "kopi kenangan qris app",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kopi kenangan qris app"
+    },
+    {
+      "match": "kopi nako monas",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kopi nako monas"
+    },
+    {
+      "match": "ksa mart",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "ksa mart"
+    },
+    {
+      "match": "kurokoffee, ciumbuleuit",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "kurokoffee, ciumbuleuit"
+    },
+    {
+      "match": "layung coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "layung coffee"
+    },
+    {
+      "match": "lwsn_6a36_stasiun senen",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "lwsn_6a36_stasiun senen"
+    },
+    {
+      "match": "makmur jaya coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "makmur jaya coffee"
+    },
+    {
+      "match": "mall artha gading",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "mall artha gading"
+    },
+    {
+      "match": "marugame green pramuka",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "marugame green pramuka"
+    },
+    {
+      "match": "mie ayam segamas",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "mie ayam segamas"
+    },
+    {
+      "match": "o-ing coffee bikewash",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "o-ing coffee bikewash"
+    },
+    {
+      "match": "optik monarki",
+      "category": "Kesehatan",
+      "subcategory": "Lain - Lain",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "optik monarki"
+    },
+    {
+      "match": "pecel madiun bu pardi",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pecel madiun bu pardi"
+    },
+    {
+      "match": "pembayaran pajak/pnbp/cukai",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran pajak/pnbp/cukai"
+    },
+    {
+      "match": "pembayaran perbanas institute",
+      "category": "Self-development",
+      "subcategory": "Kuliah",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran perbanas institute"
+    },
+    {
+      "match": "pembayaran qr access by kai",
+      "category": "Travel",
+      "subcategory": "Tiket Kereta",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr access by kai"
+    },
+    {
+      "match": "pembayaran qr aeon mall - jgc cakung",
+      "category": "Belanja",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr aeon mall - jgc cakung"
+    },
+    {
+      "match": "pembayaran qr bearpath, bandung",
+      "category": "Apparel",
+      "subcategory": "Baju",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr bearpath, bandung"
+    },
+    {
+      "match": "pembayaran qr blue doors",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr blue doors"
+    },
+    {
+      "match": "pembayaran qr buah segar amanda",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr buah segar amanda"
+    },
+    {
+      "match": "pembayaran qr cititrans soetta",
+      "category": "Transportasi",
+      "subcategory": "Kendaraan Umum",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr cititrans soetta"
+    },
+    {
+      "match": "pembayaran qr decathlon kokas",
+      "category": "Belanja",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr decathlon kokas"
+    },
+    {
+      "match": "pembayaran qr dkm masjid al-dalaan btr",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr dkm masjid al-dalaan btr"
+    },
+    {
+      "match": "pembayaran qr esb restaurant technology",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr esb restaurant technology"
+    },
+    {
+      "match": "pembayaran qr human greatness lab",
+      "category": "Self-development",
+      "subcategory": "Kuliah",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr human greatness lab"
+    },
+    {
+      "match": "pembayaran qr jete tsm bandung",
+      "category": "Elektronik",
+      "subcategory": "Aksesoris",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr jete tsm bandung"
+    },
+    {
+      "match": "pembayaran qr jom's coffee & eatery-h",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr jom's coffee & eatery-h"
+    },
+    {
+      "match": "pembayaran qr kantin bubur ayam dja",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr kantin bubur ayam dja"
+    },
+    {
+      "match": "pembayaran qr kedai emak",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr kedai emak"
+    },
+    {
+      "match": "pembayaran qr loker mager, swh bsr",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr loker mager, swh bsr"
+    },
+    {
+      "match": "pembayaran qr looyal indonesia",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr looyal indonesia"
+    },
+    {
+      "match": "pembayaran qr masjid al amin kemenkeu",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr masjid al amin kemenkeu"
+    },
+    {
+      "match": "pembayaran qr mie gondrong",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr mie gondrong"
+    },
+    {
+      "match": "pembayaran qr nam min kampung timur",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr nam min kampung timur"
+    },
+    {
+      "match": "pembayaran qr pepper lunch gi",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr pepper lunch gi"
+    },
+    {
+      "match": "pembayaran qr sate ayam bang nurul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr sate ayam bang nurul"
+    },
+    {
+      "match": "pembayaran qr shell gunung sahari",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr shell gunung sahari"
+    },
+    {
+      "match": "pembayaran qr shell select suprapto-2",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr shell select suprapto-2"
+    },
+    {
+      "match": "pembayaran qr sindi soto bang yos",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr sindi soto bang yos"
+    },
+    {
+      "match": "pembayaran qr ss botani square/ssci",
+      "category": "Belanja",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr ss botani square/ssci"
+    },
+    {
+      "match": "pembayaran qr steaku",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr steaku"
+    },
+    {
+      "match": "pembayaran qr sushi tei,bsm",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr sushi tei,bsm"
+    },
+    {
+      "match": "pembayaran qr tempat makan bdg",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr tempat makan bdg"
+    },
+    {
+      "match": "pembayaran qr uniqlo trans studio mall",
+      "category": "Apparel",
+      "subcategory": "Baju",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr uniqlo trans studio mall"
+    },
+    {
+      "match": "pembayaran qr warung mbak inul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr warung mbak inul"
+    },
+    {
+      "match": "pembayaran qr wingstop stasiun gambir",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr wingstop stasiun gambir"
+    },
+    {
+      "match": "pembayaran qr wss cempaka putih",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr wss cempaka putih"
+    },
+    {
+      "match": "pembayaran qr www.decathlon.co.id",
+      "category": "Belanja",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr www.decathlon.co.id"
+    },
+    {
+      "match": "pembayaran qr xput - mr diy cempaka put",
+      "category": "Belanja",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pembayaran qr xput - mr diy cempaka put"
+    },
+    {
+      "match": "pia apple pie, bogor teng",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "pia apple pie, bogor teng"
+    },
+    {
+      "match": "ramen ya grand pramuka",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "ramen ya grand pramuka"
+    },
+    {
+      "match": "restoran donat senyum",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "restoran donat senyum"
+    },
+    {
+      "match": "richeese factory",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "richeese factory"
+    },
+    {
+      "match": "rm surabaya",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "rm surabaya"
+    },
+    {
+      "match": "rmu resto on train n 1",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "rmu resto on train n 1"
+    },
+    {
+      "match": "roti unyil venus bbo",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "roti unyil venus bbo"
+    },
+    {
+      "match": "sate mas min",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "sate mas min"
+    },
+    {
+      "match": "sedjuk bakmi & kopi",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "sedjuk bakmi & kopi"
+    },
+    {
+      "match": "seko",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "seko"
+    },
+    {
+      "match": "seruni society&space",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "seruni society&space"
+    },
+    {
+      "match": "shell margonda 2",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "shell margonda 2"
+    },
+    {
+      "match": "shell select, gunung saha",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "shell select, gunung saha"
+    },
+    {
+      "match": "shell suprapto-1",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "shell suprapto-1"
+    },
+    {
+      "match": "shihlin bazaar 9",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "shihlin bazaar 9"
+    },
+    {
+      "match": "shop and drive emergency",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "shop and drive emergency"
+    },
+    {
+      "match": "shopeepay va top up",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "shopeepay va top up"
+    },
+    {
+      "match": "subway kcic halim-wya9",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "subway kcic halim-wya9"
+    },
+    {
+      "match": "superindo arandra",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "superindo arandra"
+    },
+    {
+      "match": "suprapto2",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "suprapto2"
+    },
+    {
+      "match": "taka familia fresh, babak",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "taka familia fresh, babak"
+    },
+    {
+      "match": "tanatap coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "tanatap coffee"
+    },
+    {
+      "match": "third wave coffee-ho",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "third wave coffee-ho"
+    },
+    {
+      "match": "toko bubur dpr pinus soet",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "toko bubur dpr pinus soet"
+    },
+    {
+      "match": "toko kopi tuku, cempaka p",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "toko kopi tuku, cempaka p"
+    },
+    {
+      "match": "toko kopi tuku, gbk sena",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "toko kopi tuku, gbk sena"
+    },
+    {
+      "match": "tomoro coffee balikpa 1",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "tomoro coffee balikpa 1"
+    },
+    {
+      "match": "tomoro coffee bogor tr",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "tomoro coffee bogor tr"
+    },
+    {
+      "match": "top up shopeepay",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "top up shopeepay"
+    },
+    {
+      "match": "top-up e-money",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "top-up e-money"
+    },
+    {
+      "match": "top-up gopay customer",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "top-up gopay customer"
+    },
+    {
+      "match": "transfer (nila + es kelapa)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer (nila + es kelapa)"
+    },
+    {
+      "match": "transfer dengan bi fast ke erwin (service ac raize)",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer dengan bi fast ke erwin (service ac raize)"
+    },
+    {
+      "match": "transfer dengan bi fast ke fachri ferdian achmad (kopi nako)",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer dengan bi fast ke fachri ferdian achmad (kopi nako)"
+    },
+    {
+      "match": "transfer ke (tetfai lagi)",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke (tetfai lagi)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (bakmi sedjuk)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (bakmi sedjuk)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (cisadon tebet gowes)",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Olahraga",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (cisadon tebet gowes)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (famima)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (famima)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (jatinangor)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (jatinangor)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (le minerale)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (le minerale)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (makanan)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (makanan)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (mie ayam jamur)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (mie ayam jamur)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (papandayan trekking)",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Olahraga",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (papandayan trekking)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (sepeda 25 mei)",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Olahraga",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (sepeda 25 mei)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (tmii straits ayam tulang lunak)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (tmii straits ayam tulang lunak)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (tongseng kambing)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (tongseng kambing)"
+    },
+    {
+      "match": "transfer ke agus prastiyono nugr (twin house sepedaan)",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Olahraga",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke agus prastiyono nugr (twin house sepedaan)"
+    },
+    {
+      "match": "transfer ke bora arief wijaya (kopi nako)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke bora arief wijaya (kopi nako)"
+    },
+    {
+      "match": "transfer ke dimas hendra mustafa (ayam arjuna plus nasi)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dimas hendra mustafa (ayam arjuna plus nasi)"
+    },
+    {
+      "match": "transfer ke dimas hendra mustafa (ayam bakar)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dimas hendra mustafa (ayam bakar)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (arjuna ayam bakar plus nasi)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (arjuna ayam bakar plus nasi)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (ayam goreng arjuna)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (ayam goreng arjuna)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (bakso handayani)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (bakso handayani)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (bakso)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (bakso)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (baslok)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (baslok)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (garang asem)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (garang asem)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (ketan kmyrn)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (ketan kmyrn)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (kopi nusae)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (kopi nusae)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (naspad tansu)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (naspad tansu)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (reman bundit)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (reman bundit)"
+    },
+    {
+      "match": "transfer ke dwi parmawati (roti goceng)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi parmawati (roti goceng)"
+    },
+    {
+      "match": "transfer ke dwi yulianti (baslok)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke dwi yulianti (baslok)"
+    },
+    {
+      "match": "transfer ke enning wulandari (ukas sampai april)",
+      "category": "Biaya Sosial",
+      "subcategory": "Uang Kas dan Iuran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke enning wulandari (ukas sampai april)"
+    },
+    {
+      "match": "transfer ke faisal ismail (inspeksi raize)",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke faisal ismail (inspeksi raize)"
+    },
+    {
+      "match": "transfer ke fakih gilang novendh (2 mie ayam jamur top 1 es jeruk)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke fakih gilang novendh (2 mie ayam jamur top 1 es jeruk)"
+    },
+    {
+      "match": "transfer ke fakih gilang novendh (mie goreng kucay)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke fakih gilang novendh (mie goreng kucay)"
+    },
+    {
+      "match": "transfer ke febrian putra laksan (stik ps4)",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Game",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke febrian putra laksan (stik ps4)"
+    },
+    {
+      "match": "transfer ke inne s. sasmita (tambal gigi)",
+      "category": "Kesehatan",
+      "subcategory": "Dokter / Rumah Sakit",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke inne s. sasmita (tambal gigi)"
+    },
+    {
+      "match": "transfer ke jpc indonesia pt",
+      "category": "Elektronik",
+      "subcategory": "Aksesoris",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke jpc indonesia pt"
+    },
+    {
+      "match": "transfer ke kopireman indonesia",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke kopireman indonesia"
+    },
+    {
+      "match": "transfer ke m. ridho mubaroq (anggur egypt shine pisang)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke m. ridho mubaroq (anggur egypt shine pisang)"
+    },
+    {
+      "match": "transfer ke m. ridho mubaroq (buah an fachri fer)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke m. ridho mubaroq (buah an fachri fer)"
+    },
+    {
+      "match": "transfer ke m. ridho mubaroq (buah fachrifer)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke m. ridho mubaroq (buah fachrifer)"
+    },
+    {
+      "match": "transfer ke m. ridho mubaroq (fachri anggur lychee)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke m. ridho mubaroq (fachri anggur lychee)"
+    },
+    {
+      "match": "transfer ke m. ridho mubaroq (jeruk apel anggur)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke m. ridho mubaroq (jeruk apel anggur)"
+    },
+    {
+      "match": "transfer ke madison",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke madison"
+    },
+    {
+      "match": "transfer ke maria adiningsih (pempek)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke maria adiningsih (pempek)"
+    },
+    {
+      "match": "transfer ke mia anggraini (an ratna popy)",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke mia anggraini (an ratna popy)"
+    },
+    {
+      "match": "transfer ke moh ahmaluddin zinni (donburi bar)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke moh ahmaluddin zinni (donburi bar)"
+    },
+    {
+      "match": "transfer ke muamar khozinul ulum",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke muamar khozinul ulum"
+    },
+    {
+      "match": "transfer ke muamar khozinul ulum (bubur dja)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke muamar khozinul ulum (bubur dja)"
+    },
+    {
+      "match": "transfer ke muamar khozinul ulum (lele inul)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke muamar khozinul ulum (lele inul)"
+    },
+    {
+      "match": "transfer ke nurina indah septian (mentai spicy cheese)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke nurina indah septian (mentai spicy cheese)"
+    },
+    {
+      "match": "transfer ke ratna ningsih (dr steven)",
+      "category": "Kesehatan",
+      "subcategory": "Dokter / Rumah Sakit",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke ratna ningsih (dr steven)"
+    },
+    {
+      "match": "transfer ke ratna ningsih (seragam batik)",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke ratna ningsih (seragam batik)"
+    },
+    {
+      "match": "transfer ke ratna ningsih (tongsis)",
+      "category": "Belanja",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke ratna ningsih (tongsis)"
+    },
+    {
+      "match": "transfer ke rekening bca vito daryfauzi saptonoad (berita: raize hitam)",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke rekening bca vito daryfauzi saptonoad (berita: raize hitam)"
+    },
+    {
+      "match": "transfer ke siesty siswoniary",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke siesty siswoniary"
+    },
+    {
+      "match": "transfer ke siesty siswoniary (ayam cabe hijau)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke siesty siswoniary (ayam cabe hijau)"
+    },
+    {
+      "match": "transfer ke siesty siswoniary (chicken steak)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke siesty siswoniary (chicken steak)"
+    },
+    {
+      "match": "transfer ke soputan al barru tar (bubur)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke soputan al barru tar (bubur)"
+    },
+    {
+      "match": "transfer ke soputan al barru tar (famima)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke soputan al barru tar (famima)"
+    },
+    {
+      "match": "transfer ke soputan al barru tar (kopken malt)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke soputan al barru tar (kopken malt)"
+    },
+    {
+      "match": "transfer ke soputan al barru tar (ksk famima)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke soputan al barru tar (ksk famima)"
+    },
+    {
+      "match": "transfer ke suci pratiwi (ukas fachri)",
+      "category": "Biaya Sosial",
+      "subcategory": "Uang Kas dan Iuran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke suci pratiwi (ukas fachri)"
+    },
+    {
+      "match": "transfer ke suci pratiwi (ukas september)",
+      "category": "Biaya Sosial",
+      "subcategory": "Uang Kas dan Iuran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke suci pratiwi (ukas september)"
+    },
+    {
+      "match": "transfer ke umi (ayam bakar air mineral)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke umi (ayam bakar air mineral)"
+    },
+    {
+      "match": "transfer ke wawan istiyono (creme brule)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wawan istiyono (creme brule)"
+    },
+    {
+      "match": "transfer ke wiliyanti (ajung roti srikaya)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (ajung roti srikaya)"
+    },
+    {
+      "match": "transfer ke wiliyanti (ajung)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (ajung)"
+    },
+    {
+      "match": "transfer ke wiliyanti (blenger mang ule)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (blenger mang ule)"
+    },
+    {
+      "match": "transfer ke wiliyanti (bluberi)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (bluberi)"
+    },
+    {
+      "match": "transfer ke wiliyanti (chili dog)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (chili dog)"
+    },
+    {
+      "match": "transfer ke wiliyanti (chilidog blenger)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (chilidog blenger)"
+    },
+    {
+      "match": "transfer ke wiliyanti (tetfai)",
+      "category": "Lain-lain",
+      "subcategory": "-",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "transfer ke wiliyanti (tetfai)"
+    },
+    {
+      "match": "vivo bogor",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Seluler",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "vivo bogor"
+    },
+    {
+      "match": "warung ibu reni rose",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "warung ibu reni rose"
+    },
+    {
+      "match": "warung purwokerto",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 1,
+      "confidence": 1.0,
+      "example": "warung purwokerto"
+    },
+    {
+      "match": "bintal islam dja kemenkeu",
+      "category": "Biaya Sosial",
+      "subcategory": "Sumbangan",
+      "count": 1,
+      "confidence": 0.5,
+      "example": "bintal islam dja kemenkeu"
+    },
+    {
+      "match": "dkm masjid al-dalaan btr",
+      "category": "Biaya Sosial",
+      "subcategory": "Sumbangan",
+      "count": 1,
+      "confidence": 0.5,
+      "example": "dkm masjid al-dalaan btr"
+    }
+  ],
+  "keywords": [
+    {
+      "match": "kopi",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 38,
+      "total": 39,
+      "confidence": 0.974
+    },
+    {
+      "match": "reman",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 29,
+      "total": 29,
+      "confidence": 1.0
+    },
+    {
+      "match": "kepu",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 19,
+      "total": 19,
+      "confidence": 1.0
+    },
+    {
+      "match": "selatan",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 19,
+      "total": 19,
+      "confidence": 1.0
+    },
+    {
+      "match": "coffee",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 16,
+      "total": 16,
+      "confidence": 1.0
+    },
+    {
+      "match": "top-up",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 16,
+      "total": 18,
+      "confidence": 0.889
+    },
+    {
+      "match": "bang",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 14,
+      "total": 14,
+      "confidence": 1.0
+    },
+    {
+      "match": "warung",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 12,
+      "total": 12,
+      "confidence": 1.0
+    },
+    {
+      "match": "fast",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 12,
+      "total": 13,
+      "confidence": 0.923
+    },
+    {
+      "match": "ayam",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 12,
+      "total": 16,
+      "confidence": 0.75
+    },
+    {
+      "match": "sate",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 11,
+      "total": 11,
+      "confidence": 1.0
+    },
+    {
+      "match": "shell",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 11,
+      "total": 12,
+      "confidence": 0.917
+    },
+    {
+      "match": "nurul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 10,
+      "total": 10,
+      "confidence": 1.0
+    },
+    {
+      "match": "achmad",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 9,
+      "total": 9,
+      "confidence": 1.0
+    },
+    {
+      "match": "ferdian",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 9,
+      "total": 9,
+      "confidence": 1.0
+    },
+    {
+      "match": "fachri",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 9,
+      "total": 10,
+      "confidence": 0.9
+    },
+    {
+      "match": "parmawati",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 9,
+      "total": 13,
+      "confidence": 0.692
+    },
+    {
+      "match": "ratna",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 9,
+      "total": 13,
+      "confidence": 0.692
+    },
+    {
+      "match": "familymart",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 8,
+      "total": 8,
+      "confidence": 1.0
+    },
+    {
+      "match": "ningsih",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 8,
+      "total": 12,
+      "confidence": 0.667
+    },
+    {
+      "match": "makanan",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 7,
+      "total": 7,
+      "confidence": 1.0
+    },
+    {
+      "match": "mubaroq",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 7,
+      "total": 7,
+      "confidence": 1.0
+    },
+    {
+      "match": "ridho",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 7,
+      "total": 7,
+      "confidence": 1.0
+    },
+    {
+      "match": "bpjs",
+      "category": "Kesehatan",
+      "subcategory": "Asuransi Kesehatan",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "flazz",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "inul",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "jeruk",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "kelapa",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "keluarga",
+      "category": "Kesehatan",
+      "subcategory": "Asuransi Kesehatan",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "kesehatan",
+      "category": "Kesehatan",
+      "subcategory": "Asuransi Kesehatan",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "mbak",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "myrepublic",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Internet",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "retail",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Internet",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "sindi",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "soto",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 6,
+      "confidence": 1.0
+    },
+    {
+      "match": "gondrong",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 6,
+      "total": 7,
+      "confidence": 0.857
+    },
+    {
+      "match": "gunung",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 6,
+      "total": 8,
+      "confidence": 0.75
+    },
+    {
+      "match": "masjid",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 6,
+      "total": 9,
+      "confidence": 0.667
+    },
+    {
+      "match": "wiliyanti",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 6,
+      "total": 9,
+      "confidence": 0.667
+    },
+    {
+      "match": "tuku,",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 5,
+      "total": 5,
+      "confidence": 1.0
+    },
+    {
+      "match": "sahari",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 5,
+      "total": 6,
+      "confidence": 0.833
+    },
+    {
+      "match": "toko",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 5,
+      "total": 6,
+      "confidence": 0.833
+    },
+    {
+      "match": "indomaret",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 5,
+      "total": 7,
+      "confidence": 0.714
+    },
+    {
+      "match": "kemenkeu",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 5,
+      "total": 8,
+      "confidence": 0.625
+    },
+    {
+      "match": "(buah",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "amanda",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "blue",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "buah",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "doors",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "segar",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "shopeepay",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "steaku",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "superindo",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "ubertos",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 4,
+      "total": 4,
+      "confidence": 1.0
+    },
+    {
+      "match": "(ayam",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 4,
+      "total": 5,
+      "confidence": 0.8
+    },
+    {
+      "match": "kantin",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 4,
+      "total": 5,
+      "confidence": 0.8
+    },
+    {
+      "match": "amin",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 4,
+      "total": 6,
+      "confidence": 0.667
+    },
+    {
+      "match": "(ajung",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "(ukas",
+      "category": "Biaya Sosial",
+      "subcategory": "Uang Kas dan Iuran",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "aisyah",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "alfamart",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "cilor",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "gopay",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "khoerani",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "khozinul",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "muamar",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "nurizka",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Biaya Transfer",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "regular",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "shopee",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "super",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "ujungbrung",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "ulum",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 3,
+      "total": 3,
+      "confidence": 1.0
+    },
+    {
+      "match": "barru",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 3,
+      "total": 4,
+      "confidence": 0.75
+    },
+    {
+      "match": "soputan",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 3,
+      "total": 4,
+      "confidence": 0.75
+    },
+    {
+      "match": "pramuka",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 3,
+      "total": 5,
+      "confidence": 0.6
+    },
+    {
+      "match": "(baslok)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "(calf",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "(famima)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "(marugame)",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "(mie",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "abang",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "anak",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "anjis",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "bangsa",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "bude",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "coffee)",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "data",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Pulsa",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "dimas",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "dompet",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "dreezel",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "fakih",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "gado",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "gilang",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "google",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Game",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "goreng",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "greatness",
+      "category": "Self-development",
+      "subcategory": "Kuliah",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "halim",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "hendra",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "human",
+      "category": "Self-development",
+      "subcategory": "Kuliah",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "indosat",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Pulsa",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "jago",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "kcjb",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "mitra",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "mustafa",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "mustofa",
+      "category": "Transportasi",
+      "subcategory": "Bahan Bakar",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "nasi)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "novendh",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "oasis",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "paket",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Pulsa",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "payment",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "play",
+      "category": "Hiburan dan Hobi",
+      "subcategory": "Game",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "plus",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "point",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "pratiwi",
+      "category": "Biaya Sosial",
+      "subcategory": "Uang Kas dan Iuran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "radinem",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "raize)",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "restaurant",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "suci",
+      "category": "Biaya Sosial",
+      "subcategory": "Uang Kas dan Iuran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "technology",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "tetfai)",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "tokopedia",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "tomoro",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "topup",
+      "category": "Penarikan Dana dan Transfer",
+      "subcategory": "Uang Elektronik",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "yanti",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 2,
+      "confidence": 1.0
+    },
+    {
+      "match": "(kopi",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "al-dalaan",
+      "category": "Biaya Sosial",
+      "subcategory": "Infaq",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "bubur",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "fachri)",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "green",
+      "category": "Makanan",
+      "subcategory": "Restoran",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "kcic",
+      "category": "Transportasi",
+      "subcategory": "Kendaraan Umum",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "siesty",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "siswoniary",
+      "category": "Makanan",
+      "subcategory": "Makanan",
+      "count": 2,
+      "total": 3,
+      "confidence": 0.667
+    },
+    {
+      "match": "americano",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "biaya hidup",
+      "category": "Keluarga",
+      "subcategory": "Istri",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "bulanan istri",
+      "category": "Keluarga",
+      "subcategory": "Istri",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "bulanan mama",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "cappuccino",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "espresso",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "family mart",
+      "category": "Makanan",
+      "subcategory": "Grocery",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "istri",
+      "category": "Keluarga",
+      "subcategory": "Istri",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "latte",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "mama",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "matcha",
+      "category": "Makanan",
+      "subcategory": "Cafe",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "orang tua",
+      "category": "Keluarga",
+      "subcategory": "Orang Tua",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "rem",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "servis",
+      "category": "Transportasi",
+      "subcategory": "Servis Kendaraan",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "telkomsel",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Seluler",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "tukin",
+      "category": "Bonus",
+      "subcategory": "Tukin Tahunan",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "tunjangan",
+      "category": "Gaji",
+      "subcategory": "Tunjangan",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "uang belanja",
+      "category": "Keluarga",
+      "subcategory": "Istri",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    },
+    {
+      "match": "xl",
+      "category": "Tagihan dan Langganan",
+      "subcategory": "Seluler",
+      "count": 1,
+      "total": 1,
+      "confidence": 1.0,
+      "seed": true
+    }
+  ]
+}

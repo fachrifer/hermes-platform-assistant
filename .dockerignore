@@ -1,0 +1,17 @@
+.env
+.env.*
+credentials/
+data/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.git/
+.gitignore
+docs/
+tests/
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
