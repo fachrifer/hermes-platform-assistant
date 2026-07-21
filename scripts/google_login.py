@@ -39,7 +39,7 @@ def main() -> None:
     token_path = Path(settings.google_token_path)
     token_path.parent.mkdir(parents=True, exist_ok=True)
     token_path.write_text(creds.to_json(), encoding="utf-8")
-    print(f"✅ Token Calendar tersimpan di {token_path}")
+    print(f"✅ Token Google (Gmail + Calendar) tersimpan di {token_path}")
 
 
 if __name__ == "__main__":

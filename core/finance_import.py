@@ -487,7 +487,7 @@ class FinanceImportService:
         cleared = 0
         if force:
             cleared = self.db.clear_skipped_emails(summary="bukan transaksi")
-        start_s, end_s = parse_import_period(period if len(period) == 7 else period)
+        start_s, end_s = parse_import_period(period)
         start = dt.date.fromisoformat(start_s)
         end = dt.date.fromisoformat(end_s)
         sources = await asyncio.to_thread(self.gmail.scan_finance_range, start, end)

@@ -1,4 +1,5 @@
 from datetime import date
+from types import SimpleNamespace
 
 from connectors.gmail import GmailConnector
 
@@ -79,3 +80,49 @@ def test_scan_skips_failed_account(monkeypatch):
     rows = connector.scan_finance_range(date(2026, 1, 1), date(2026, 1, 31))
     assert len(rows) == 1
     assert rows[0]["account"] == "Kerja"
+
+
+def test_scan_account_skips_failed_message(monkeypatch):
+    class FakeAccount:
+        label = "Pribadi"
+        credentials = object()
+
+    class FakeMessages:
+        def list(self, **kwargs):
+            return SimpleNamespace(
+                execute=lambda: {"messages": [{"id": "good"}, {"id": "bad"}]}
+            )
+
+        def get(self, **kwargs):
+            if kwargs["id"] == "bad":
+                raise RuntimeError("corrupt message")
+            return SimpleNamespace(
+                execute=lambda: {
+                    "payload": {
+                        "headers": [
+                            {"name": "From", "value": "a@x"},
+                            {"name": "Subject", "value": "ok"},
+                            {"name": "Date", "value": "Thu, 02 Jan 2026 10:00:00 +0000"},
+                        ],
+                        "mimeType": "text/plain",
+                        "body": {"data": "dGVzdA=="},
+                    }
+                }
+            )
+
+    class FakeUsers:
+        def messages(self):
+            return FakeMessages()
+
+    class FakeService:
+        def users(self):
+            return FakeUsers()
+
+    connector = GmailConnector()
+    monkeypatch.setattr(connector, "_service", lambda creds: FakeService())
+
+    rows = connector._scan_account_range(
+        FakeAccount(), date(2026, 1, 1), date(2026, 1, 31), 100
+    )
+    assert len(rows) == 1
+    assert rows[0]["id"] == "Pribadi:good"

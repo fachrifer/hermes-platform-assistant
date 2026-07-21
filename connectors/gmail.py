@@ -109,9 +109,18 @@ class GmailConnector(Connector):
                 if len(rows) >= max_results:
                     break
                 msg_id = msg_ref["id"]
-                full = service.users().messages().get(
-                    userId="me", id=msg_id, format="full"
-                ).execute()
+                try:
+                    full = service.users().messages().get(
+                        userId="me", id=msg_id, format="full"
+                    ).execute()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "Gmail get message %s akun %s gagal: %s",
+                        msg_id,
+                        account.label,
+                        exc,
+                    )
+                    continue
 
                 headers = {
                     h["name"].lower(): h["value"]
