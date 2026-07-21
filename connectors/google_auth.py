@@ -1,4 +1,4 @@
-"""Shared Google OAuth helpers for Calendar (no Gmail)."""
+"""Shared Google OAuth helpers for Gmail + Calendar."""
 
 from __future__ import annotations
 
@@ -13,8 +13,8 @@ from config.settings import settings
 
 logger = logging.getLogger("hermes.google_auth")
 
-# Calendar only — Gmail OAuth removed.
 SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/calendar.readonly",
 ]
 

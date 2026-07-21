@@ -1,8 +1,8 @@
-"""One-time interactive Google OAuth login (Calendar).
+"""One-time interactive Google OAuth login (Gmail + Calendar).
 
 Run this ONCE on your machine (outside the container) to produce the cached token
-that Hermes reuses for Google Calendar. Place the resulting token in your synced
-credentials/ folder.
+that Hermes reuses for Gmail finance import and Google Calendar. Place the resulting
+token in your synced credentials/ folder.
 
 Usage:
     python -m scripts.google_login
@@ -32,7 +32,7 @@ def main() -> None:
         raise SystemExit(
             f"File OAuth client tidak ditemukan: {secrets}\n"
             "Unduh dari Google Cloud Console (OAuth client, Desktop app) dan set "
-            "GOOGLE_CLIENT_SECRETS. Aktifkan Google Calendar API (bukan Gmail)."
+            "GOOGLE_CLIENT_SECRETS. Aktifkan Gmail API dan Google Calendar API."
         )
     flow = InstalledAppFlow.from_client_secrets_file(str(secrets), login_scopes())
     creds = flow.run_local_server(port=0)
