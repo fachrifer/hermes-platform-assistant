@@ -40,13 +40,28 @@ def test_parse_year_and_month_periods():
     assert parse_import_period("2026-02") == ("2026-02-01", "2026-02-28")
 
 
-def test_parse_import_command_supports_session_and_force():
-    assert parse_import_command([])["action"] == "start"
+def test_parse_import_command_dual_mode():
+    assert parse_import_command([])["action"] == "choose_mode"
+    assert parse_import_command(["2026-01"])["action"] == "choose_mode"
+    assert parse_import_command(["2026-01", "force"])["force"] is True
+
+    gmail = parse_import_command(["gmail", "2026-01", "force"])
+    assert gmail == {"action": "start_gmail", "period": "2026-01", "force": True}
+
+    paste = parse_import_command(["paste", "2026-07"])
+    assert paste == {"action": "start_paste", "period": "2026-07", "force": False}
+
     assert parse_import_command(["done"])["action"] == "done"
     assert parse_import_command(["cancel"])["action"] == "cancel"
-    assert parse_import_args(["2026-01"]) == ("2026-01", False)
-    assert parse_import_args(["2026-01", "force"]) == ("2026-01", True)
-    period, force = parse_import_args(["2026", "rescan"])
+
+
+def test_parse_import_command_supports_session_and_force():
+    assert parse_import_command([])["action"] == "choose_mode"
+    assert parse_import_command(["done"])["action"] == "done"
+    assert parse_import_command(["cancel"])["action"] == "cancel"
+    assert parse_import_args(["gmail", "2026-01"]) == ("2026-01", False)
+    assert parse_import_args(["paste", "2026-01", "force"]) == ("2026-01", True)
+    period, force = parse_import_args(["gmail", "2026", "rescan"])
     assert force is True
     assert len(period) == 7
 

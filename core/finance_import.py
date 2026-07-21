@@ -91,16 +91,61 @@ def parse_import_period(period: str) -> tuple[str, str]:
     raise ValueError("Periode harus berformat YYYY atau YYYY-MM.")
 
 
+def _resolve_import_period_token(token: str) -> str:
+    """Normalize YYYY or YYYY-MM token to YYYY-MM and validate."""
+    first = token.strip()
+    if len(first) == 7 and first[4] == "-":
+        parse_import_period(first)
+        return first
+    if len(first) == 4 and first.isdigit():
+        today = dt.date.today()
+        period = today.strftime("%Y-%m") if int(first) == today.year else f"{first}-01"
+        parse_import_period(period)
+        return period
+    raise ValueError(
+        "Format: /import | /import YYYY-MM [force] | "
+        "/import gmail|paste YYYY-MM [force] | /import done | /import cancel"
+    )
+
+
+def _import_format_error() -> str:
+    return (
+        "Format: /import | /import YYYY-MM [force] | "
+        "/import gmail|paste YYYY-MM [force] | /import done | /import cancel"
+    )
+
+
 def parse_import_command(args: list[str] | None) -> dict:
-    """Parse /import into {action, period, force}. actions: start|done|cancel."""
+    """Parse /import into {action, period, force}.
+
+    actions: choose_mode | start_gmail | start_paste | done | cancel
+    """
     raw = list(args or [])
     if not raw:
-        return {"action": "start", "period": default_import_period(), "force": False}
+        return {"action": "choose_mode", "period": default_import_period(), "force": False}
     head = raw[0].casefold()
     if head in {"done", "selesai"}:
         return {"action": "done", "period": None, "force": False}
     if head in {"cancel", "batal"}:
         return {"action": "cancel", "period": None, "force": False}
+
+    if head in {"gmail", "paste"}:
+        action = "start_gmail" if head == "gmail" else "start_paste"
+        period: str | None = None
+        force = False
+        for token in raw[1:]:
+            lowered = token.casefold()
+            if lowered in {"force", "rescan", "retry"}:
+                force = True
+            elif period is None:
+                period = _resolve_import_period_token(token)
+            else:
+                raise ValueError(_import_format_error())
+        return {
+            "action": action,
+            "period": period or default_import_period(),
+            "force": force,
+        }
 
     force = False
     for token in raw[1:]:
@@ -108,29 +153,17 @@ def parse_import_command(args: list[str] | None) -> dict:
         if lowered in {"force", "rescan", "retry"}:
             force = True
         else:
-            raise ValueError(
-                "Format: /import | /import YYYY-MM [force] | /import done | /import cancel"
-            )
+            raise ValueError(_import_format_error())
 
-    first = raw[0]
-    if len(first) == 7 and first[4] == "-":
-        parse_import_period(first)
-        return {"action": "start", "period": first, "force": force}
-    if len(first) == 4 and first.isdigit():
-        today = dt.date.today()
-        period = today.strftime("%Y-%m") if int(first) == today.year else f"{first}-01"
-        parse_import_period(period)
-        return {"action": "start", "period": period, "force": force}
-    raise ValueError(
-        "Format: /import | /import YYYY-MM [force] | /import done | /import cancel"
-    )
+    period = _resolve_import_period_token(raw[0])
+    return {"action": "choose_mode", "period": period, "force": force}
 
 
 def parse_import_args(args: list[str]) -> tuple[str, bool]:
-    """Compatibility wrapper → (period, force) for start commands only."""
+    """Compatibility wrapper → (period, force) for gmail/paste start commands."""
     cmd = parse_import_command(args)
-    if cmd["action"] != "start" or not cmd["period"]:
-        raise ValueError("Format: /import YYYY-MM [force]")
+    if cmd["action"] not in {"start_gmail", "start_paste"} or not cmd["period"]:
+        raise ValueError("Format: /import gmail|paste YYYY-MM [force]")
     return cmd["period"], bool(cmd["force"])
 
 
