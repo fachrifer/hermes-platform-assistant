@@ -37,6 +37,31 @@ from core.telegram_format import send_formatted
 
 logger = logging.getLogger("hermes.telegram")
 
+
+def build_import_mode_keyboard(period: str, force: bool) -> InlineKeyboardMarkup:
+    force_flag = "1" if force else "0"
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("📧 Gmail", callback_data=f"import_mode:gmail:{period}:{force_flag}"),
+        InlineKeyboardButton("📋 Paste / Upload", callback_data=f"import_mode:paste:{period}:0"),
+    ]])
+
+
+def parse_import_mode_callback(data: str) -> dict | None:
+    if not data.startswith("import_mode:"):
+        return None
+    parts = data.split(":")
+    if len(parts) != 4:
+        return None
+    _, mode, period, force_s = parts
+    if mode not in {"gmail", "paste"}:
+        return None
+    return {
+        "mode": mode,
+        "period": period,
+        "force": force_s == "1",
+    }
+
+
 _BATCH_EDIT_FIELDS = (
     ("date", "Date"),
     ("amount", "Amount"),
@@ -66,7 +91,8 @@ def get_help_text() -> str:
         "/status — status layanan/konektor\n"
         "/office [daily|weekly|monthly|status] — laporan platform kantor\n"
         "/quota — cek quota Tavily dan Gemini\n"
-        "/import [YYYY-MM] — buka sesi paste/upload transaksi ke staging\n"
+        "/import [YYYY-MM] — pilih Gmail atau paste/upload ke staging\n"
+        "/import gmail|paste YYYY-MM [force] — langsung ke mode tertentu\n"
         "/import done — tutup sesi import\n"
         "/batch [YYYY-MM|list] — review batch satu per satu\n"
         "/edit <id> <field> <value> — edit transaksi staging\n"
@@ -76,7 +102,7 @@ def get_help_text() -> str:
         "/agenda — lihat agenda | /agenda tambah <judul> | /agenda hapus <id>\n"
         "/advice — analisis & saran keuangan\n"
         "/forget — lupakan konteks percakapan\n\n"
-        "Setelah /import, paste teks transaksi atau kirim .txt/.eml/.html/PDF/gambar.\n"
+        "Setelah /import paste, kirim teks transaksi atau .txt/.eml/.html/PDF/gambar.\n"
         "Atau bicara biasa, mis. 'catat kopi 25000'."
     )
 
@@ -189,6 +215,42 @@ class TelegramInterface:
     async def cmd_quota(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(self.agent.quota_report())
 
+    def _open_import_paste_session(self, chat_id: str, period: str, force: bool) -> str:
+        cleared = 0
+        if force:
+            cleared = self.agent.db.clear_skipped_emails(summary="bukan transaksi")
+        self.import_sessions[chat_id] = {
+            "period": period,
+            "force": False,
+            "staged": 0,
+            "skipped": 0,
+            "extract_errors": 0,
+        }
+        lines = [
+            f"📥 Sesi import {period} aktif.",
+            "Paste teks transaksi, atau kirim .txt / .eml / .html / PDF / gambar.",
+            "Hermes akan mengekstrak, memformat, dan merekomendasikan kategori.",
+            "Selesai: /import done · Batal: /import cancel",
+        ]
+        if cleared:
+            lines.append(f"Skip lama dihapus (force): {cleared}")
+        return "\n".join(lines)
+
+    async def _reply_gmail_import(self, message, period: str, force: bool) -> None:
+        await message.reply_text(f"📧 Memindai Gmail untuk {period}…")
+        try:
+            result = await self.agent.finance_import.import_period(period, force=force)
+        except Exception as exc:  # noqa: BLE001
+            await message.reply_text(f"⚠️ {exc}\nCoba /import paste {period}")
+            return
+        await message.reply_text(
+            f"📥 Import Gmail {period} selesai.\n"
+            f"Masuk staging: {result.get('staged', 0)}\n"
+            f"Dilewati: {result.get('skipped', 0)}\n"
+            f"Gagal ekstrak: {result.get('extract_errors', 0)}\n\n"
+            f"Review: /batch {period}"
+        )
+
     async def cmd_import(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id = str(update.effective_chat.id)
         try:
@@ -197,6 +259,7 @@ class TelegramInterface:
             await update.message.reply_text(
                 f"⚠️ {exc}\n"
                 "Contoh:\n/import\n/import 2026-01\n/import 2026-01 force\n"
+                "/import gmail 2026-01 force\n/import paste 2026-01\n"
                 "/import done\n/import cancel"
             )
             return
@@ -222,27 +285,21 @@ class TelegramInterface:
             await update.message.reply_text("Sesi /import dibatalkan.")
             return
 
-        period = cmd["period"]
-        force = bool(cmd["force"])
-        cleared = 0
-        if force:
-            cleared = self.agent.db.clear_skipped_emails(summary="bukan transaksi")
-        self.import_sessions[chat_id] = {
-            "period": period,
-            "force": False,
-            "staged": 0,
-            "skipped": 0,
-            "extract_errors": 0,
-        }
-        lines = [
-            f"📥 Sesi import {period} aktif.",
-            "Paste teks transaksi, atau kirim .txt / .eml / .html / PDF / gambar.",
-            "Hermes akan mengekstrak, memformat, dan merekomendasikan kategori.",
-            "Selesai: /import done · Batal: /import cancel",
-        ]
-        if cleared:
-            lines.append(f"Skip lama dihapus (force): {cleared}")
-        await update.message.reply_text("\n".join(lines))
+        if cmd["action"] == "choose_mode":
+            await update.message.reply_text(
+                f"📥 Import {cmd['period']}\nPilih sumber:",
+                reply_markup=build_import_mode_keyboard(cmd["period"], cmd["force"]),
+            )
+            return
+
+        if cmd["action"] == "start_gmail":
+            await self._reply_gmail_import(update.message, cmd["period"], cmd["force"])
+            return
+
+        if cmd["action"] == "start_paste":
+            text = self._open_import_paste_session(chat_id, cmd["period"], cmd["force"])
+            await update.message.reply_text(text)
+            return
 
     async def _stage_import_result(self, message, chat_id: str, result: dict) -> None:
         session = self.import_sessions.get(chat_id)
@@ -1114,6 +1171,20 @@ class TelegramInterface:
         query = update.callback_query
         await query.answer()
         data = query.data or ""
+        if data.startswith("import_mode:"):
+            parsed = parse_import_mode_callback(data)
+            if not parsed or not query.message:
+                return
+            period = parsed["period"]
+            if parsed["mode"] == "gmail":
+                await query.edit_message_text(f"📥 Import {period}\nSumber: Gmail")
+                await self._reply_gmail_import(query.message, period, parsed["force"])
+            else:
+                chat_id = str(query.message.chat_id)
+                await query.edit_message_text(f"📥 Import {period}\nSumber: Paste / Upload")
+                text = self._open_import_paste_session(chat_id, period, parsed["force"])
+                await query.message.reply_text(text)
+            return
         if data.startswith("agenda_confirm:") or data.startswith("agenda_skip:"):
             await self._on_agenda_callback(query, data)
             return

@@ -322,12 +322,12 @@ class HermesAgent:
 
     # ------------------------------------------------------------------
     async def scan_email_transactions(self, days: int = 1) -> dict:
-        """Gmail scan removed — point users to manual /import paste/upload."""
+        """Gmail scan removed — point users to /import mode picker."""
         return {
             "ok": False,
             "message": (
-                "Import Gmail sudah ditutup. Pakai /import lalu paste teks transaksi "
-                "atau upload .txt/.eml/.html/PDF/gambar."
+                "Import Gmail tersedia lagi. Pakai /import untuk pilih Gmail atau paste/upload, "
+                "atau /import gmail YYYY-MM untuk langsung memindai Gmail."
             ),
             "pending": [],
             "warnings": [],
