@@ -322,7 +322,7 @@ class HermesAgent:
 
     # ------------------------------------------------------------------
     async def scan_email_transactions(self, days: int = 1) -> dict:
-        """Gmail scan removed — point users to /import mode picker."""
+        """Legacy /scan entry — direct users to /import Gmail or paste mode."""
         return {
             "ok": False,
             "message": (

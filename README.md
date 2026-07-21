@@ -14,7 +14,7 @@ dan tahan gangguan (konektor mati → dilewati, tidak crash).
 
 - 🤖 **Telegram bot** — perintah + bahasa natural, dengan persona Nyx yang bisa dikustom.
 - 💰 **Spreadsheet finance** — paste/upload transaksi, staging, ekspor bulanan TSV Money Manager.
-- 📥 **Import manual** (`/import`) — paste teks notifikasi/email atau upload `.txt`/`.eml`/`.html`/PDF/gambar;
+- 📥 **Import transaksi** (`/import`) — pilih **Gmail** (scan Pribadi+Kerja) atau **Paste** (teks/upload `.txt`/`.eml`/`.html`/PDF/gambar);
   Gemini ekstrak + rekomendasi kategori, lalu `/batch` → `/export`.
 - 🧠 **Financial advisor** (`/advice`) — analisis & saran keuangan dari Gemini.
 - 📅 **Agenda gabungan** — Google Calendar + Outlook + agenda manual.
@@ -56,7 +56,7 @@ Desain lengkap: `docs/superpowers/specs/2026-07-14-hermes-agent-design.md`.
 | Telegram | Bot token + chat id | @BotFather, @userinfobot |
 | Gemini | API key | https://aistudio.google.com |
 | Tavily | API key | https://app.tavily.com |
-| Google Calendar | OAuth client (Desktop app) | Google Cloud Console (aktifkan Calendar API) |
+| Google (Gmail + Calendar) | OAuth client (Desktop app) | Google Cloud Console (aktifkan Gmail API + Calendar API) |
 | Gemini quota resmi | Service account JSON + role `Service Usage Viewer` dan `Monitoring Viewer` | Google Cloud Console |
 | Outlook | App registration (delegated `Calendars.Read`) | Azure Portal |
 | Finance spreadsheet | Workbook kategori + history di `/app/data/reference` | File pribadi yang dimount |
@@ -74,20 +74,21 @@ cp .env.example .env
 # isi TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY, dst.
 ```
 
-### 2. Login sekali untuk Google Calendar & Microsoft (di host, sekali saja)
+### 2. Login sekali untuk Google (Gmail + Calendar) & Microsoft (di host, sekali saja)
 Butuh Python 3.11+ dan dependency lokal:
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-# Google Calendar saja (Gmail OAuth sudah dihapus).
-# Tambahkan akun sebagai Test user di Google Cloud.
+# Google OAuth — Gmail finance + Calendar Pribadi.
+# Aktifkan Gmail API + Google Calendar API pada OAuth client.
+# Tambahkan akun sebagai Test user di Google Cloud (atau set consent In production).
 GOOGLE_CLIENT_SECRETS="/path/ke/credentials/google_client_secret.json" \
 GOOGLE_TOKEN_PATH="/path/ke/credentials/google_token.json" \
 python -m scripts.google_login
 
 # Akun kedua (opsional)
-GOOGLE_CLIENT_SECRETS="/path/ke/credentials/google_client_secret_2.json" \
+GOOGLE_CLIENT_SECRETS="/path/ke/credentials/google_client_secret.json" \
 GOOGLE_TOKEN_PATH="/path/ke/credentials/google_token_2.json" \
 python -m scripts.google_login
 
@@ -96,6 +97,17 @@ python -m scripts.ms_login
 ```
 Token tersimpan di `credentials/` dan dipakai ulang oleh container.
 Atur `GOOGLE_TOKEN_PATHS` dan `GOOGLE_ACCOUNT_LABELS` di `.env`.
+
+**Re-login per akun** (mis. setelah scope berubah atau token kedaluwarsa):
+
+```bash
+GOOGLE_TOKEN_PATH="/path/ke/credentials/google_token.json" python -m scripts.google_login
+GOOGLE_TOKEN_PATH="/path/ke/credentials/google_token_2.json" python -m scripts.google_login
+```
+
+> Setelah scope OAuth berubah, token lama harus di-authorize ulang (hapus file token
+> lama atau jalankan login di atas). Prefer OAuth consent **In production** agar
+> refresh token tidak kedaluwarsa setelah 7 hari (mode Testing).
 
 Untuk penulisan Google Calendar pada akun Pribadi:
 
@@ -273,9 +285,12 @@ docker compose up -d
 | `/agenda tambah <judul>` | Tambah agenda; event bertanggal masuk Calendar Pribadi |
 | `/agenda hapus <id>` | Hapus agenda |
 | `/advice` | Analisis & saran keuangan |
-| `/scan` | Pindai email hari ini untuk transaksi (konfirmasi per item) |
+| `/scan` | Pindai email hari ini untuk transaksi (legacy; pakai `/import gmail`) |
+| `/import` | Pilih Gmail atau Paste untuk periode bulan berjalan |
+| `/import gmail 2026-07` | Scan Gmail Pribadi+Kerja ke staging |
+| `/import paste 2026-07` | Buka sesi paste/upload untuk satu bulan |
 | `/import 2026` | Import email transaksi tahun 2026 ke staging per bulan |
-| `/import 2026-01` | Import satu bulan ke staging |
+| `/import 2026-01` | Import satu bulan ke staging (mode picker) |
 | `/batch` | Daftar batch import dan status review |
 | `/batch 2026-01` | Lihat detail transaksi satu batch |
 | `/edit <id> <field> <value>` | Edit transaksi di staging |
@@ -367,13 +382,20 @@ hanya setelah command konfirmasi eksplisit.
 #### 1. Import ke staging
 
 ```text
+/import                 → pilih Gmail atau Paste
+/import gmail 2026-07   → scan Gmail Pribadi+Kerja
+/import paste 2026-07   → sesi paste/upload
 /import 2026
 /import 2026-01
 ```
 
+`/import` tanpa mode menampilkan tombol **Gmail** / **Paste** untuk periode yang
+diminta (default: bulan berjalan). `/import gmail YYYY-MM` memindai inbox finansial
+akun Pribadi dan Kerja ke staging per bulan. `/import paste YYYY-MM` membuka sesi
+paste/upload seperti alur manual.
+
 `/import 2026` mengambil email dari Januari sampai Desember 2026 dan
-mengelompokkannya per bulan. Jika command dikirim tanpa argumen, Nyx menampilkan
-format yang benar. Email yang sama tidak dibuat ulang saat import diulang.
+mengelompokkannya per bulan. Email yang sama tidak dibuat ulang saat import diulang.
 
 #### 2. Review batch
 
@@ -446,15 +468,20 @@ angka perkiraan ketika data pemakaian aktual tidak dapat dibaca.
 
 ---
 
-## Import transaksi (paste / upload)
+## Import transaksi (Gmail + paste / upload)
 
-Gmail scan sudah dihapus. Alur baru:
+Hermes mendukung dua mode intake lewat `/import`:
 
-1. `/import` atau `/import 2026-01` — buka sesi
-2. Paste teks notifikasi/email, atau kirim `.txt` / `.eml` / `.html` / PDF / gambar
-3. Hermes ekstrak + rekomendasi kategori → staging
-4. `/import done` → `/batch YYYY-MM` → `/export YYYY-MM tsv`
+1. **Gmail** — scan inbox finansial akun Pribadi + Kerja ke staging
+2. **Paste/upload** — paste teks notifikasi/email, atau kirim `.txt` / `.eml` / `.html` / PDF / gambar
 
+Alur umum:
+
+1. `/import` atau `/import paste 2026-01` — pilih mode atau langsung buka sesi paste
+2. Hermes ekstrak + rekomendasi kategori → staging
+3. `/import done` (paste saja) → `/batch YYYY-MM` → `/export YYYY-MM tsv`
+
+> Calendar tetap hanya akun **Pribadi** (baca/tulis). Gmail scan memakai Pribadi + Kerja.
 > Import ke aplikasi Money Manager tetap manual dari file TSV.
 
 ## Kustomisasi persona
