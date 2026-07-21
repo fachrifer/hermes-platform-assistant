@@ -67,6 +67,45 @@ def test_parse_import_command_supports_session_and_force():
 
 
 @pytest.mark.asyncio
+async def test_import_period_stages_gmail_sources(tmp_path):
+    from datetime import date
+
+    class LLM:
+        async def extract_transaction(self, body, categories):
+            return {
+                "is_transaction": True,
+                "amount": 10000,
+                "type": "expense",
+                "category": "Makanan",
+                "subcategory": "Restoran",
+                "merchant": "Warung",
+                "description": "Makan",
+                "date": "2026-01-15",
+            }
+
+    class FakeGmail:
+        def scan_finance_range(self, start, end, max_results=100):
+            assert start == date(2026, 1, 1)
+            assert end == date(2026, 1, 31)
+            return [{
+                "id": "Pribadi:abc",
+                "account": "Pribadi",
+                "from": "bank@example",
+                "subject": "Transfer",
+                "date": "2026-01-15",
+                "body": "Transfer 10000 ke Warung",
+            }]
+
+    db = Database(str(tmp_path / "state.db"))
+    service = FinanceImportService(db, LLM(), gmail=FakeGmail())
+    result = await service.import_period("2026-01")
+
+    assert result["staged"] == 1
+    assert result.get("manual_intake") is not True
+    assert db.is_email_handled("Pribadi:abc")
+
+
+@pytest.mark.asyncio
 async def test_paste_does_not_mark_when_extract_errors(tmp_path):
     class LLM:
         async def extract_transaction(self, body, categories):

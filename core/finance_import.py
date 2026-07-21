@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import calendar
 import datetime as dt
 import hashlib
@@ -278,7 +279,7 @@ class FinanceImportService:
     def __init__(self, db: Database, llm, money=None, spreadsheet_service=None,
                  category_recommendations: CategoryRecommendationLookup | None = None,
                  gmail=None):
-        # gmail arg ignored (removed); kept only for old call sites during transition.
+        self.gmail = gmail
         self.db = db
         self.llm = llm
         self.spreadsheet = spreadsheet_service or SpreadsheetFinanceService()
@@ -479,23 +480,21 @@ class FinanceImportService:
         )
 
     async def import_period(self, period: str, *, force: bool = False) -> dict:
-        """Gmail scan removed — start a paste/upload session instead."""
+        if self.gmail is None:
+            raise RuntimeError(
+                "Gmail belum terhubung. Jalankan google_login, atau pakai /import paste."
+            )
         cleared = 0
         if force:
             cleared = self.db.clear_skipped_emails(summary="bukan transaksi")
-        batch = self.db.get_import_batch(period) if len(period) == 7 else None
-        existing_count = len(self.db.list_staged_transactions(batch["id"])) if batch else 0
-        return {
-            "period": period,
-            "batch_id": batch["id"] if batch else None,
-            "staged": 0,
-            "skipped": 0,
-            "extract_errors": 0,
-            "cleared_skips": cleared,
-            "existing_in_batch": existing_count,
-            "periods": [],
-            "manual_intake": True,
-        }
+        start_s, end_s = parse_import_period(period if len(period) == 7 else period)
+        start = dt.date.fromisoformat(start_s)
+        end = dt.date.fromisoformat(end_s)
+        sources = await asyncio.to_thread(self.gmail.scan_finance_range, start, end)
+        result = await self.stage_from_sources(sources, period_hint=period, force=False)
+        result["cleared_skips"] = cleared
+        result["period"] = period if len(period) == 7 else result.get("period")
+        return result
 
     def stage_scanned_transaction(self, tx: dict) -> int:
         """Save a daily-confirmed scan into the current monthly review batch."""
