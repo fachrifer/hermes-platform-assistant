@@ -1,7 +1,7 @@
 # Hermes Office on CML + Qwen3 8B — Design Document
 
 Date: 2026-07-23
-Status: Draft (pending user review)
+Status: Approved
 
 ## 1. Context
 
