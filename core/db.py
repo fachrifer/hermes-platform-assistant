@@ -275,17 +275,52 @@ class Database:
         ]
 
     def save_monitoring_report(
-        self, report_type: str, period_start: str, period_end: str, content: str
+        self,
+        report_type: str,
+        period_start: str,
+        period_end: str,
+        content: str,
+        *,
+        replace: bool = False,
     ) -> bool:
-        cursor = self.execute(
-            """
+        sql = """
+            INSERT OR REPLACE INTO monitoring_reports (
+                report_type, period_start, period_end, content
+            ) VALUES (?, ?, ?, ?)
+            """ if replace else """
             INSERT OR IGNORE INTO monitoring_reports (
                 report_type, period_start, period_end, content
             ) VALUES (?, ?, ?, ?)
-            """,
-            (report_type, period_start, period_end, content),
-        )
+            """
+        cursor = self.execute(sql, (report_type, period_start, period_end, content))
         return bool(cursor.rowcount)
+
+    def get_monitoring_report(
+        self, report_type: str, period_start: str, period_end: str
+    ) -> dict | None:
+        rows = self.query(
+            """
+            SELECT report_type, period_start, period_end, content, created_at
+            FROM monitoring_reports
+            WHERE report_type = ? AND period_start = ? AND period_end = ?
+            LIMIT 1
+            """,
+            (report_type, period_start, period_end),
+        )
+        return dict(rows[0]) if rows else None
+
+    def get_latest_monitoring_report(self, report_type: str) -> dict | None:
+        rows = self.query(
+            """
+            SELECT report_type, period_start, period_end, content, created_at
+            FROM monitoring_reports
+            WHERE report_type = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            (report_type,),
+        )
+        return dict(rows[0]) if rows else None
 
     def purge_monitoring_before(self, cutoff_at: str) -> None:
         self.execute("DELETE FROM monitoring_snapshots WHERE observed_at < ?", (cutoff_at,))

@@ -138,6 +138,19 @@ def _authorize_office_observer(
         raise HTTPException(status_code=401, detail="Relay mTLS tidak dikenal")
 
 
+def _authorize_office_cml_reporter(observer_id: str | None) -> None:
+    """CML direct path: shared secret + observer id (no laptop mTLS subject)."""
+    if not settings.office_observer_shared_secret:
+        raise HTTPException(status_code=503, detail="Office reporter belum dikonfigurasi")
+    if settings.office_observer_mtls_subject:
+        raise HTTPException(
+            status_code=503,
+            detail="Endpoint reports hanya untuk mode CML direct (OFFICE_OBSERVER_MTLS_SUBJECT kosong)",
+        )
+    if observer_id != settings.office_observer_id:
+        raise HTTPException(status_code=401, detail="Observer tidak dikenal")
+
+
 @app.get("/health")
 async def health(x_hermes_health_token: str | None = Header(default=None)):
     _authorize_health(x_hermes_health_token)
@@ -165,6 +178,31 @@ async def ingest_office_snapshot(
     try:
         accepted = service.ingest(
             snapshot,
+            x_hermes_signature or "",
+            settings.office_observer_shared_secret,
+        )
+    except SnapshotValidationError as exc:
+        status_code = 401 if "signature" in str(exc) else 422
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
+    return {"accepted": accepted}
+
+
+@app.post("/api/v1/office/reports", status_code=202)
+async def ingest_office_report(
+    report: dict,
+    x_hermes_observer: str | None = Header(default=None),
+    x_hermes_signature: str | None = Header(default=None),
+):
+    """Receive CML report+recommendation (logs stay in CML)."""
+    _authorize_office_cml_reporter(x_hermes_observer)
+    if report.get("observer_id") != x_hermes_observer:
+        raise HTTPException(status_code=401, detail="Identitas report tidak cocok")
+    service = getattr(app.state, "office_monitoring", None)
+    if service is None:
+        raise HTTPException(status_code=503, detail="Office monitoring belum siap")
+    try:
+        accepted = service.ingest_report(
+            report,
             x_hermes_signature or "",
             settings.office_observer_shared_secret,
         )

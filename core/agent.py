@@ -132,9 +132,7 @@ class HermesAgent:
         return self.quota.render()
 
     def office_report(self, report_type: str) -> str:
-        """Render a local deterministic report from verified office snapshots."""
-        if report_type == "status":
-            report_type = "daily"
+        """Render office report from CML artifacts or verified snapshots."""
         return self.office_monitoring.render_report(report_type)
 
     async def save_agenda_item(self, item: dict) -> str:

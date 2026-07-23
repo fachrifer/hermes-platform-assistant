@@ -12,6 +12,12 @@ from statistics import fmean
 from typing import Awaitable, Callable
 
 from core.db import Database
+from core.office_report import (
+    OfficeReportValidationError,
+    format_office_report_content,
+    sign_office_report,
+    validate_office_report,
+)
 
 _ALLOWED_ROOT_FIELDS = {"observer_id", "sequence", "observed_at", "services", "metrics"}
 _ALLOWED_SERVICE_FIELDS = {"name", "status", "latency_ms"}
@@ -158,9 +164,51 @@ class OfficeMonitoringService:
             _canonical_snapshot(normalized).decode(),
         )
 
+    def ingest_report(self, payload: object, signature: str, shared_secret: str) -> bool:
+        """Accept a CML report+recommendation artifact (no raw logs)."""
+        try:
+            normalized = validate_office_report(payload)
+        except OfficeReportValidationError as exc:
+            raise SnapshotValidationError(str(exc)) from exc
+        if not shared_secret or not isinstance(signature, str):
+            raise SnapshotValidationError("autentikasi observer tidak tersedia")
+        expected = sign_office_report(normalized, shared_secret)
+        if not hmac.compare_digest(expected, signature):
+            raise SnapshotValidationError("signature observer tidak valid")
+        content = format_office_report_content(normalized)
+        generated = dt.datetime.fromisoformat(normalized["generated_at"])
+        period = normalized["period"]
+        if period == "status":
+            day = generated.replace(hour=0, minute=0, second=0, microsecond=0)
+            return self.db.save_monitoring_report(
+                "status",
+                day.isoformat(),
+                (day + dt.timedelta(days=1)).isoformat(),
+                content,
+                replace=True,
+            )
+        start, end, _ = self._period(period, generated + dt.timedelta(days=1))
+        # CML sends a completed-period report; align keys with local period helper.
+        if period == "daily":
+            start, end, _ = self._period("daily", generated + dt.timedelta(days=1))
+        return self.db.save_monitoring_report(
+            period, start.isoformat(), end.isoformat(), content, replace=True
+        )
+
     def render_report(self, report_type: str, *, now: dt.datetime | None = None) -> str:
         now = (now or dt.datetime.now(dt.timezone.utc)).astimezone(dt.timezone.utc)
+        if report_type == "status":
+            stored_status = self.db.get_latest_monitoring_report("status")
+            if stored_status:
+                return stored_status["content"]
+            report_type = "daily"
         start, end, title = self._period(report_type, now)
+        stored = self.db.get_monitoring_report(report_type, start.isoformat(), end.isoformat())
+        if stored:
+            return stored["content"]
+        latest = self.db.get_latest_monitoring_report(report_type)
+        if latest:
+            return latest["content"]
         rows = self.db.list_monitoring_snapshots(start.isoformat(), end.isoformat())
         snapshots = [json.loads(row["payload_json"]) for row in rows]
         expected_snapshots = max(1, int((end - start).total_seconds() // 300))
