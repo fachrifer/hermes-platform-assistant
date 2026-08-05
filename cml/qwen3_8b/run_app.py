@@ -137,24 +137,30 @@ def main() -> None:
     host = os.environ.get("QWEN_HOST", "127.0.0.1").strip() or "127.0.0.1"
     port = int(os.environ.get("CDSW_APP_PORT") or os.environ.get("PORT") or "8080")
 
-    # Default: load weights BEFORE uvicorn so chat does not hit cold-start 502.
-    # Set QWEN_PRELOAD=0 to skip (lazy load on first chat).
-    # Set QWEN_PRELOAD=background to bind port first, then load in a thread.
-    preload_mode = os.environ.get("QWEN_PRELOAD", "1").strip().lower() or "1"
+    # On CML Applications, bind CDSW_APP_PORT FIRST. If preload blocks before
+    # uvicorn listens, CML health-checks kill the engine (exit status 1).
+    default_preload = "background" if os.environ.get("CDSW_APP_PORT") else "1"
+    preload_mode = os.environ.get("QWEN_PRELOAD", default_preload).strip().lower() or default_preload
     if preload_mode in {"0", "false", "no", "off"}:
         logging.info("QWEN_PRELOAD=%s — lazy load on first chat", preload_mode)
     elif preload_mode in {"background", "async"}:
-        logging.info("QWEN_PRELOAD=background — loading weights after server bind")
+        logging.info(
+            "QWEN_PRELOAD=background — binding HTTP first, then loading weights"
+        )
 
         def _bg_preload() -> None:
             try:
                 engine.preload()
+                logging.info("Background model preload finished OK")
             except Exception:  # noqa: BLE001
                 logging.exception("Background model preload failed")
 
         threading.Thread(target=_bg_preload, name="qwen-preload", daemon=True).start()
     else:
-        logging.info("QWEN_PRELOAD=1 — loading weights BEFORE serving (may take several minutes)")
+        logging.info(
+            "QWEN_PRELOAD=1 — loading weights BEFORE serving "
+            "(risky on CML: may be killed before port opens)"
+        )
         engine.preload()
         logging.info("Model ready — starting HTTP server")
 
