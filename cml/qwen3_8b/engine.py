@@ -13,13 +13,33 @@ from typing import Any
 
 logger = logging.getLogger("hermes.cml.qwen")
 
+_DEFAULT_LOCAL_PATHS = (
+    "/home/cdsw/models/Qwen3-8B",
+    "/home/cdsw/models/Qwen/Qwen3-8B",
+)
+
+
+def _resolve_model_path(model_id: str, explicit_path: str | None) -> str:
+    """Prefer explicit / local disk weights over Hugging Face hub download."""
+    if explicit_path:
+        return explicit_path
+    env_path = os.getenv("QWEN_MODEL_PATH", "").strip()
+    if env_path:
+        return env_path
+    for candidate in _DEFAULT_LOCAL_PATHS:
+        cfg = Path(candidate) / "config.json"
+        if cfg.is_file():
+            logger.info("Using local weights at %s (skip HF download)", candidate)
+            return candidate
+    return model_id
+
 
 class TransformersEngine:
     """Lazy-load Qwen with torch.float16 (V100-safe; works on newer GPUs too)."""
 
     def __init__(self, model_id: str | None = None, model_path: str | None = None):
         self.model_id = model_id or os.getenv("QWEN_MODEL_ID", "Qwen/Qwen3-8B")
-        self.model_path = model_path or os.getenv("QWEN_MODEL_PATH") or self.model_id
+        self.model_path = _resolve_model_path(self.model_id, model_path)
         # Qwen3 thinking/reasoning — default OFF for low latency.
         thinking = os.getenv("QWEN_ENABLE_THINKING", "0").strip().lower()
         self.enable_thinking = thinking in {"1", "true", "yes", "on"}
