@@ -90,6 +90,30 @@ class TransformersEngine:
                 "then Kernel → Restart, then create a NEW TransformersEngine()."
             )
 
+        if torch.cuda.is_available():
+            major, minor = torch.cuda.get_device_capability(0)
+            arches = torch.cuda.get_arch_list()
+            gpu_name = torch.cuda.get_device_name(0)
+            logger.info(
+                "GPU %s capability sm_%s%s arch_list=%s",
+                gpu_name,
+                major,
+                minor,
+                arches,
+            )
+            if (major, minor) == (7, 0) and not any(
+                a == "sm_70" or a.startswith("sm_70") for a in arches
+            ):
+                raise RuntimeError(
+                    f"GPU is {gpu_name} (sm_70 / V100) but this PyTorch build "
+                    f"({torch.__version__}) has no sm_70 kernels (arch_list={arches}). "
+                    "In a GPU Session reinstall:\n"
+                    "  !pip uninstall -y torch\n"
+                    "  !pip install torch==2.6.0 --index-url "
+                    "https://download.pytorch.org/whl/cu118\n"
+                    "Then Kernel → Restart and recreate the Application."
+                )
+
         # Allow retry after upgrading packages in the same notebook process.
         self._load_error = None
 

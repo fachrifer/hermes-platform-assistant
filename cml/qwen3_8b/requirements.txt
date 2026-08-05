@@ -10,8 +10,9 @@
 
 fastapi==0.115.12
 uvicorn[standard]==0.34.2
-# Install torch SEPARATELY from the cu124 index (see cdsw-build.sh).
-# torch==2.6.0+cu124  # Python 3.12 + CUDA 12.x (PBJ Nvidia GPU)
+# Install torch SEPARATELY via cdsw-build.sh (cu118 = V100 / sm_70 safe).
+# Do NOT pip install a random torch from default PyPI for GPU apps.
+# torch==2.6.0+cu118
 transformers==4.51.3
 # transformers 4.51.x does NOT support huggingface-hub 1.x
 huggingface-hub>=0.30.0,<1.0
