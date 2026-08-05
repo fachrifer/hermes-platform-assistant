@@ -34,31 +34,68 @@ class ChatCompletionRequest(BaseModel):
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
 
 
+def _model_aliases(engine: Engine) -> set[str]:
+    """Accept common client names for the single local model."""
+    aliases = {
+        engine.model_id,
+        "Qwen3-8B",
+        "qwen3-8b",
+        "Qwen/Qwen3-8B",
+        "qwen/qwen3-8b",
+    }
+    # Also accept bare name after last slash (Qwen/Qwen3-8B → Qwen3-8B)
+    if "/" in engine.model_id:
+        aliases.add(engine.model_id.rsplit("/", 1)[-1])
+    return {a for a in aliases if a}
+
+
 def create_app(engine: Engine) -> FastAPI:
     app = FastAPI(title="Qwen3 8B CML", docs_url=None, redoc_url=None)
     app.state.engine = engine
 
+    @app.get("/")
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok"}
+        # CML Application probes "/" (sometimes "//"); keep both healthy.
+        loaded = bool(getattr(engine, "is_loaded", True))
+        return {
+            "status": "ok" if loaded else "loading",
+            "model_loaded": "true" if loaded else "false",
+            "model_id": getattr(engine, "model_id", ""),
+        }
 
+    @app.get("/models")
     @app.get("/v1/models")
     async def list_models() -> dict[str, Any]:
+        # Advertise both HF id and short alias so clients can pick either.
+        # This endpoint does NOT download weights — it only lists configured ids.
+        ids = []
+        for model_id in (engine.model_id, "Qwen3-8B"):
+            if model_id and model_id not in ids:
+                ids.append(model_id)
         return {
             "object": "list",
             "data": [
                 {
-                    "id": engine.model_id,
+                    "id": model_id,
                     "object": "model",
                     "owned_by": "local",
                 }
+                for model_id in ids
             ],
         }
 
     @app.post("/v1/chat/completions")
     async def chat_completions(body: ChatCompletionRequest) -> dict[str, Any]:
-        if body.model not in {engine.model_id, "Qwen3-8B", "qwen3-8b"}:
-            raise HTTPException(status_code=404, detail="model not found")
+        requested = (body.model or "").strip()
+        if requested and requested not in _model_aliases(engine):
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"model not found: {requested!r}. "
+                    f"Use one of: {sorted(_model_aliases(engine))}"
+                ),
+            )
         content = engine.generate(
             [message.model_dump() for message in body.messages],
             max_tokens=body.max_tokens,

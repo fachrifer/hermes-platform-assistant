@@ -1,38 +1,107 @@
-"""Transformers-based FP16 engine for Qwen3 8B on NVIDIA V100 (sm_70)."""
+"""Transformers-based FP16 engine for Qwen3 8B on CML PBJ GPU runtimes.
+
+Target runtime: PBJ Workbench · Python 3.12 · Nvidia GPU (CUDA 12.5).
+Weights load as torch.float16 for V100 (sm_70) and newer GPUs.
+"""
 
 from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("hermes.cml.qwen")
 
 
 class TransformersEngine:
-    """Lazy-load Qwen with torch.float16 for Volta GPUs."""
+    """Lazy-load Qwen with torch.float16 (V100-safe; works on newer GPUs too)."""
 
     def __init__(self, model_id: str | None = None, model_path: str | None = None):
         self.model_id = model_id or os.getenv("QWEN_MODEL_ID", "Qwen/Qwen3-8B")
         self.model_path = model_path or os.getenv("QWEN_MODEL_PATH") or self.model_id
+        # Qwen3 thinking/reasoning — default OFF for low latency.
+        thinking = os.getenv("QWEN_ENABLE_THINKING", "0").strip().lower()
+        self.enable_thinking = thinking in {"1", "true", "yes", "on"}
         self._tokenizer: Any = None
         self._model: Any = None
+        self._load_error: str | None = None
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._model is not None
+
+    def preload(self) -> None:
+        """Load tokenizer + weights now (call at Application startup)."""
+        self._ensure_loaded()
+
+    def _validate_local_path(self) -> None:
+        path = Path(self.model_path)
+        if not path.exists():
+            # Hugging Face hub id (org/name) is not a local path — skip check.
+            if "/" in self.model_path and not self.model_path.startswith("/"):
+                return
+            raise FileNotFoundError(
+                f"QWEN_MODEL_PATH not found: {self.model_path}. "
+                "Upload weights (folder with config.json) or set QWEN_MODEL_ID "
+                "if Hugging Face egress is allowed."
+            )
+        if path.is_dir() and not (path / "config.json").is_file():
+            raise FileNotFoundError(
+                f"Local model dir missing config.json: {self.model_path}. "
+                "That folder is not a valid Hugging Face weights directory."
+            )
 
     def _ensure_loaded(self) -> None:
         if self._model is not None:
             return
+
         import torch
+        import transformers
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
-        logger.info("Loading Qwen model from %s (FP16)", self.model_path)
-        self._tokenizer = AutoTokenizer.from_pretrained(self.model_path, trust_remote_code=True)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_path,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            trust_remote_code=True,
-        )
-        self._model.eval()
+        version = transformers.__version__
+        major_minor = tuple(int(p) for p in version.split(".")[:2])
+        if major_minor < (4, 51):
+            raise RuntimeError(
+                f"Qwen3 needs transformers>=4.51.0, but this kernel has {version} "
+                f"(from {transformers.__file__}). In CML Session run:\n"
+                '  !python -m pip install -U "transformers==4.51.3"\n'
+                "then Kernel → Restart, then create a NEW TransformersEngine()."
+            )
+
+        # Allow retry after upgrading packages in the same notebook process.
+        self._load_error = None
+
+        try:
+            self._validate_local_path()
+            token = os.getenv("HF_TOKEN") or os.getenv("HUGGING_FACE_HUB_TOKEN") or None
+            logger.info(
+                "Loading Qwen model from %s (FP16, transformers=%s, token=%s)",
+                self.model_path,
+                version,
+                "set" if token else "none",
+            )
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.model_path, trust_remote_code=True, token=token
+            )
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.model_path,
+                torch_dtype=torch.float16,
+                device_map="auto",
+                trust_remote_code=True,
+                token=token,
+            )
+            self._model.eval()
+            logger.info("Qwen model loaded successfully from %s", self.model_path)
+        except Exception as exc:  # noqa: BLE001
+            self._load_error = (
+                f"Failed to load model from {self.model_path!r}: {exc}. "
+                "If CML cannot reach huggingface.co, download weights elsewhere "
+                "and set QWEN_MODEL_PATH to a local folder containing config.json."
+            )
+            logger.exception(self._load_error)
+            raise RuntimeError(self._load_error) from exc
 
     def generate(
         self,
@@ -41,14 +110,25 @@ class TransformersEngine:
         max_tokens: int = 256,
         temperature: float = 0.2,
     ) -> str:
+        import re
+
         import torch
 
         self._ensure_loaded()
         assert self._tokenizer is not None and self._model is not None
         if hasattr(self._tokenizer, "apply_chat_template"):
-            prompt = self._tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
+            try:
+                prompt = self._tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                    enable_thinking=self.enable_thinking,
+                )
+            except TypeError:
+                # Older chat templates may not accept enable_thinking.
+                prompt = self._tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
         else:
             prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages) + "\nassistant:"
         inputs = self._tokenizer(prompt, return_tensors="pt")
@@ -62,4 +142,8 @@ class TransformersEngine:
                 pad_token_id=getattr(self._tokenizer, "eos_token_id", None),
             )
         generated = output[0][inputs["input_ids"].shape[-1] :]
-        return self._tokenizer.decode(generated, skip_special_tokens=True).strip()
+        text = self._tokenizer.decode(generated, skip_special_tokens=True).strip()
+        # Strip any leftover think blocks if the model still emits them.
+        text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+        text = re.sub(r"<think>.*", "", text, flags=re.DOTALL).strip()
+        return text
