@@ -107,11 +107,12 @@ class TransformersEngine:
                 raise RuntimeError(
                     f"GPU is {gpu_name} (sm_70 / V100) but this PyTorch build "
                     f"({torch.__version__}) has no sm_70 kernels (arch_list={arches}). "
-                    "In a GPU Session reinstall:\n"
-                    "  !pip uninstall -y torch\n"
+                    "cu128/cu130 drop V100. In a Nvidia GPU Session run:\n"
+                    "  !pip uninstall -y torch torchvision torchaudio\n"
                     "  !pip install torch==2.6.0 --index-url "
-                    "https://download.pytorch.org/whl/cu118\n"
-                    "Then Kernel → Restart and recreate the Application."
+                    "https://download.pytorch.org/whl/cu126\n"
+                    "Then Kernel → Restart. Verify: "
+                    "torch.cuda.get_arch_list() includes 'sm_70'."
                 )
 
         # Allow retry after upgrading packages in the same notebook process.
