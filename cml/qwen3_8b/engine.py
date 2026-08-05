@@ -51,9 +51,22 @@ class TransformersEngine:
     def is_loaded(self) -> bool:
         return self._model is not None
 
+    @property
+    def load_error(self) -> str | None:
+        return self._load_error
+
+    @property
+    def is_loading(self) -> bool:
+        return getattr(self, "_is_loading", False)
+
     def preload(self) -> None:
         """Load tokenizer + weights now (call at Application startup)."""
-        self._ensure_loaded()
+        self._is_loading = True
+        self._load_error = None
+        try:
+            self._ensure_loaded()
+        finally:
+            self._is_loading = False
 
     def _validate_local_path(self) -> None:
         path = Path(self.model_path)

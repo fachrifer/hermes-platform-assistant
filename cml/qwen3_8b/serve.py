@@ -57,12 +57,26 @@ def create_app(engine: Engine) -> FastAPI:
     @app.get("/health")
     async def health() -> dict[str, str]:
         # CML Application probes "/" (sometimes "//"); keep both healthy.
-        loaded = bool(getattr(engine, "is_loaded", True))
-        return {
-            "status": "ok" if loaded else "loading",
+        loaded = bool(getattr(engine, "is_loaded", False))
+        loading = bool(getattr(engine, "is_loading", False))
+        error = getattr(engine, "load_error", None)
+        if error:
+            status = "error"
+        elif loaded:
+            status = "ok"
+        elif loading:
+            status = "loading"
+        else:
+            status = "loading"
+        payload = {
+            "status": status,
             "model_loaded": "true" if loaded else "false",
-            "model_id": getattr(engine, "model_id", ""),
+            "model_id": str(getattr(engine, "model_id", "")),
+            "model_path": str(getattr(engine, "model_path", "")),
         }
+        if error:
+            payload["error"] = str(error)[:1000]
+        return payload
 
     @app.get("/models")
     @app.get("/v1/models")

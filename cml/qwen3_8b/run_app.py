@@ -91,33 +91,32 @@ def _has_running_loop() -> bool:
         return False
 
 
-def _start_uvicorn(app: object, host: str, port: int) -> None:
-    """Start uvicorn; safe when CML already has an asyncio event loop."""
+def _start_uvicorn(app: object, host: str, port: int, *, blocking: bool = True) -> threading.Thread | None:
+    """Start uvicorn. If blocking=False, return the server thread (daemon)."""
     config = uvicorn.Config(app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
 
-    if not _has_running_loop():
-        server.run()
-        return
-
-    # CML notebook-style Application: main thread already has a loop.
-    # Run uvicorn in a dedicated thread with its own event loop, then block.
-    done = threading.Event()
-    error: list[BaseException] = []
-
-    def _in_thread() -> None:
-        try:
+    def _run() -> None:
+        if _has_running_loop():
             asyncio.run(server.serve())
-        except BaseException as exc:  # noqa: BLE001
-            error.append(exc)
-        finally:
-            done.set()
+        else:
+            server.run()
 
-    thread = threading.Thread(target=_in_thread, name="qwen-uvicorn", daemon=False)
+    if blocking and not _has_running_loop():
+        server.run()
+        return None
+
+    # CML / preload flow: run server in a dedicated thread.
+    thread = threading.Thread(target=_run, name="qwen-uvicorn", daemon=not blocking)
     thread.start()
-    thread.join()
-    if error:
-        raise error[0]
+    if blocking:
+        thread.join()
+        return None
+    # Give the server a moment to bind CDSW_APP_PORT before heavy work.
+    import time
+
+    time.sleep(1.5)
+    return thread
 
 
 def main() -> None:
@@ -136,43 +135,66 @@ def main() -> None:
     app = serve_mod.create_app(engine)
     host = os.environ.get("QWEN_HOST", "127.0.0.1").strip() or "127.0.0.1"
     port = int(os.environ.get("CDSW_APP_PORT") or os.environ.get("PORT") or "8080")
+    on_cml = bool(os.environ.get("CDSW_APP_PORT"))
 
-    # On CML Applications, bind CDSW_APP_PORT FIRST. If preload blocks before
-    # uvicorn listens, CML health-checks kill the engine (exit status 1).
-    default_preload = "background" if os.environ.get("CDSW_APP_PORT") else "1"
-    preload_mode = os.environ.get("QWEN_PRELOAD", default_preload).strip().lower() or default_preload
-    if preload_mode in {"0", "false", "no", "off"}:
-        logging.info("QWEN_PRELOAD=%s — lazy load on first chat", preload_mode)
-    elif preload_mode in {"background", "async"}:
-        logging.info(
-            "QWEN_PRELOAD=background — binding HTTP first, then loading weights"
-        )
-
-        def _bg_preload() -> None:
-            try:
-                engine.preload()
-                logging.info("Background model preload finished OK")
-            except Exception:  # noqa: BLE001
-                logging.exception("Background model preload failed")
-
-        threading.Thread(target=_bg_preload, name="qwen-preload", daemon=True).start()
-    else:
-        logging.info(
-            "QWEN_PRELOAD=1 — loading weights BEFORE serving "
-            "(risky on CML: may be killed before port opens)"
-        )
-        engine.preload()
-        logging.info("Model ready — starting HTTP server")
+    # QWEN_PRELOAD:
+    #   1 / true  = bind HTTP first (CML-safe), then BLOCKING load so logs show
+    #               success/failure clearly; process stays up on failure.
+    #   background = bind HTTP, load in background thread
+    #   0 = lazy on first chat
+    preload_mode = os.environ.get("QWEN_PRELOAD", "1").strip().lower() or "1"
 
     logging.info(
-        "Starting Qwen on %s:%s (model_id=%s path=%s loaded=%s)",
+        "Starting Qwen HTTP on %s:%s (model_path=%s preload=%s)",
         host,
         port,
-        engine.model_id,
         engine.model_path,
-        getattr(engine, "is_loaded", False),
+        preload_mode,
     )
-    _start_uvicorn(app, host, port)
+
+    if preload_mode in {"0", "false", "no", "off"}:
+        logging.info("QWEN_PRELOAD=%s — lazy load on first chat", preload_mode)
+        _start_uvicorn(app, host, port, blocking=True)
+        return
+
+    if preload_mode in {"background", "async"}:
+        def _bg_preload() -> None:
+            try:
+                logging.info("Background preload starting…")
+                engine.preload()
+                logging.info("Background model preload finished OK")
+            except Exception as exc:  # noqa: BLE001
+                logging.exception("Background model preload FAILED: %s", exc)
+
+        threading.Thread(target=_bg_preload, name="qwen-preload", daemon=True).start()
+        _start_uvicorn(app, host, port, blocking=True)
+        return
+
+    # Default QWEN_PRELOAD=1: keep loading visible/blocking, but on CML bind
+    # the port first so the Application is not killed mid-load.
+    if on_cml:
+        logging.info(
+            "QWEN_PRELOAD=1 — binding CDSW_APP_PORT first, then blocking model load "
+            "(watch logs /health for ok|error)"
+        )
+        server_thread = _start_uvicorn(app, host, port, blocking=False)
+        try:
+            logging.info("Loading weights (blocking) from %s …", engine.model_path)
+            engine.preload()
+            logging.info("MODEL LOAD OK — ready for /v1/chat/completions")
+        except Exception as exc:  # noqa: BLE001
+            logging.exception("MODEL LOAD FAILED — server stays up for diagnosis: %s", exc)
+            logging.error(
+                "Check GET /health for status=error. Fix torch/GPU/model, then Restart Application."
+            )
+        if server_thread is not None:
+            server_thread.join()
+        return
+
+    logging.info("QWEN_PRELOAD=1 — loading weights BEFORE serving")
+    engine.preload()
+    logging.info("Model ready — starting HTTP server")
+    _start_uvicorn(app, host, port, blocking=True)
 
 
 if __name__ == "__main__" or os.environ.get("CDSW_APP_PORT"):
