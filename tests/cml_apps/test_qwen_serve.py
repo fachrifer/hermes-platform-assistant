@@ -17,9 +17,12 @@ class FakeEngine:
 
 def test_qwen_openai_compatible_endpoints():
     client = TestClient(create_app(FakeEngine()))
-    assert client.get("/health").json() == {"status": "ok"}
+    health = client.get("/health").json()
+    assert health["status"] == "ok"
+    assert client.get("/").json()["status"] == "ok"
     models = client.get("/v1/models").json()
-    assert models["data"][0]["id"] == "Qwen3-8B"
+    ids = {item["id"] for item in models["data"]}
+    assert "Qwen3-8B" in ids
     completion = client.post(
         "/v1/chat/completions",
         json={
@@ -30,3 +33,19 @@ def test_qwen_openai_compatible_endpoints():
     assert completion.status_code == 200
     body = completion.json()
     assert body["choices"][0]["message"]["content"] == "echo:hi"
+
+
+def test_qwen_accepts_hf_model_id_alias():
+    class HfEngine:
+        model_id = "Qwen/Qwen3-8B"
+
+        def generate(self, messages, *, max_tokens=256, temperature=0.2):
+            return "ok"
+
+    client = TestClient(create_app(HfEngine()))
+    for model in ("Qwen/Qwen3-8B", "Qwen3-8B", "qwen3-8b"):
+        response = client.post(
+            "/v1/chat/completions",
+            json={"model": model, "messages": [{"role": "user", "content": "x"}]},
+        )
+        assert response.status_code == 200, model
