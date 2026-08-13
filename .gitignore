@@ -3,9 +3,32 @@
 deploy/office-assistant/.env
 deploy/office-assistant/hermes/.env
 deploy/office-assistant/dist/
+credentials/
+data/
 *.db
 *.sqlite
 *.sqlite3
+
+# Generated knowledge graph (local index)
+graphify-out/
+
+# Private finance workbooks (must stay out of git)
+/Kategori Money Manager.xlsx
+/MoneyManager-2025.xlsx
+/*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
 
 # Generated knowledge graph (local index)
 graphify-out/
