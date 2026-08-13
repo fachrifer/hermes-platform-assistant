@@ -8,9 +8,8 @@ def test_documented_compose_commands_load_their_role_environment_file():
     assert "/home/timai/hermes-assistant" in text
     assert "10.216.4.80" in text
     assert "docker compose --env-file .env -f docker-compose.yml" in text
-    assert "docker compose --env-file deploy/cloud.env -f docker-compose.cloud.yml" in text
-    assert "docker-compose.observer.yml" not in text
-    assert "docker-compose.relay.yml" not in text
+    assert "docker-compose.cloud.yml" not in text
+    assert "cml/qwen3_8b" not in text
 
 
 def test_office_assistant_compose_keeps_gateway_internal():

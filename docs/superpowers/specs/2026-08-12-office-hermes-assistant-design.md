@@ -13,7 +13,8 @@ platform health and, with hard guardrails, perform safe manage actions
 
 This design **replaces** the previous office path based on
 `office_observer` / `office_relay` / CML `hermes_office`. Those packages
-are removed. Personal Hermes (Telegram + Gemini finance) is unchanged.
+are removed. Personal Hermes (Telegram + Gemini finance) and CML Qwen
+serving are not part of this repo.
 
 ## 2. Decisions
 
@@ -34,7 +35,6 @@ are removed. Personal Hermes (Telegram + Gemini finance) is unchanged.
 - Telegram office channel
 - Raw log ingestion / user prompt scraping
 - Secret access, delete, cluster-admin
-- Replacing personal Hermes finance bot
 
 ## 3. Architecture
 
@@ -116,5 +116,6 @@ Allowlisted actions: `restart_service`, `scale_replicas` (min/max bounds),
 
 ## 7. Legacy
 
-`office_observer/`, `office_relay/`, and `cml/hermes_office/` have been
-removed. The supported office product is `deploy/office-assistant/`.
+`office_observer/`, `office_relay/`, `cml/`, and personal Hermes
+(Telegram finance bot) have been removed. This repo is
+`deploy/office-assistant/` + `office_gateway/` only.
