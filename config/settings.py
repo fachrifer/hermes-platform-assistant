@@ -178,18 +178,6 @@ class Settings:
     )
     health_token: str = field(default_factory=lambda: _get("HERMES_HEALTH_TOKEN"))
 
-    # Office observer / relay. The mTLS subject is injected only by the trusted
-    # cloud reverse proxy after it verifies the laptop relay certificate.
-    office_observer_id: str = field(
-        default_factory=lambda: _get("OFFICE_OBSERVER_ID", "office-observer-1")
-    )
-    office_observer_shared_secret: str = field(
-        default_factory=lambda: _get("OFFICE_OBSERVER_SHARED_SECRET")
-    )
-    office_observer_mtls_subject: str = field(
-        default_factory=lambda: _get("OFFICE_OBSERVER_MTLS_SUBJECT")
-    )
-
     @property
     def finance_senders_list(self) -> list[str]:
         return [s.strip() for s in self.finance_email_senders.split(",") if s.strip()]

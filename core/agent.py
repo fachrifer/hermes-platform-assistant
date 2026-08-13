@@ -23,7 +23,6 @@ from core.db import Database
 from core.finance_import import FinanceImportService
 from core.llm_client import LLMClient
 from core.memory import Memory
-from core.office_monitor import OfficeMonitoringService
 from core.quota import QuotaService
 from core.reminders import parse_reminders
 from core.spreadsheet_finance import CategoryReference, SpreadsheetFinanceService
@@ -55,7 +54,6 @@ class HermesAgent:
     def __init__(self):
         settings.ensure_dirs()
         self.db = Database()
-        self.office_monitoring = OfficeMonitoringService(self.db)
         self.llm = LLMClient()
         self.memory = Memory(self.db)
 
@@ -130,10 +128,6 @@ class HermesAgent:
 
     def quota_report(self) -> str:
         return self.quota.render()
-
-    def office_report(self, report_type: str) -> str:
-        """Render office report from CML artifacts or verified snapshots."""
-        return self.office_monitoring.render_report(report_type)
 
     async def save_agenda_item(self, item: dict) -> str:
         title = item.get("title", "").strip()

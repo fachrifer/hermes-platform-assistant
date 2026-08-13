@@ -89,7 +89,6 @@ def get_help_text() -> str:
         "Perintah yang tersedia:\n"
         "/brief — laporan lengkap (agenda, keuangan, status)\n"
         "/status — status layanan/konektor\n"
-        "/office [daily|weekly|monthly|status] — laporan platform kantor\n"
         "/quota — cek quota Tavily dan Gemini\n"
         "/import [YYYY-MM] — pilih Gmail atau paste/upload ke staging\n"
         "/import gmail|paste YYYY-MM [force] — langsung ke mode tertentu\n"
@@ -159,7 +158,6 @@ class TelegramInterface:
         app.add_handler(CommandHandler("help", self.cmd_help))
         app.add_handler(CommandHandler("brief", self.cmd_brief))
         app.add_handler(CommandHandler("status", self.cmd_status))
-        app.add_handler(CommandHandler("office", self.cmd_office))
         app.add_handler(CommandHandler("quota", self.cmd_quota))
         app.add_handler(CommandHandler("import", self.cmd_import))
         app.add_handler(CommandHandler("batch", self.cmd_batch))
@@ -202,15 +200,6 @@ class TelegramInterface:
         for name, ok in health.items():
             lines.append(f"  {'✅' if ok else '❌'} {name}")
         await update.message.reply_text("\n".join(lines))
-
-    async def cmd_office(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-        report_type = (ctx.args[0].casefold() if ctx.args else "status")
-        if report_type not in {"status", "daily", "weekly", "monthly"} or len(ctx.args or []) > 1:
-            await update.message.reply_text(
-                "Format: /office [daily|weekly|monthly|status]"
-            )
-            return
-        await update.message.reply_text(self.agent.office_report(report_type))
 
     async def cmd_quota(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(self.agent.quota_report())

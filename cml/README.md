@@ -1,17 +1,14 @@
 # Deploy di Cloudera Machine Learning (CML)
 
-> **Legacy office path:** `cml/hermes_office` is **not** the supported office
-> product for new deploys. Use `deploy/office-assistant/` (Hermes Dashboard +
-> office-gateway). Qwen3/LiteLLM serving docs below remain useful as the
-> on-prem model backend.
-
-Qwen3 8B sekarang punya **project sendiri** `qwen3_8b` di runtime baru:
+Qwen3 8B punya **project sendiri** `qwen3_8b` di runtime baru. Office AI
+assistant is `deploy/office-assistant/` (Hermes Dashboard + office-gateway),
+not a CML app. Qwen/LiteLLM serving docs below remain useful as the on-prem
+model backend.
 
 | | |
 |---|---|
 | Project | `qwen3_8b` |
 | Runtime | **PBJ Workbench** · **Python 3.12** · **Nvidia GPU** (CUDA 12.5) |
-| Hermes Office | project/app terpisah (Bagian B) |
 
 Alur Qwen:
 
@@ -209,70 +206,7 @@ print(r.status_code, r.text[:2000])
 
 Kalau chat gagal dengan pesan Hugging Face / connection / 401 — **download gagal**. Pakai `QWEN_MODEL_PATH` lokal.
 
-4. **Salin URL Application** (tanpa `/health`) — dipakai sebagai `QWEN_BASE_URL` untuk Hermes Office.
----
-
-# Bagian B — Application Hermes Office
-
-Lakukan setelah Qwen `Running` dan `/health` OK.
-
-## B0. Siapkan Hermes Cloud (sekali)
-
-Di `deploy/cloud.env`:
-
-```env
-OFFICE_OBSERVER_ID=cml-office-1
-OFFICE_OBSERVER_SHARED_SECRET=ganti-dengan-secret-panjang
-OFFICE_OBSERVER_MTLS_SUBJECT=
-```
-
-`OFFICE_OBSERVER_MTLS_SUBJECT` harus **kosong**. Restart Hermes Cloud.
-
-## B1. Upload kode Hermes Office
-
-Cara mudah: upload/clone **seluruh repo** ke `/home/cdsw/hermes-agent-ffa`.
-
-```bash
-ls /home/cdsw/hermes-agent-ffa/cml/hermes_office/run_app.py
-```
-
-## B2. Install requirements
-
-Session CPU (atau runtime yang akan dipakai Application office):
-
-```bash
-python -m pip install -r /home/cdsw/hermes-agent-ffa/cml/hermes_office/requirements.txt
-python -c "import uvicorn, fastapi, httpx; print('ok')"
-mkdir -p /home/cdsw/data/hermes_office
-```
-
-## B3. Buat Application `hermes-office`
-
-| Field | Isi |
-|---|---|
-| Name | `hermes-office` |
-| Script | `/home/cdsw/hermes-agent-ffa/cml/hermes_office/run_app.py` |
-| Resource | CPU |
-
-Env:
-
-```env
-PYTHONPATH=/home/cdsw/hermes-agent-ffa
-OFFICE_OBSERVER_ID=cml-office-1
-OFFICE_OBSERVER_SHARED_SECRET=ganti-dengan-secret-panjang
-HERMES_CLOUD_REPORT_URL=https://ALAMAT-HERMES-CLOUD/api/v1/office/reports
-QWEN_BASE_URL=https://URL-APPLICATION-QWEN-ANDA
-QWEN_MODEL=Qwen3-8B
-OFFICE_SERVICE_URLS=qwen3-8b=https://URL-APPLICATION-QWEN-ANDA/health
-OFFICE_DATA_DIR=/home/cdsw/data/hermes_office
-OFFICE_INTERVAL_SECONDS=300
-```
-
-## B4. Cek
-
-1. Buka URL Application (Manager UI).
-2. Tunggu 1 cycle (~5 menit), atau set `OFFICE_INTERVAL_SECONDS=60` untuk uji.
-3. Telegram: `/office status`
+4. **Salin URL Application** (tanpa `/health`) — dipakai sebagai LiteLLM / OpenAI-compatible base URL.
 
 ---
 
@@ -307,4 +241,3 @@ OFFICE_INTERVAL_SECONDS=300
 | `raz-client ... protobuf` warning | `!pip install protobuf==4.25.3` lalu restart kernel |
 | `No module named 'uvicorn'` / `torch` | `bash /home/cdsw/cdsw-build.sh` di runtime GPU yang sama |
 | Start lama | Normal: download `Qwen/Qwen3-8B` pertama kali |
-| Import `cml` di hermes-office | Set `PYTHONPATH=/home/cdsw/hermes-agent-ffa` |

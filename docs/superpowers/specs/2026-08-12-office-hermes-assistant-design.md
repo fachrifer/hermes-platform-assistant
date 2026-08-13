@@ -11,9 +11,9 @@ platform health and, with hard guardrails, perform safe manage actions
 **upstream Nous Research Hermes Agent Web Dashboard**. Inference uses an
 **external on-prem LiteLLM** endpoint (base URL + API key only).
 
-This design **replaces** the supported office path based on
-`office_observer` / `office_relay` / CML `hermes_office`. Personal Hermes
-(Telegram + Gemini finance) is unchanged.
+This design **replaces** the previous office path based on
+`office_observer` / `office_relay` / CML `hermes_office`. Those packages
+are removed. Personal Hermes (Telegram + Gemini finance) is unchanged.
 
 ## 2. Decisions
 
@@ -27,7 +27,7 @@ This design **replaces** the supported office path based on
 | Monitoring | Health endpoints: K8s/Rancher, Prometheus/VM, Grafana, OpenWebUI, GPU, vector DB, LiteLLM |
 | Writes | Allowlisted only; propose → exact `APPROVE <action-id>` |
 | Messaging | Dashboard first; Telegram later |
-| Legacy stack | Mark unsupported for new deploys; do not delete in v1 |
+| Legacy stack | Removed; office-assistant is the only office product |
 
 ### Out of scope (v1)
 
@@ -35,7 +35,6 @@ This design **replaces** the supported office path based on
 - Raw log ingestion / user prompt scraping
 - Secret access, delete, cluster-admin
 - Replacing personal Hermes finance bot
-- Deleting legacy office packages
 
 ## 3. Architecture
 
@@ -117,6 +116,5 @@ Allowlisted actions: `restart_service`, `scale_replicas` (min/max bounds),
 
 ## 7. Legacy
 
-`office_observer/`, `office_relay/`, and `cml/hermes_office/` remain in the
-repo but are **not** the supported office product. Documentation points to
-`deploy/office-assistant/`.
+`office_observer/`, `office_relay/`, and `cml/hermes_office/` have been
+removed. The supported office product is `deploy/office-assistant/`.

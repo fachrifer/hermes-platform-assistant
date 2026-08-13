@@ -581,18 +581,6 @@ chmod +x scripts/*.sh
 Writes: propose → reply exactly `APPROVE <action_id>` → execute.
 Telegram office delivery is out of v1.
 
-### Legacy office path (unsupported for new deploys)
-
-`office_observer`, `office_relay`, and CML `hermes_office` remain in the repo
-for existing deployments only. Prefer the office-assistant stack above.
-
-```bash
-# legacy only
-docker compose --env-file deploy/observer.env -f docker-compose.observer.yml up -d --build
-docker compose --env-file deploy/relay.env -f docker-compose.relay.yml up -d --build
-docker compose --env-file deploy/cloud.env -f docker-compose.cloud.yml up -d --build
-```
-
 ---
 
 ## Ditunda (fase berikutnya)

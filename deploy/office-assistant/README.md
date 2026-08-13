@@ -139,9 +139,3 @@ VM: `./scripts/load-and-start.sh`
 
 A new **nginx** image (`dashboard-proxy` on host **:80**) is part of the tar.
 Re-export and ship; `--scripts-only` is not enough the first time :80 is added.
-
-## Legacy
-
-`office_observer`, `office_relay`, and CML `hermes_office` are not the
-supported office product. See
-`docs/superpowers/specs/2026-08-12-office-hermes-assistant-design.md`.
