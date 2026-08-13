@@ -1,5 +1,10 @@
 # Deploy di Cloudera Machine Learning (CML)
 
+> **Legacy office path:** `cml/hermes_office` is **not** the supported office
+> product for new deploys. Use `deploy/office-assistant/` (Hermes Dashboard +
+> office-gateway). Qwen3/LiteLLM serving docs below remain useful as the
+> on-prem model backend.
+
 Qwen3 8B sekarang punya **project sendiri** `qwen3_8b` di runtime baru:
 
 | | |

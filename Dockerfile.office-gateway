@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY office_gateway/requirements.txt /app/office_gateway/requirements.txt
+RUN pip install --no-cache-dir -r /app/office_gateway/requirements.txt \
+    && useradd --create-home --uid 10001 --shell /usr/sbin/nologin hermes
+
+COPY office_gateway/ /app/office_gateway/
+COPY office_gateway/docker-entrypoint.sh /docker-entrypoint.sh
+RUN mkdir -p /var/lib/hermes-office-gateway \
+    && chown -R hermes:hermes /app /var/lib/hermes-office-gateway \
+    && chmod +x /docker-entrypoint.sh
+
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/app
+EXPOSE 8080
+ENTRYPOINT ["/docker-entrypoint.sh"]
+CMD ["python", "-m", "office_gateway.run"]

@@ -525,86 +525,73 @@ reverse proxy dengan autentikasi jika endpoint tersebut perlu diakses dari luar.
 
 ---
 
-## Monitoring Platform AI Kantor
+## Office AI Assistant (supported)
 
-Untuk platform kantor yang hanya dapat diakses dari intranet, gunakan tiga
-komponen terpisah:
+Intranet VM **`10.216.4.80`**, directory **`/home/timai/hermes-assistant`**.
+Upstream **Nous Hermes Agent Web Dashboard** plus **office-gateway**.
+The VM has **no internet**: build images on a PC, ship a tar, load locally
+(`pull_policy: never`).
+
+Hermes uses the intranet **LiteLLM** gateway at `http://10.216.221.100/llm/v1`
+(base URL + API key). office-gateway probes the other apps on this VM via
+`host.docker.internal`.
+This stack does **not** take their ports; Dashboard binds **:9119** and
+nginx **dashboard-proxy** publishes **:80** for external HTTP access.
 
 ```text
-AI platform kantor -> Hermes Office Observer -> Laptop Relay -> Hermes Cloud
-                           24/7                  jam kantor       Telegram
+Browser → http://10.216.4.80/      (dashboard-proxy → Hermes)
+       or http://10.216.4.80:9119  (Hermes Dashboard direct)
+              ├─ LLM  → http://10.216.221.100/llm/v1
+              └─ tools → office-gateway :8080 (internal)
+                           └─ health of inference, workflow, dashboard, milvus, …
 ```
 
-- **Office Observer** berjalan di server intranet yang selalu hidup. Ia membaca
-  health endpoint tetap untuk Kubernetes/Rancher, Prometheus/VictoriaMetrics,
-  Grafana, OpenWebUI, GPU, vector database, dan LiteLLM. Ia tidak membaca prompt,
-  chat, file, Secret Kubernetes, atau kredensial.
-- **Laptop Relay** berjalan di laptop hanya saat jam kantor. Ia hanya meneruskan
-  envelope snapshot yang sudah ditandatangani; ia tidak memiliki kredensial
-  infrastruktur kantor dan bukan VPN, port-forward, atau proxy umum.
-- **Hermes Cloud** menerima snapshot melalui endpoint mTLS khusus, memverifikasi
-  identitas, signature, dan sequence, lalu menyimpan data dan report selama 90 hari.
+| Container | Host port | Role |
+|---|---|---|
+| LiteLLM `10.216.221.100/llm/v1` | — | LLM for Hermes |
+| `aiplatform-agent-inference` | 8010 | monitored |
+| `aiplatform-workflow` | 8001 | monitored |
+| `aiplatform-dashboard` | 3001 | monitored |
+| `common-service-frontend` | 555 | monitored |
+| `milvus-standalone` | 9091 / 19530 / 2379 | vector DB (probe 9091) |
+| `attu` | 8000 | Milvus UI |
+| `qdrant_timai` | 6333–6334 | vector DB (probe 6333) |
+| `hermes-agent` | **9119** | Web Dashboard (new) |
+| `dashboard-proxy` | **80** | nginx → dashboard (external HTTP) |
+| `office-gateway` | internal 8080 | monitor + APPROVE writes (new) |
 
-Observer mengumpulkan snapshot setiap lima menit dan menyimpan backlog lokal
-selama maksimal 14 hari. Saat laptop aktif, backlog dikirim dalam urutan sequence.
-Laporan harian, mingguan, dan bulanan tetap akurat tetapi dapat terkirim terlambat
-setelah laptop kembali online. Setiap laporan menyertakan cakupan monitoring.
-
-### 1. Konfigurasi cloud
-
-Salin `deploy/cloud.env.example` ke `deploy/cloud.env`, lalu isi:
-
-```env
-OFFICE_OBSERVER_ID=office-observer-1
-OFFICE_OBSERVER_SHARED_SECRET=<secret-unik-panjang>
-OFFICE_OBSERVER_MTLS_SUBJECT=CN=office-relay
-```
-
-Jalankan Hermes Cloud seperti biasa. Tambahkan reverse proxy mTLS pada hostname
-khusus, misalnya `observer.hermes.example.com`, menggunakan
-`deploy/nginx/office-observer.conf.example`. Proxy tersebut harus memverifikasi
-sertifikat laptop relay dan **menimpa** header
-`X-Hermes-Observer-Subject`; jangan membuka endpoint observer langsung ke Internet.
-
-### 2. Jalankan observer intranet
-
-Di server monitoring intranet, salin `deploy/observer.env.example` menjadi
-`deploy/observer.env`. Isi endpoint health internal, secret yang sama dengan cloud,
-dan certificate path. Simpan certificate dan private key hanya pada server ini.
+Design: `docs/superpowers/specs/2026-08-12-office-hermes-assistant-design.md`.
+Runbook: `deploy/office-assistant/README.md`.
 
 ```bash
+# On PC (internet):
+chmod +x deploy/office-assistant/scripts/*.sh
+./deploy/office-assistant/scripts/build-and-ship.sh
+# scripts/configs only: ./deploy/office-assistant/scripts/ship-to-vm.sh --scripts-only
+
+# On VM:
+cd /home/timai/hermes-assistant
+cp -n .env.example .env && cp -n hermes/.env.example hermes/.env
+# set OPENAI_API_KEY, LITELLM_BASE_URL, LITELLM_MODEL, dashboard password
+chmod +x scripts/*.sh
+./scripts/load-and-start.sh
+# equivalent: ./scripts/load-images.sh && docker compose --env-file .env -f docker-compose.yml up -d
+```
+
+Writes: propose → reply exactly `APPROVE <action_id>` → execute.
+Telegram office delivery is out of v1.
+
+### Legacy office path (unsupported for new deploys)
+
+`office_observer`, `office_relay`, and CML `hermes_office` remain in the repo
+for existing deployments only. Prefer the office-assistant stack above.
+
+```bash
+# legacy only
 docker compose --env-file deploy/observer.env -f docker-compose.observer.yml up -d --build
-```
-
-Observer tidak mempublikasikan port. Firewall server observer hanya perlu dapat
-mengakses endpoint monitoring internal dan laptop relay pada port `8443`.
-
-### 3. Jalankan relay laptop
-
-Di laptop kantor, salin `deploy/relay.env.example` menjadi `deploy/relay.env`.
-Atur `OFFICE_RELAY_BIND_ADDRESS` ke IP LAN laptop, bukan `0.0.0.0`, dan pasang
-sertifikat server relay, CA observer, serta certificate client untuk cloud.
-
-```bash
 docker compose --env-file deploy/relay.env -f docker-compose.relay.yml up -d --build
+docker compose --env-file deploy/cloud.env -f docker-compose.cloud.yml up -d --build
 ```
-
-Firewall laptop hanya boleh menerima TCP `8443` dari IP server observer. Laptop
-hanya membutuhkan egress HTTPS ke hostname observer cloud. Cloud tidak boleh
-memiliki route atau akses inbound ke jaringan kantor.
-
-### Laporan Telegram
-
-```text
-/office status
-/office daily
-/office weekly
-/office monthly
-```
-
-Hermes juga membuat report terjadwal setelah jendela sinkronisasi kantor.
-Laporan bersifat deterministik; telemetry kantor tidak dikirim ke Gemini untuk
-diringkas. Perubahan infrastruktur tidak tersedia di fase ini.
 
 ---
 

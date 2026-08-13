@@ -1,11 +1,17 @@
 # Secrets & state
 .env
 deploy/cloud.env
+deploy/office-assistant/.env
+deploy/office-assistant/hermes/.env
+deploy/office-assistant/dist/
 credentials/
 data/
 *.db
 *.sqlite
 *.sqlite3
+
+# Generated knowledge graph (local index)
+graphify-out/
 
 # Private finance workbooks (keep out of git; mount at runtime)
 /Kategori Money Manager.xlsx

@@ -19,10 +19,11 @@ This design **replaces** the supported office path based on
 
 | Topic | Decision |
 |---|---|
-| Runtime host | Dedicated intranet VM, Docker Compose |
+| Runtime host | Dedicated intranet VM `10.216.4.80`, dir `/home/timai/hermes-assistant` (air-gapped; images built on PC) |
 | UI | Upstream Hermes Agent Web Dashboard (basic auth) |
 | LLM | External LiteLLM; Hermes `model.provider: custom` |
 | Tool boundary | Separate `office-gateway` service (Approach 2) |
+| Image delivery | PC: `export-images.sh` + `ship-to-vm.sh` → `timai@10.216.4.80:/home/timai/hermes-assistant`; VM: `load-images.sh`; Compose `pull_policy: never` |
 | Monitoring | Health endpoints: K8s/Rancher, Prometheus/VM, Grafana, OpenWebUI, GPU, vector DB, LiteLLM |
 | Writes | Allowlisted only; propose → exact `APPROVE <action-id>` |
 | Messaging | Dashboard first; Telegram later |
