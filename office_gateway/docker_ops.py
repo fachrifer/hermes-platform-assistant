@@ -26,8 +26,8 @@ class DockerOps:
         return docker.from_env()
 
     def inspect(self, name: str) -> dict:
-        client = self._client_or_docker()
         try:
+            client = self._client_or_docker()
             if hasattr(client, "inspect_container"):
                 raw = client.inspect_container(name)
             else:
@@ -37,8 +37,8 @@ class DockerOps:
         return strip_inspect(raw)
 
     def restart(self, name: str) -> None:
-        client = self._client_or_docker()
         try:
+            client = self._client_or_docker()
             if hasattr(client, "restart"):
                 client.restart(name)
             else:

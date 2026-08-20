@@ -18,12 +18,18 @@ def test_strip_inspect_drops_env_and_mounts():
 
 
 def test_restart_unknown_name_rejected(tmp_path):
-    class Fake:
-        def inspect_container(self, name):
+    calls = {"restart": False}
+
+    class FakeContainer:
+        def restart(self):
+            calls["restart"] = True
+
+    class FakeContainers:
+        def get(self, name):
             raise KeyError(name)
 
-        def restart(self, name):
-            raise AssertionError("must not restart")
+    class Fake:
+        containers = FakeContainers()
 
     ops = DockerOps(client=Fake())
     try:
@@ -31,3 +37,18 @@ def test_restart_unknown_name_rejected(tmp_path):
         raise AssertionError("expected error")
     except ValueError as exc:
         assert "unknown" in str(exc).lower() or "not found" in str(exc).lower()
+    assert not calls["restart"]
+
+
+def test_inspect_client_failure_becomes_container_not_found():
+    class BrokenOps(DockerOps):
+        def _client_or_docker(self):
+            raise ConnectionError("/var/run/docker.sock")
+
+    ops = BrokenOps()
+    try:
+        ops.inspect("missing")
+        raise AssertionError("expected error")
+    except ValueError as exc:
+        assert str(exc) == "container not found: missing"
+        assert "/var/run/docker.sock" not in str(exc)
