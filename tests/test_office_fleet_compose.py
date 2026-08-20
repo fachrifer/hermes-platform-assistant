@@ -92,3 +92,12 @@ def test_lab_host_warns_self_restart():
     text = (ROOT / "lab-host" / "SKILL.md").read_text()
     assert "session" in text.lower()
     assert "APPROVE" in text
+
+
+def test_all_skills_forbid_delegate_task():
+    for skill_dir in sorted(ROOT.iterdir()):
+        skill_md = skill_dir / "SKILL.md"
+        if not skill_md.is_file():
+            continue
+        normalized = skill_md.read_text().lower().replace("*", "")
+        assert "do not use `delegate_task`" in normalized, f"{skill_md} must forbid delegate_task"

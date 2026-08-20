@@ -21,3 +21,5 @@ Return `APPROVE <action-id>` to the supervisor; execute only after exact user ap
 ## Prod guardrails
 
 **Prod is read-only.** You must not restart, mutate, or drop collections on prod Milvus or MinIO. Gateway rejects prod writes. Do not attempt prod restarts or collection drops under any circumstance.
+
+Do not use `delegate_task`.
