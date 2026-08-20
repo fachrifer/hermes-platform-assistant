@@ -94,6 +94,14 @@ def test_lab_host_warns_self_restart():
     assert "APPROVE" in text
 
 
+def test_nightly_fleet_check_instructions_exist():
+    text = Path("deploy/office-assistant/hermes/supervisor/cron.fleet-check.md").read_text()
+    assert "nightly fleet check" in text
+    assert "MIG" in text
+    assert "Grafana" in text
+    assert "block" in text.lower()
+
+
 def test_all_skills_forbid_delegate_task():
     ban_phrase = "do not use `delegate_task`"
     for role in (

@@ -39,7 +39,28 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
 
 Kanban data lives on the supervisor at `/opt/data/kanban` (`kanban_data` volume). Specialists do not share the supervisor home directory.
 
-Skills mount from `skills/<role>/` (may be empty until Task 6).
+Skills mount from `skills/<role>/`.
+
+## Nightly fleet check
+
+After the Dashboard is up, enable the nightly Kanban job:
+
+1. Open Dashboard **Cron** (or add to `config.yaml` `cronjobs` if your Hermes version supports it).
+2. Schedule `0 1 * * *` with timezone **Asia/Jakarta**.
+3. Paste the job body from [`hermes/supervisor/cron.fleet-check.md`](hermes/supervisor/cron.fleet-check.md) verbatim.
+
+The supervisor `config.yaml` enables `kanban.dispatch_in_gateway` so Kanban dispatch runs on the supervisor gateway.
+
+## v1 acceptance checklist
+
+Manual verification once the fleet is running:
+
+1. Open `http://10.216.4.80:9119` (or `HERMES_DASHBOARD_PUBLISH`), login.
+2. Ask “how’s the fleet?” — all five domains represented; MIG map present; Grafana links present.
+3. Propose restart `common-service-frontend` → reply `APPROVE <id>` → container restarts; audit row exists.
+4. Propose restart `milvus-standalone` via vector path → APPROVE works.
+5. Ask to restart prod Milvus → gateway/skill refuses.
+6. Next morning: Kanban card “nightly fleet check” is `done` or `blocked` with peer name.
 
 ## Air-gap image shipping
 

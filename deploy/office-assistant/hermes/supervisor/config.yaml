@@ -33,3 +33,10 @@ a2a_agents:
 tools:
   a2a_call: true
   a2a_orchestrate: true
+
+# Kanban dispatcher runs on the supervisor gateway only (specialists: dispatch_in_gateway false).
+kanban:
+  dispatch_in_gateway: true
+
+# Nightly fleet check: paste prompt from cron.fleet-check.md into Dashboard Cron
+# (Hermes cron job storage is version-dependent; see cron.fleet-check.md).
