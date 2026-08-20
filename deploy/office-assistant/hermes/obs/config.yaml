@@ -1,0 +1,9 @@
+# Observability specialist — metrics queries and Grafana panel links.
+agent:
+  name: obs
+
+a2a:
+  enabled: true
+  host: 0.0.0.0
+  port: 9900
+  bearer_token: ${A2A_TOKEN_OBS}

@@ -1,0 +1,35 @@
+# Supervisor Hermes — office fleet orchestrator (star A2A topology).
+agent:
+  name: supervisor
+
+dashboard:
+  enabled: true
+  host: 0.0.0.0
+  port: 9119
+
+a2a:
+  enabled: true
+  host: 0.0.0.0
+  port: 9900
+
+# Peers: supervisor is the only agent that lists specialists.
+a2a_agents:
+  lab-host:
+    url: http://hermes-lab-host:9900
+    bearer_token: ${A2A_TOKEN_LAB_HOST}
+  vector:
+    url: http://hermes-vector:9900
+    bearer_token: ${A2A_TOKEN_VECTOR}
+  cluster-gpu:
+    url: http://hermes-cluster-gpu:9900
+    bearer_token: ${A2A_TOKEN_CLUSTER_GPU}
+  llm-edge:
+    url: http://hermes-llm-edge:9900
+    bearer_token: ${A2A_TOKEN_LLM_EDGE}
+  obs:
+    url: http://hermes-obs:9900
+    bearer_token: ${A2A_TOKEN_OBS}
+
+tools:
+  a2a_call: true
+  a2a_orchestrate: true
