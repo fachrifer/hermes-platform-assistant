@@ -60,3 +60,35 @@ def test_compose_gateway_volume_init_and_docker_group():
             nxt = rest.find("\n  hermes-", len(name) + 2)
         block = rest[:nxt] if nxt != -1 else rest
         assert "/var/run/docker.sock" not in block, f"{name} must not mount docker.sock"
+
+
+ROOT = Path("deploy/office-assistant/skills")
+
+
+def test_supervisor_skill_forbids_direct_platform_calls_and_uses_a2a():
+    text = (ROOT / "supervisor" / "SKILL.md").read_text()
+    assert "a2a_call" in text
+    assert "APPROVE" in text
+    assert "delegate_task" in text and "do not" in text.lower()
+    assert "office-gateway write" not in text.lower() or "never call write APIs" in text.lower()
+    assert "never call write" in text.lower() or "specialist" in text.lower()
+
+
+def test_vector_skill_prod_is_read_only():
+    text = (ROOT / "vector" / "SKILL.md").read_text()
+    assert "milvus-standalone" in text
+    assert "attu" in text
+    assert "prod" in text.lower()
+    assert "do not" in text.lower() or "must not" in text.lower()
+
+
+def test_cluster_skill_requires_mig_map():
+    text = (ROOT / "cluster-gpu" / "SKILL.md").read_text()
+    assert "/v1/gpu/mig" in text
+    assert "Grafana" in text or "grafana" in text
+
+
+def test_lab_host_warns_self_restart():
+    text = (ROOT / "lab-host" / "SKILL.md").read_text()
+    assert "session" in text.lower()
+    assert "APPROVE" in text
