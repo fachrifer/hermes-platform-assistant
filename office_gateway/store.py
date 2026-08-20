@@ -1,38 +1,27 @@
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-_MAX_AUDIT_DETAIL_LEN = 200
-_SENSITIVE_LINE_RE = re.compile(
-    r"password|token|secret|api_key|kubeconfig|authorization",
-    re.IGNORECASE,
+ALLOWED_AUDIT_DETAIL_CODES = frozenset(
+    {
+        "ok",
+        "failed:adapter_unavailable",
+        "failed:not_found",
+        "failed:claim_conflict",
+        "failed:expired",
+    }
 )
-_RAW_ENV_LINE_RE = re.compile(r"^[A-Z][A-Z0-9_]*=")
 
 
-def sanitize_audit_detail(detail: str) -> str:
-    if not detail:
-        return ""
-    safe_lines: list[str] = []
-    for line in detail.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if _SENSITIVE_LINE_RE.search(stripped):
-            continue
-        if _RAW_ENV_LINE_RE.match(stripped):
-            continue
-        safe_lines.append(stripped)
-    safe = "; ".join(safe_lines) if safe_lines else "redacted"
-    if len(safe) > _MAX_AUDIT_DETAIL_LEN:
-        safe = safe[: _MAX_AUDIT_DETAIL_LEN - 3] + "..."
-    return safe
+def normalize_audit_detail(detail: str) -> str:
+    if detail in ALLOWED_AUDIT_DETAIL_CODES:
+        return detail
+    return "failed:not_found"
 
 
 def _utc_now() -> datetime:
@@ -121,7 +110,7 @@ class GatewayStore:
                 INSERT INTO audit (action_id, event, detail, created_at)
                 VALUES (?, ?, ?, ?)
                 """,
-                (action_id, "proposed", summary, created_at),
+                (action_id, "proposed", "ok", created_at),
             )
 
         return PendingAction(
@@ -153,15 +142,17 @@ class GatewayStore:
             status=row["status"],
         )
 
-    def mark_expired_if_needed(self, action: PendingAction) -> PendingAction:
-        if action.status != "pending":
-            return action
+    def _is_expired(self, action: PendingAction) -> bool:
         expires = datetime.fromisoformat(action.expires_at.replace("Z", "+00:00"))
-        if _utc_now() <= expires:
+        return _utc_now() > expires
+
+    def mark_expired_if_needed(self, action: PendingAction) -> PendingAction:
+        if action.status != "pending" or not self._is_expired(action):
             return action
+        now = _iso_z(_utc_now())
         with self._connect() as conn:
             conn.execute(
-                "UPDATE actions SET status = ? WHERE action_id = ?",
+                "UPDATE actions SET status = ? WHERE action_id = ? AND status = 'pending'",
                 ("expired", action.action_id),
             )
             conn.execute(
@@ -169,7 +160,7 @@ class GatewayStore:
                 INSERT INTO audit (action_id, event, detail, created_at)
                 VALUES (?, ?, ?, ?)
                 """,
-                (action.action_id, "expired", "action expired", _iso_z(_utc_now())),
+                (action.action_id, "expired", "failed:expired", now),
             )
         return PendingAction(
             action_id=action.action_id,
@@ -195,13 +186,14 @@ class GatewayStore:
         )
 
     def claim_pending(self, action_id: str) -> PendingAction | None:
+        now = _iso_z(_utc_now())
         with self._connect() as conn:
             cur = conn.execute(
                 """
                 UPDATE actions SET status = 'executing'
-                WHERE action_id = ? AND status = 'pending'
+                WHERE action_id = ? AND status = 'pending' AND expires_at >= ?
                 """,
-                (action_id,),
+                (action_id, now),
             )
             if cur.rowcount == 0:
                 return None
@@ -217,7 +209,7 @@ class GatewayStore:
         if action is None:
             return None
         status = "executed" if ok else "failed"
-        safe_detail = sanitize_audit_detail(detail)
+        safe_detail = normalize_audit_detail(detail)
         now = _iso_z(_utc_now())
         with self._connect() as conn:
             cur = conn.execute(
@@ -263,7 +255,7 @@ class GatewayStore:
                 "id": row["id"],
                 "action_id": row["action_id"],
                 "event": row["event"],
-                "detail": sanitize_audit_detail(row["detail"]),
+                "detail": normalize_audit_detail(row["detail"]),
                 "created_at": row["created_at"],
             }
             for row in rows

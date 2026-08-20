@@ -10,11 +10,11 @@ class ActionError(Exception):
 def validate_propose(config, role: str, action: str, target: str) -> None:
     if not can_write(role):
         raise ActionError("role cannot write")
-    allowed = config.write_targets.get(role, frozenset())
-    if target not in allowed:
-        raise ActionError(f"target {target} not in allowlist")
     if config.vector_env.get(target) == "prod":
         raise ActionError("writes disabled for prod")
+    allowed = config.write_targets.get(role, frozenset())
+    if target not in allowed:
+        raise ActionError("unknown target")
 
 
 class ActionService:
@@ -24,7 +24,7 @@ class ActionService:
 
     def propose(self, role: str, action: str, target: str, params: dict | None = None):
         if action != "restart_service":
-            raise ActionError(f"unknown action: {action}")
+            raise ActionError("action not allowlisted")
         validate_propose(self.config, role, action, target)
         summary = f"restart {target}"
         return self.store.propose(
@@ -40,18 +40,23 @@ class ActionService:
         action = self.store.get_action(action_id)
         if action is None:
             raise ActionError("action not found")
-        action = self.store.mark_expired_if_needed(action)
-        if action.status == "expired":
-            raise ActionError("action expired")
-        action = self.store.claim_pending(action_id)
-        if action is None:
-            raise ActionError("action already executed or not pending")
-        validate_propose(self.config, role, action.action, action.target)
+        claimed = self.store.claim_pending(action_id)
+        if claimed is None:
+            action = self.store.get_action(action_id)
+            if action is None:
+                raise ActionError("action not found")
+            if action.status == "expired" or (
+                action.status == "pending" and self.store._is_expired(action)
+            ):
+                self.store.mark_expired_if_needed(action)
+                raise ActionError("action expired")
+            raise ActionError("action not pending")
+        validate_propose(self.config, role, claimed.action, claimed.target)
         result = self.store.mark_executed(
             action_id,
             ok=False,
-            detail="restart adapter not available",
+            detail="failed:adapter_unavailable",
         )
         if result is None:
-            raise ActionError("action already executed or not pending")
+            raise ActionError("action not pending")
         return result

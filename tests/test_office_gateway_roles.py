@@ -114,34 +114,39 @@ def test_validate_propose_rejects_prod(tmp_path):
         service.propose("vector", "restart_service", "milvus-prod")
 
 
-def test_audit_detail_redacts_secrets(tmp_path):
-    from office_gateway.store import GatewayStore
+ALLOWED_AUDIT_DETAILS = frozenset(
+    {
+        "ok",
+        "failed:adapter_unavailable",
+        "failed:not_found",
+        "failed:claim_conflict",
+        "failed:expired",
+    }
+)
+
+
+def test_audit_detail_allowlisted_only(tmp_path):
+    from office_gateway.store import ALLOWED_AUDIT_DETAIL_CODES, GatewayStore
 
     store = GatewayStore(str(tmp_path / "gateway.db"))
     pending = store.propose("restart_service", "milvus-standalone")
-    dirty = (
-        "container not found\n"
-        "password=abc123\n"
-        "API_KEY=secret\n"
-        "authorization: Bearer xyz\n"
-        "KUBECONFIG=/root/.kube/config"
-    )
     assert store.claim_pending(pending.action_id) is not None
-    store.mark_executed(pending.action_id, ok=False, detail=dirty)
+    store.mark_executed(
+        pending.action_id,
+        ok=False,
+        detail="failed:adapter_unavailable",
+    )
 
     entries = store.list_audit(limit=10)
+    for entry in entries:
+        assert entry["detail"] in ALLOWED_AUDIT_DETAIL_CODES
     failed = next(e for e in entries if e["event"] == "failed")
-    detail_lower = failed["detail"].lower()
-    assert "password" not in detail_lower
-    assert "secret" not in detail_lower
-    assert "authorization" not in detail_lower
-    assert "kubeconfig" not in detail_lower
-    assert "container not found" in failed["detail"]
+    assert failed["detail"] == "failed:adapter_unavailable"
 
 
-def test_audit_api_redacts_secrets(tmp_path):
+def test_audit_api_returns_allowlisted_codes_only(tmp_path):
     from office_gateway.app import create_app
-    from office_gateway.store import GatewayStore
+    from office_gateway.store import ALLOWED_AUDIT_DETAIL_CODES, GatewayStore
 
     config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
     client = TestClient(create_app(config))
@@ -151,7 +156,7 @@ def test_audit_api_redacts_secrets(tmp_path):
     store.mark_executed(
         pending.action_id,
         ok=False,
-        detail="failed: token=leaked\ncontainer not found",
+        detail="failed:adapter_unavailable",
     )
 
     response = client.get(
@@ -159,10 +164,24 @@ def test_audit_api_redacts_secrets(tmp_path):
         headers={"Authorization": "Bearer tok-sup"},
     )
     assert response.status_code == 200
-    entries = response.json()["entries"]
-    failed = next(e for e in entries if e["event"] == "failed")
-    assert "token" not in failed["detail"].lower()
-    assert "container not found" in failed["detail"]
+    for entry in response.json()["entries"]:
+        assert entry["detail"] in ALLOWED_AUDIT_DETAIL_CODES
+
+
+def test_action_error_messages_are_fixed(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
+    service = ActionService(config, GatewayStore(config.db_path, config.action_ttl_seconds))
+
+    with pytest.raises(ActionError, match="action not allowlisted"):
+        service.propose("vector", "evil_action", "milvus-standalone")
+
+    with pytest.raises(ActionError, match="unknown target"):
+        service.propose("vector", "restart_service", "aiplatform-dashboard")
+
+    with pytest.raises(ActionError, match="writes disabled for prod"):
+        service.propose("vector", "restart_service", "milvus-prod")
 
 
 def test_execute_unknown_action_returns_404(client):
@@ -181,7 +200,7 @@ def test_execute_second_call_rejects_not_pending(tmp_path):
     service = ActionService(config, GatewayStore(config.db_path, config.action_ttl_seconds))
     pending = service.propose("vector", "restart_service", "milvus-standalone")
     service.execute("vector", pending.action_id)
-    with pytest.raises(ActionError, match="already executed|not pending"):
+    with pytest.raises(ActionError, match="action not pending"):
         service.execute("vector", pending.action_id)
 
 
@@ -194,3 +213,41 @@ def test_claim_pending_is_atomic(tmp_path):
     second = store.claim_pending(pending.action_id)
     assert first is not None
     assert second is None
+
+
+def test_claim_pending_rejects_expired_without_two_step_check(tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    from office_gateway.store import GatewayStore, _iso_z
+
+    store = GatewayStore(str(tmp_path / "gateway.db"), action_ttl_seconds=1)
+    pending = store.propose("restart_service", "milvus-standalone")
+    expired_at = _iso_z(datetime.now(timezone.utc) - timedelta(seconds=5))
+    with store._connect() as conn:
+        conn.execute(
+            "UPDATE actions SET expires_at = ? WHERE action_id = ?",
+            (expired_at, pending.action_id),
+        )
+    assert store.claim_pending(pending.action_id) is None
+    row = store.get_action(pending.action_id)
+    assert row is not None
+    assert row.status == "pending"
+
+
+def test_execute_expired_action_returns_action_expired(tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    from office_gateway.store import GatewayStore, _iso_z
+
+    config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
+    store = GatewayStore(config.db_path, action_ttl_seconds=1)
+    service = ActionService(config, store)
+    pending = service.propose("vector", "restart_service", "milvus-standalone")
+    expired_at = _iso_z(datetime.now(timezone.utc) - timedelta(seconds=5))
+    with store._connect() as conn:
+        conn.execute(
+            "UPDATE actions SET expires_at = ? WHERE action_id = ?",
+            (expired_at, pending.action_id),
+        )
+    with pytest.raises(ActionError, match="action expired"):
+        service.execute("vector", pending.action_id)
