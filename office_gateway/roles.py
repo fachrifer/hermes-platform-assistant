@@ -12,6 +12,7 @@ READ_ROUTES = {
             "/v1/audit",
             "/v1/metrics/query",
             "/v1/grafana/links",
+            "/v1/gpu/mig",
         }
     ),
     "lab-host": frozenset({"/v1/status", "/v1/services", "/v1/docker/inspect"}),

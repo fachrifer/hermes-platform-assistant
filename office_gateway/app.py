@@ -14,7 +14,9 @@ from office_gateway.collectors import HttpServiceCollector
 from office_gateway.config import GatewayConfig
 from office_gateway.docker_ops import DockerOps
 from office_gateway.grafana_links import build_links
+from office_gateway.k8s_ops import AdapterNotConfigured, K8sOps
 from office_gateway.metrics import instant_query
+from office_gateway.mig import compare_mig
 from office_gateway.roles import can_read, can_write, role_for_token
 from office_gateway.store import GatewayStore
 
@@ -31,9 +33,14 @@ class ExecuteRequest(BaseModel):
     action_id: str
 
 
-def create_app(config: GatewayConfig, docker_ops: DockerOps | None = None) -> FastAPI:
+def create_app(
+    config: GatewayConfig,
+    docker_ops: DockerOps | None = None,
+    k8s_ops: K8sOps | None = None,
+) -> FastAPI:
     store = GatewayStore(config.db_path, config.action_ttl_seconds)
     ops = docker_ops or DockerOps()
+    k8s = k8s_ops or K8sOps(service_urls=config.service_urls)
     actions = ActionService(config, store, docker_ops=ops)
     collector = HttpServiceCollector(config.service_urls)
     app = FastAPI(title="office-gateway")
@@ -98,6 +105,34 @@ def create_app(config: GatewayConfig, docker_ops: DockerOps | None = None) -> Fa
             panels=config.grafana_panel_ids,
         )
         return {"links": links}
+
+    @app.get("/v1/gpu/mig")
+    async def gpu_mig(role: str = Depends(_role_from_request)) -> dict:
+        _require_read(role, "/v1/gpu/mig")
+        mig_data = await k8s.get_mig_actual()
+        actual = mig_data.get("actual", {})
+        result = compare_mig(config.mig_expected, actual)
+        if mig_data.get("error"):
+            result["actual"] = {}
+            result["error"] = mig_data["error"]
+            result["ok"] = False
+        return result
+
+    @app.get("/v1/k8s/resources")
+    async def k8s_resources(
+        kind: str = "",
+        namespace: Optional[str] = None,
+        role: str = Depends(_role_from_request),
+    ) -> dict:
+        _require_read(role, "/v1/k8s/resources")
+        if not kind.strip():
+            raise HTTPException(status_code=400, detail="kind required")
+        try:
+            return await k8s.list_resources(kind.strip(), namespace)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except AdapterNotConfigured as exc:
+            raise HTTPException(status_code=503, detail="adapter not configured") from exc
 
     @app.get("/v1/metrics/query")
     async def metrics_query(
