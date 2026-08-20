@@ -1,6 +1,50 @@
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
+
 COMPOSE = Path("deploy/office-assistant/docker-compose.yml")
+DEPLOY_ROOT = COMPOSE.parent
+HERMES_ROLES = (
+    "supervisor",
+    "lab-host",
+    "vector",
+    "cluster-gpu",
+    "llm-edge",
+    "obs",
+)
+HERMES_SERVICES = {
+    "hermes-agent": "supervisor",
+    "hermes-lab-host": "lab-host",
+    "hermes-vector": "vector",
+    "hermes-cluster-gpu": "cluster-gpu",
+    "hermes-llm-edge": "llm-edge",
+    "hermes-obs": "obs",
+}
+
+
+def _service_block(text: str, name: str) -> str:
+    start = text.index(f"  {name}:")
+    ends = [
+        text.find(f"\n  {other}:", start + 1)
+        for other in (
+            "office-gateway-init",
+            "office-gateway",
+            *HERMES_SERVICES,
+        )
+        if other != name
+    ]
+    valid_ends = [end for end in ends if end != -1]
+    return text[start : min(valid_ends) if valid_ends else len(text)]
+
+
+def _env_keys(path: Path) -> set[str]:
+    return {
+        line.split("=", 1)[0]
+        for line in path.read_text().splitlines()
+        if line.strip() and not line.lstrip().startswith("#") and "=" in line
+    }
 
 
 def test_compose_has_supervisor_five_specialists_and_gateway():
@@ -60,6 +104,133 @@ def test_compose_gateway_volume_init_and_docker_group():
             nxt = rest.find("\n  hermes-", len(name) + 2)
         block = rest[:nxt] if nxt != -1 else rest
         assert "/var/run/docker.sock" not in block, f"{name} must not mount docker.sock"
+
+
+def test_hermes_services_use_role_isolated_env_files():
+    text = COMPOSE.read_text()
+    gateway = _service_block(text, "office-gateway")
+    assert "\n      - .env\n" in gateway
+
+    for service, role in HERMES_SERVICES.items():
+        block = _service_block(text, service)
+        assert f"- ./hermes/{role}/.env" in block
+        assert "\n      - .env\n" not in block
+        assert "OFFICE_GATEWAY_TOKEN_" not in block
+        assert "A2A_TOKEN_" not in block
+        for other_role in HERMES_ROLES:
+            if other_role != role:
+                assert f"./hermes/{other_role}/.env" not in block
+
+
+def test_role_env_examples_contain_only_role_credentials():
+    specialist_keys = {
+        "OFFICE_GATEWAY_TOKEN",
+        "A2A_BEARER_TOKEN",
+        "A2A_HOST",
+        "A2A_PORT",
+        "A2A_AGENT_NAME",
+        "A2A_PUBLIC_URL",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+    }
+    for role in HERMES_ROLES[1:]:
+        path = DEPLOY_ROOT / "hermes" / role / ".env.example"
+        assert path.is_file()
+        assert _env_keys(path) == specialist_keys
+
+    supervisor = _env_keys(
+        DEPLOY_ROOT / "hermes" / "supervisor" / ".env.example"
+    )
+    assert supervisor == {
+        "OFFICE_GATEWAY_TOKEN",
+        "A2A_TOKEN_LAB_HOST",
+        "A2A_TOKEN_VECTOR",
+        "A2A_TOKEN_CLUSTER_GPU",
+        "A2A_TOKEN_LLM_EDGE",
+        "A2A_TOKEN_OBS",
+        "OPENAI_API_KEY",
+        "OPENAI_BASE_URL",
+        "HERMES_DASHBOARD_USERNAME",
+        "HERMES_DASHBOARD_PASSWORD",
+    }
+
+
+def test_hermes_v2026_8_a2a_model_and_dashboard_config():
+    for role in HERMES_ROLES:
+        text = (DEPLOY_ROOT / "hermes" / role / "config.yaml").read_text()
+        assert "model:" in text
+        assert "provider: custom" in text
+        assert "base_url: ${OPENAI_BASE_URL}" in text
+        assert "api_key: ${OPENAI_API_KEY}" in text
+        assert "OPENAI_API_BASE" not in text
+
+    for role in HERMES_ROLES[1:]:
+        text = (DEPLOY_ROOT / "hermes" / role / "config.yaml").read_text()
+        assert "gateway:" in text
+        assert "platforms:" in text
+        assert "a2a:" in text
+        assert "enabled: true" in text
+        assert "extra:" in text
+        assert "port: 9900" in text
+        assert "bearer_token" not in text
+
+    supervisor = (
+        DEPLOY_ROOT / "hermes" / "supervisor" / "config.yaml"
+    ).read_text()
+    assert supervisor.count("auth: { type: bearer, token:") == 5
+    assert "platform_toolsets:" in supervisor
+    assert "- a2a" in supervisor
+    assert "basic_auth:" in supervisor
+    assert "username: ${HERMES_DASHBOARD_USERNAME}" in supervisor
+    assert "password: ${HERMES_DASHBOARD_PASSWORD}" in supervisor
+    assert "bearer_token" not in supervisor
+
+
+def test_compose_mounts_kubeconfig_and_pins_hermes_image():
+    compose = COMPOSE.read_text()
+    gateway = _service_block(compose, "office-gateway")
+    assert "${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro" in gateway
+    assert "KUBECONFIG: /etc/office/kubeconfig" in gateway
+
+    root_env = (DEPLOY_ROOT / ".env.example").read_text()
+    image_line = next(
+        line for line in root_env.splitlines() if line.startswith("HERMES_IMAGE=")
+    )
+    assert ":latest" not in image_line
+    assert "v2026.8." in image_line
+    assert "WARNING" in root_env
+
+
+def test_docker_compose_config_parses(tmp_path):
+    docker = shutil.which("docker")
+    if docker is None:
+        pytest.skip("docker CLI is not installed")
+    version = subprocess.run(
+        [docker, "compose", "version"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if version.returncode != 0:
+        pytest.skip("docker compose plugin is not installed")
+
+    deploy = tmp_path / "office-assistant"
+    shutil.copytree(DEPLOY_ROOT, deploy)
+    shutil.copyfile(deploy / ".env.example", deploy / ".env")
+    for role in HERMES_ROLES:
+        shutil.copyfile(
+            deploy / "hermes" / role / ".env.example",
+            deploy / "hermes" / role / ".env",
+        )
+
+    result = subprocess.run(
+        [docker, "compose", "config"],
+        cwd=deploy,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 ROOT = Path("deploy/office-assistant/skills")

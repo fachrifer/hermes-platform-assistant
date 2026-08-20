@@ -9,6 +9,9 @@ from office_gateway.docker_ops import DockerOps
 from office_gateway.roles import can_write
 
 _SERVICE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+_OFFICE_GATEWAY_TARGET_RE = re.compile(
+    r"(?:^|[-_.])office-gateway(?:[-_.]\d+)?$"
+)
 
 
 class ActionError(Exception):
@@ -44,6 +47,10 @@ def _adapter_endpoints() -> dict[str, str]:
             continue
         endpoints[name] = url
     return endpoints
+
+
+def _is_office_gateway_target(target: str) -> bool:
+    return bool(_OFFICE_GATEWAY_TARGET_RE.search(target))
 
 
 class ActionService:
@@ -83,6 +90,12 @@ class ActionService:
                 self.store.mark_expired_if_needed(action)
                 raise ActionError("action expired")
             raise ActionError("action not pending")
+        if _is_office_gateway_target(claimed.target):
+            result = self.store.mark_executed(action_id, ok=True, detail="ok")
+            if result is None:
+                raise ActionError("action not pending")
+            self._restart_target(claimed.target)
+            return result
         ok = False
         detail = "failed:adapter_unavailable"
         try:

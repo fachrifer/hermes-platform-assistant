@@ -170,7 +170,14 @@ def _list_via_kubernetes(kind: str, namespace: Optional[str]) -> dict[str, Any]:
         config.load_incluster_config()
     except config.ConfigException:
         try:
-            config.load_kube_config()
+            kubeconfig = (
+                os.getenv("KUBECONFIG", "").strip()
+                or os.getenv("OFFICE_KUBECONFIG", "").strip()
+            )
+            if kubeconfig:
+                config.load_kube_config(config_file=kubeconfig)
+            else:
+                config.load_kube_config()
         except config.ConfigException as exc:
             raise AdapterNotConfigured() from exc
 

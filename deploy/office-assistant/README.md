@@ -6,7 +6,7 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
 
 - Docker Compose v2
 - Pinned `nousresearch/hermes-agent` image (air-gap: build or pull on a connected machine, then `docker save` / `docker load` on the Lab VM)
-- LiteLLM or other model endpoint reachable from the containers (configure in `hermes/supervisor/.env`)
+- LiteLLM or another OpenAI-compatible endpoint reachable from every container
 
 ## Setup
 
@@ -14,14 +14,25 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
 
    ```bash
    cp .env.example .env
-   cp hermes/supervisor/.env.example hermes/supervisor/.env
+   for role in supervisor lab-host vector cluster-gpu llm-edge obs; do
+     cp "hermes/$role/.env.example" "hermes/$role/.env"
+   done
    ```
 
-2. Fill `.env`: all six `OFFICE_GATEWAY_TOKEN_*` values, five `A2A_TOKEN_*` values, `OFFICE_SERVICE_URLS`, Grafana placeholders, write allowlists, and `DOCKER_GID` (replace the example `998` with `stat -c %g /var/run/docker.sock` on Linux or `stat -f %g /var/run/docker.sock` on macOS Docker Desktop).
+2. Fill the operator `.env` with all six `OFFICE_GATEWAY_TOKEN_*` values,
+   `OFFICE_SERVICE_URLS`, Grafana placeholders, write allowlists,
+   `OFFICE_KUBECONFIG`, and `DOCKER_GID`. This file is loaded only by
+   `office-gateway`, never by a Hermes agent.
 
-3. After the first `docker compose up -d --build`, run `docker compose ps -a` and update `OFFICE_WRITE_LAB_HOST` in `.env` with the actual Hermes container names if they differ from the placeholders.
+3. Fill each `hermes/<role>/.env` with only that agent's gateway token, a
+   role-scoped LiteLLM key, and its A2A credentials. Each specialist's
+   `A2A_BEARER_TOKEN` must match the corresponding `A2A_TOKEN_*` in the
+   supervisor env. Set supervisor dashboard username/password before binding
+   to the Lab LAN.
 
-4. Optional: set `OFFICE_KUBECONFIG` and uncomment the kubeconfig volume in `docker-compose.yml` for cluster-gpu reads.
+4. After the first `docker compose up -d --build`, run `docker compose ps -a`
+   and update `OFFICE_WRITE_LAB_HOST` in `.env` with the actual Hermes
+   container names if they differ from the placeholders.
 
 5. Start the fleet:
 
@@ -29,7 +40,9 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
    docker compose up -d --build
    ```
 
-6. Open the Dashboard at `http://10.216.4.80:9119` (or the host in `HERMES_DASHBOARD_PUBLISH`).
+6. Open the Dashboard at `http://10.216.4.80:9119` (or the host in
+   `HERMES_DASHBOARD_PUBLISH`) and sign in with the supervisor's
+   `HERMES_DASHBOARD_USERNAME` / `HERMES_DASHBOARD_PASSWORD`.
 
 ## Topology
 

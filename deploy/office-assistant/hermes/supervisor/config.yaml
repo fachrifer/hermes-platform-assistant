@@ -2,37 +2,43 @@
 agent:
   name: supervisor
 
+model:
+  provider: custom
+  default: gpt-4o
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
+
 dashboard:
   enabled: true
   host: 0.0.0.0
   port: 9119
-
-a2a:
-  enabled: true
-  host: 0.0.0.0
-  port: 9900
+  basic_auth:
+    username: ${HERMES_DASHBOARD_USERNAME}
+    password: ${HERMES_DASHBOARD_PASSWORD}
 
 # Peers: supervisor is the only agent that lists specialists.
 a2a_agents:
   lab-host:
     url: http://hermes-lab-host:9900
-    bearer_token: ${A2A_TOKEN_LAB_HOST}
+    auth: { type: bearer, token: "${A2A_TOKEN_LAB_HOST}" }
   vector:
     url: http://hermes-vector:9900
-    bearer_token: ${A2A_TOKEN_VECTOR}
+    auth: { type: bearer, token: "${A2A_TOKEN_VECTOR}" }
   cluster-gpu:
     url: http://hermes-cluster-gpu:9900
-    bearer_token: ${A2A_TOKEN_CLUSTER_GPU}
+    auth: { type: bearer, token: "${A2A_TOKEN_CLUSTER_GPU}" }
   llm-edge:
     url: http://hermes-llm-edge:9900
-    bearer_token: ${A2A_TOKEN_LLM_EDGE}
+    auth: { type: bearer, token: "${A2A_TOKEN_LLM_EDGE}" }
   obs:
     url: http://hermes-obs:9900
-    bearer_token: ${A2A_TOKEN_OBS}
+    auth: { type: bearer, token: "${A2A_TOKEN_OBS}" }
 
-tools:
-  a2a_call: true
-  a2a_orchestrate: true
+# Preserve the v2026.8 CLI defaults and opt into the otherwise-off A2A toolset.
+platform_toolsets:
+  cli:
+    - hermes-cli
+    - a2a
 
 # Kanban dispatcher runs on the supervisor gateway only (specialists: dispatch_in_gateway false).
 kanban:

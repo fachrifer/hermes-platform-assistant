@@ -1,8 +1,56 @@
 from __future__ import annotations
 
+import re
+from typing import Any
+
 import httpx
 
 MAX_QUERY_CHARS = 500
+MAX_RESULT_SERIES = 50
+_SENSITIVE_LABEL_RE = re.compile(
+    r"password|token|secret|api_key|authorization",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_series(series: dict[str, Any]) -> dict[str, Any]:
+    metric = series.get("metric")
+    safe_metric = {}
+    if isinstance(metric, dict):
+        safe_metric = {
+            str(key): str(value)
+            for key, value in metric.items()
+            if not _SENSITIVE_LABEL_RE.search(str(key))
+        }
+    sanitized: dict[str, Any] = {"metric": safe_metric}
+    if "value" in series:
+        sanitized["value"] = series["value"]
+    elif "values" in series:
+        sanitized["values"] = series["values"]
+    return sanitized
+
+
+def sanitize_metrics_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw_data = payload.get("data")
+    if not isinstance(raw_data, dict):
+        raw_data = {}
+    result_type = raw_data.get("resultType")
+    result = raw_data.get("result")
+    if result_type in {"vector", "matrix"} and isinstance(result, list):
+        safe_result = [
+            _sanitize_series(series)
+            for series in result[:MAX_RESULT_SERIES]
+            if isinstance(series, dict)
+        ]
+    else:
+        safe_result = result
+    return {
+        "status": payload.get("status"),
+        "data": {
+            "resultType": result_type,
+            "result": safe_result,
+        },
+    }
 
 
 async def instant_query(metrics_url: str, query: str) -> dict:
@@ -21,5 +69,4 @@ async def instant_query(metrics_url: str, query: str) -> dict:
         response = await client.get(url, params={"query": q})
     response.raise_for_status()
     payload = response.json()
-    # Pass through Prometheus instant-query JSON only (status/data)
-    return {"status": payload.get("status"), "data": payload.get("data")}
+    return sanitize_metrics_payload(payload)

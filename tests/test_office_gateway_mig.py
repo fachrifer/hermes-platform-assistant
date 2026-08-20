@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from dataclasses import replace
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +13,7 @@ from office_gateway.config import GatewayConfig
 from office_gateway.k8s_ops import (
     ALLOWED_KINDS,
     K8sOps,
+    _list_via_kubernetes,
     count_mig_profiles,
     sanitize_items,
 )
@@ -315,3 +319,41 @@ def test_allowed_kinds_match_brief():
             "configmap",
         }
     )
+
+
+def test_kubernetes_client_prefers_kubeconfig_then_office_kubeconfig(monkeypatch):
+    loaded: list[str | None] = []
+
+    class ConfigException(Exception):
+        pass
+
+    fake_config = SimpleNamespace(
+        ConfigException=ConfigException,
+        load_incluster_config=lambda: (_ for _ in ()).throw(ConfigException()),
+        load_kube_config=lambda config_file=None: loaded.append(config_file),
+    )
+    fake_client = SimpleNamespace(
+        CoreV1Api=lambda: SimpleNamespace(
+            list_node=lambda: SimpleNamespace(items=[])
+        )
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "kubernetes",
+        SimpleNamespace(client=fake_client, config=fake_config),
+    )
+    monkeypatch.setenv("KUBECONFIG", "/mounted/kubeconfig")
+    monkeypatch.setenv("OFFICE_KUBECONFIG", "/operator/kubeconfig")
+
+    _list_via_kubernetes("nodes", None)
+    assert loaded == ["/mounted/kubeconfig"]
+
+    loaded.clear()
+    monkeypatch.delenv("KUBECONFIG")
+    _list_via_kubernetes("nodes", None)
+    assert loaded == ["/operator/kubeconfig"]
+
+
+def test_gateway_requirements_include_kubernetes_client():
+    requirements = Path("office_gateway/requirements.txt").read_text().splitlines()
+    assert any(line.split("=", 1)[0] == "kubernetes" for line in requirements)

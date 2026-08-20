@@ -45,15 +45,15 @@ services:
     volumes:
       - office_gateway_data:/var/lib/hermes-office-gateway
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      # Uncomment when cluster-gpu reads are configured:
-      # - ${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro
+      - ${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro
     environment:
       OFFICE_GATEWAY_BIND_HOST: 0.0.0.0
       OFFICE_GATEWAY_PORT: "8080"
       OFFICE_GATEWAY_DB_PATH: /var/lib/hermes-office-gateway/gateway.db
+      KUBECONFIG: /etc/office/kubeconfig
 
   hermes-agent:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
     restart: unless-stopped
     networks:
       - office
@@ -67,14 +67,10 @@ services:
     ports:
       - "${HERMES_DASHBOARD_PUBLISH:-10.216.4.80:9119}:9119"
     env_file:
-      - .env
       - ./hermes/supervisor/.env
     environment:
       HERMES_HOME: /opt/data
-      A2A_HOST: 0.0.0.0
-      A2A_PORT: "9900"
       OFFICE_GATEWAY_URL: http://office-gateway:8080
-      OFFICE_GATEWAY_TOKEN: ${OFFICE_GATEWAY_TOKEN_SUPERVISOR}
     volumes:
       - hermes_supervisor_data:/opt/data
       - kanban_data:/opt/data/kanban
@@ -83,21 +79,17 @@ services:
     command: ["dashboard", "--host", "0.0.0.0", "--port", "9119", "--no-open"]
 
   hermes-lab-host:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
     restart: unless-stopped
     networks:
       - office
     depends_on:
       - office-gateway
     env_file:
-      - .env
+      - ./hermes/lab-host/.env
     environment:
       HERMES_HOME: /opt/data
-      A2A_HOST: 0.0.0.0
-      A2A_PORT: "9900"
-      A2A_TOKEN: ${A2A_TOKEN_LAB_HOST}
       OFFICE_GATEWAY_URL: http://office-gateway:8080
-      OFFICE_GATEWAY_TOKEN: ${OFFICE_GATEWAY_TOKEN_LAB_HOST}
     volumes:
       - hermes_lab_host_data:/opt/data
       - ./hermes/lab-host/config.yaml:/opt/data/config.yaml:ro
@@ -105,21 +97,17 @@ services:
     command: ["gateway", "run"]
 
   hermes-vector:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
     restart: unless-stopped
     networks:
       - office
     depends_on:
       - office-gateway
     env_file:
-      - .env
+      - ./hermes/vector/.env
     environment:
       HERMES_HOME: /opt/data
-      A2A_HOST: 0.0.0.0
-      A2A_PORT: "9900"
-      A2A_TOKEN: ${A2A_TOKEN_VECTOR}
       OFFICE_GATEWAY_URL: http://office-gateway:8080
-      OFFICE_GATEWAY_TOKEN: ${OFFICE_GATEWAY_TOKEN_VECTOR}
     volumes:
       - hermes_vector_data:/opt/data
       - ./hermes/vector/config.yaml:/opt/data/config.yaml:ro
@@ -127,21 +115,17 @@ services:
     command: ["gateway", "run"]
 
   hermes-cluster-gpu:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
     restart: unless-stopped
     networks:
       - office
     depends_on:
       - office-gateway
     env_file:
-      - .env
+      - ./hermes/cluster-gpu/.env
     environment:
       HERMES_HOME: /opt/data
-      A2A_HOST: 0.0.0.0
-      A2A_PORT: "9900"
-      A2A_TOKEN: ${A2A_TOKEN_CLUSTER_GPU}
       OFFICE_GATEWAY_URL: http://office-gateway:8080
-      OFFICE_GATEWAY_TOKEN: ${OFFICE_GATEWAY_TOKEN_CLUSTER}
     volumes:
       - hermes_cluster_gpu_data:/opt/data
       - ./hermes/cluster-gpu/config.yaml:/opt/data/config.yaml:ro
@@ -149,21 +133,17 @@ services:
     command: ["gateway", "run"]
 
   hermes-llm-edge:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
     restart: unless-stopped
     networks:
       - office
     depends_on:
       - office-gateway
     env_file:
-      - .env
+      - ./hermes/llm-edge/.env
     environment:
       HERMES_HOME: /opt/data
-      A2A_HOST: 0.0.0.0
-      A2A_PORT: "9900"
-      A2A_TOKEN: ${A2A_TOKEN_LLM_EDGE}
       OFFICE_GATEWAY_URL: http://office-gateway:8080
-      OFFICE_GATEWAY_TOKEN: ${OFFICE_GATEWAY_TOKEN_LLM}
     volumes:
       - hermes_llm_edge_data:/opt/data
       - ./hermes/llm-edge/config.yaml:/opt/data/config.yaml:ro
@@ -171,21 +151,17 @@ services:
     command: ["gateway", "run"]
 
   hermes-obs:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:latest}
+    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}
     restart: unless-stopped
     networks:
       - office
     depends_on:
       - office-gateway
     env_file:
-      - .env
+      - ./hermes/obs/.env
     environment:
       HERMES_HOME: /opt/data
-      A2A_HOST: 0.0.0.0
-      A2A_PORT: "9900"
-      A2A_TOKEN: ${A2A_TOKEN_OBS}
       OFFICE_GATEWAY_URL: http://office-gateway:8080
-      OFFICE_GATEWAY_TOKEN: ${OFFICE_GATEWAY_TOKEN_OBS}
     volumes:
       - hermes_obs_data:/opt/data
       - ./hermes/obs/config.yaml:/opt/data/config.yaml:ro

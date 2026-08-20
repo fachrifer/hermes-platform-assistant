@@ -89,6 +89,41 @@ class GatewayStore:
                 conn.execute(
                     "ALTER TABLE actions ADD COLUMN role TEXT NOT NULL DEFAULT ''"
                 )
+            if "executing_at" not in columns:
+                conn.execute("ALTER TABLE actions ADD COLUMN executing_at TEXT")
+            self._recover_stale_executing(conn)
+
+    def _recover_stale_executing(self, conn: sqlite3.Connection) -> None:
+        cutoff = _iso_z(
+            _utc_now() - timedelta(seconds=self.action_ttl_seconds)
+        )
+        now = _iso_z(_utc_now())
+        rows = conn.execute(
+            """
+            SELECT action_id
+            FROM actions
+            WHERE status = 'executing'
+              AND COALESCE(executing_at, created_at) <= ?
+            """,
+            (cutoff,),
+        ).fetchall()
+        for row in rows:
+            cur = conn.execute(
+                """
+                UPDATE actions
+                SET status = 'failed'
+                WHERE action_id = ? AND status = 'executing'
+                """,
+                (row["action_id"],),
+            )
+            if cur.rowcount:
+                conn.execute(
+                    """
+                    INSERT INTO audit (action_id, event, detail, created_at)
+                    VALUES (?, 'failed', 'failed:adapter_unavailable', ?)
+                    """,
+                    (row["action_id"], now),
+                )
 
     def propose(
         self,
@@ -215,10 +250,10 @@ class GatewayStore:
         with self._connect() as conn:
             cur = conn.execute(
                 """
-                UPDATE actions SET status = 'executing'
+                UPDATE actions SET status = 'executing', executing_at = ?
                 WHERE action_id = ? AND status = 'pending' AND expires_at >= ?
                 """,
-                (action_id, now),
+                (now, action_id, now),
             )
             if cur.rowcount == 0:
                 return None

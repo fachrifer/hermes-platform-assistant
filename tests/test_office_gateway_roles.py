@@ -304,3 +304,67 @@ def test_validate_execute_rejects_role_mismatch(tmp_path):
     row = service.store.get_action(pending.action_id)
     assert row is not None
     assert row.status == "pending"
+
+
+def test_office_gateway_self_restart_is_audited_before_restart(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    events: list[str] = []
+
+    class RecordingStore(GatewayStore):
+        def mark_executed(self, action_id, ok, detail):
+            events.append("mark_executed")
+            return super().mark_executed(action_id, ok, detail)
+
+    class RecordingDockerOps:
+        def restart(self, target):
+            events.append(f"restart:{target}")
+
+    target = "hermes-assistant-office-gateway-1"
+    config = replace(
+        _test_config(),
+        db_path=str(tmp_path / "gateway.db"),
+        write_targets={"lab-host": frozenset({target})},
+    )
+    store = RecordingStore(config.db_path, config.action_ttl_seconds)
+    service = ActionService(config, store, docker_ops=RecordingDockerOps())
+    pending = service.propose("lab-host", "restart_service", target)
+
+    result = service.execute("lab-host", pending.action_id)
+
+    assert result.status == "executed"
+    assert events == ["mark_executed", f"restart:{target}"]
+
+
+def test_store_recovers_stale_executing_actions_on_init(tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    from office_gateway.store import GatewayStore, _iso_z
+
+    db_path = str(tmp_path / "gateway.db")
+    store = GatewayStore(db_path, action_ttl_seconds=60)
+    pending = store.propose("restart_service", "milvus-standalone", role="vector")
+    assert store.claim_pending(pending.action_id) is not None
+    stale = _iso_z(datetime.now(timezone.utc) - timedelta(seconds=120))
+    with store._connect() as conn:
+        conn.execute(
+            """
+            UPDATE actions
+            SET created_at = ?, expires_at = ?, executing_at = ?
+            WHERE action_id = ?
+            """,
+            (stale, stale, stale, pending.action_id),
+        )
+
+    recovered = GatewayStore(db_path, action_ttl_seconds=60)
+
+    row = recovered.get_action(pending.action_id)
+    assert row is not None
+    assert row.status == "failed"
+    audit = recovered.list_audit(limit=10)
+    assert any(
+        entry["action_id"] == pending.action_id
+        and entry["event"] == "failed"
+        and entry["detail"] == "failed:adapter_unavailable"
+        for entry in audit
+    )

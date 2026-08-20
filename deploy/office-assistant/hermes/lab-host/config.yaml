@@ -2,10 +2,17 @@
 agent:
   name: lab-host
 
-a2a:
-  enabled: true
-  host: 0.0.0.0
-  port: 9900
-  bearer_token: ${A2A_TOKEN_LAB_HOST}
+model:
+  provider: custom
+  default: gpt-4o
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
 
-# Star topology: specialists do not list A2A peers.
+gateway:
+  platforms:
+    a2a:
+      enabled: true
+      extra:
+        port: 9900
+
+# Star topology: specialists do not list outbound A2A peers.

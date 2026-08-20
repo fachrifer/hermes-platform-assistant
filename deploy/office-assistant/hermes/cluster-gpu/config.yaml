@@ -2,8 +2,15 @@
 agent:
   name: cluster-gpu
 
-a2a:
-  enabled: true
-  host: 0.0.0.0
-  port: 9900
-  bearer_token: ${A2A_TOKEN_CLUSTER_GPU}
+model:
+  provider: custom
+  default: gpt-4o
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
+
+gateway:
+  platforms:
+    a2a:
+      enabled: true
+      extra:
+        port: 9900
