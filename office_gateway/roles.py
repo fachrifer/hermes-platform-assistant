@@ -5,7 +5,15 @@ ROLES = frozenset(
 )
 
 READ_ROUTES = {
-    "supervisor": frozenset({"/v1/status", "/v1/services", "/v1/audit"}),
+    "supervisor": frozenset(
+        {
+            "/v1/status",
+            "/v1/services",
+            "/v1/audit",
+            "/v1/metrics/query",
+            "/v1/grafana/links",
+        }
+    ),
     "lab-host": frozenset({"/v1/status", "/v1/services", "/v1/docker/inspect"}),
     "vector": frozenset({"/v1/status", "/v1/services"}),
     "cluster-gpu": frozenset(

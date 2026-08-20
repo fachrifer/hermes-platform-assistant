@@ -6,10 +6,14 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
+import httpx
+
 from office_gateway.actions import ActionError, ActionService
 from office_gateway.collectors import HttpServiceCollector
 from office_gateway.config import GatewayConfig
 from office_gateway.docker_ops import DockerOps
+from office_gateway.grafana_links import build_links
+from office_gateway.metrics import instant_query
 from office_gateway.roles import can_read, can_write, role_for_token
 from office_gateway.store import GatewayStore
 
@@ -83,6 +87,36 @@ def create_app(config: GatewayConfig, docker_ops: DockerOps | None = None) -> Fa
             return ops.inspect(container)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="container not found") from exc
+
+    @app.get("/v1/grafana/links")
+    async def grafana_links(role: str = Depends(_role_from_request)) -> dict:
+        _require_read(role, "/v1/grafana/links")
+        links = build_links(
+            base=config.grafana_base_url,
+            dashboards=config.grafana_dashboards,
+            panels=config.grafana_panel_ids,
+        )
+        return {"links": links}
+
+    @app.get("/v1/metrics/query")
+    async def metrics_query(
+        query: str = "",
+        role: str = Depends(_role_from_request),
+    ) -> dict:
+        _require_read(role, "/v1/metrics/query")
+        try:
+            return await instant_query(config.metrics_url, query)
+        except ValueError as exc:
+            msg = str(exc)
+            if msg == "query not allowlisted":
+                detail = "query not allowlisted"
+            elif msg == "query tidak valid":
+                detail = "query not valid"
+            else:
+                detail = "metrics not configured"
+            raise HTTPException(status_code=400, detail=detail) from exc
+        except httpx.HTTPError:
+            raise HTTPException(status_code=502, detail="metrics upstream error")
 
     @app.post("/v1/actions/propose")
     async def propose_action(
