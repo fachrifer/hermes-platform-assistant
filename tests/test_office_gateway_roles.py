@@ -112,3 +112,85 @@ def test_validate_propose_rejects_prod(tmp_path):
     service = ActionService(config, GatewayStore(config.db_path, config.action_ttl_seconds))
     with pytest.raises(ActionError):
         service.propose("vector", "restart_service", "milvus-prod")
+
+
+def test_audit_detail_redacts_secrets(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    store = GatewayStore(str(tmp_path / "gateway.db"))
+    pending = store.propose("restart_service", "milvus-standalone")
+    dirty = (
+        "container not found\n"
+        "password=abc123\n"
+        "API_KEY=secret\n"
+        "authorization: Bearer xyz\n"
+        "KUBECONFIG=/root/.kube/config"
+    )
+    assert store.claim_pending(pending.action_id) is not None
+    store.mark_executed(pending.action_id, ok=False, detail=dirty)
+
+    entries = store.list_audit(limit=10)
+    failed = next(e for e in entries if e["event"] == "failed")
+    detail_lower = failed["detail"].lower()
+    assert "password" not in detail_lower
+    assert "secret" not in detail_lower
+    assert "authorization" not in detail_lower
+    assert "kubeconfig" not in detail_lower
+    assert "container not found" in failed["detail"]
+
+
+def test_audit_api_redacts_secrets(tmp_path):
+    from office_gateway.app import create_app
+    from office_gateway.store import GatewayStore
+
+    config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
+    client = TestClient(create_app(config))
+    store = GatewayStore(config.db_path)
+    pending = store.propose("restart_service", "milvus-standalone")
+    assert store.claim_pending(pending.action_id) is not None
+    store.mark_executed(
+        pending.action_id,
+        ok=False,
+        detail="failed: token=leaked\ncontainer not found",
+    )
+
+    response = client.get(
+        "/v1/audit",
+        headers={"Authorization": "Bearer tok-sup"},
+    )
+    assert response.status_code == 200
+    entries = response.json()["entries"]
+    failed = next(e for e in entries if e["event"] == "failed")
+    assert "token" not in failed["detail"].lower()
+    assert "container not found" in failed["detail"]
+
+
+def test_execute_unknown_action_returns_404(client):
+    response = client.post(
+        "/v1/actions/execute",
+        headers={"Authorization": "Bearer tok-vec"},
+        json={"action_id": "00000000-0000-0000-0000-000000000000"},
+    )
+    assert response.status_code == 404
+
+
+def test_execute_second_call_rejects_not_pending(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
+    service = ActionService(config, GatewayStore(config.db_path, config.action_ttl_seconds))
+    pending = service.propose("vector", "restart_service", "milvus-standalone")
+    service.execute("vector", pending.action_id)
+    with pytest.raises(ActionError, match="already executed|not pending"):
+        service.execute("vector", pending.action_id)
+
+
+def test_claim_pending_is_atomic(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    store = GatewayStore(str(tmp_path / "gateway.db"))
+    pending = store.propose("restart_service", "milvus-standalone")
+    first = store.claim_pending(pending.action_id)
+    second = store.claim_pending(pending.action_id)
+    assert first is not None
+    assert second is None

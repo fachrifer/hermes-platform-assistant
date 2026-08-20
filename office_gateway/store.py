@@ -1,11 +1,38 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+_MAX_AUDIT_DETAIL_LEN = 200
+_SENSITIVE_LINE_RE = re.compile(
+    r"password|token|secret|api_key|kubeconfig|authorization",
+    re.IGNORECASE,
+)
+_RAW_ENV_LINE_RE = re.compile(r"^[A-Z][A-Z0-9_]*=")
+
+
+def sanitize_audit_detail(detail: str) -> str:
+    if not detail:
+        return ""
+    safe_lines: list[str] = []
+    for line in detail.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _SENSITIVE_LINE_RE.search(stripped):
+            continue
+        if _RAW_ENV_LINE_RE.match(stripped):
+            continue
+        safe_lines.append(stripped)
+    safe = "; ".join(safe_lines) if safe_lines else "redacted"
+    if len(safe) > _MAX_AUDIT_DETAIL_LEN:
+        safe = safe[: _MAX_AUDIT_DETAIL_LEN - 3] + "..."
+    return safe
 
 
 def _utc_now() -> datetime:
@@ -155,23 +182,59 @@ class GatewayStore:
             status="expired",
         )
 
+    def _row_to_pending(self, row: sqlite3.Row) -> PendingAction:
+        return PendingAction(
+            action_id=row["action_id"],
+            action=row["action"],
+            target=row["target"],
+            params_json=row["params_json"],
+            summary=row["summary"],
+            created_at=row["created_at"],
+            expires_at=row["expires_at"],
+            status=row["status"],
+        )
+
+    def claim_pending(self, action_id: str) -> PendingAction | None:
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE actions SET status = 'executing'
+                WHERE action_id = ? AND status = 'pending'
+                """,
+                (action_id,),
+            )
+            if cur.rowcount == 0:
+                return None
+            row = conn.execute(
+                "SELECT * FROM actions WHERE action_id = ?", (action_id,)
+            ).fetchone()
+        if row is None:
+            return None
+        return self._row_to_pending(row)
+
     def mark_executed(self, action_id: str, ok: bool, detail: str) -> PendingAction | None:
         action = self.get_action(action_id)
         if action is None:
             return None
         status = "executed" if ok else "failed"
+        safe_detail = sanitize_audit_detail(detail)
         now = _iso_z(_utc_now())
         with self._connect() as conn:
-            conn.execute(
-                "UPDATE actions SET status = ? WHERE action_id = ?",
+            cur = conn.execute(
+                """
+                UPDATE actions SET status = ?
+                WHERE action_id = ? AND status = 'executing'
+                """,
                 (status, action_id),
             )
+            if cur.rowcount == 0:
+                return None
             conn.execute(
                 """
                 INSERT INTO audit (action_id, event, detail, created_at)
                 VALUES (?, ?, ?, ?)
                 """,
-                (action_id, "executed" if ok else "failed", detail, now),
+                (action_id, "executed" if ok else "failed", safe_detail, now),
             )
         return PendingAction(
             action_id=action.action_id,
@@ -200,7 +263,7 @@ class GatewayStore:
                 "id": row["id"],
                 "action_id": row["action_id"],
                 "event": row["event"],
-                "detail": row["detail"],
+                "detail": sanitize_audit_detail(row["detail"]),
                 "created_at": row["created_at"],
             }
             for row in rows

@@ -43,12 +43,15 @@ class ActionService:
         action = self.store.mark_expired_if_needed(action)
         if action.status == "expired":
             raise ActionError("action expired")
-        if action.status != "pending":
-            raise ActionError(f"action status is {action.status}")
+        action = self.store.claim_pending(action_id)
+        if action is None:
+            raise ActionError("action already executed or not pending")
         validate_propose(self.config, role, action.action, action.target)
         result = self.store.mark_executed(
             action_id,
             ok=False,
             detail="restart adapter not available",
         )
+        if result is None:
+            raise ActionError("action already executed or not pending")
         return result

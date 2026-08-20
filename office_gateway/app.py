@@ -102,7 +102,10 @@ def create_app(config: GatewayConfig) -> FastAPI:
         try:
             result = actions.execute(role, body.action_id)
         except ActionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
+            msg = str(exc)
+            if msg == "action not found":
+                raise HTTPException(status_code=404, detail=msg) from exc
+            raise HTTPException(status_code=403, detail=msg) from exc
         if result is None:
             raise HTTPException(status_code=404, detail="action not found")
         return {
