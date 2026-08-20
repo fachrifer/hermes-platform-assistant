@@ -17,7 +17,7 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
    cp hermes/supervisor/.env.example hermes/supervisor/.env
    ```
 
-2. Fill `.env`: all six `OFFICE_GATEWAY_TOKEN_*` values, five `A2A_TOKEN_*` values, `OFFICE_SERVICE_URLS`, Grafana placeholders, and write allowlists.
+2. Fill `.env`: all six `OFFICE_GATEWAY_TOKEN_*` values, five `A2A_TOKEN_*` values, `OFFICE_SERVICE_URLS`, Grafana placeholders, write allowlists, and `DOCKER_GID` (replace the example `998` with `stat -c %g /var/run/docker.sock` on Linux or `stat -f %g /var/run/docker.sock` on macOS Docker Desktop).
 
 3. After the first `docker compose up -d --build`, run `docker compose ps -a` and update `OFFICE_WRITE_LAB_HOST` in `.env` with the actual Hermes container names if they differ from the placeholders.
 
