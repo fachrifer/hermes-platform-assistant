@@ -82,27 +82,56 @@ def test_count_mig_profiles_from_labels_and_allocatable():
     assert count_mig_profiles(items) == {"1g.18gb": 1, "2g.35gb": 2}
 
 
-def test_sanitize_items_strips_sensitive_keys():
+def test_count_mig_profiles_reads_gpu_product_label():
     items = [
         {
-            "metadata": {"name": "secret-cm"},
+            "metadata": {"labels": {"nvidia.com/gpu.product": "3g.71gb"}},
+            "status": {"allocatable": {}},
+        }
+    ]
+    assert count_mig_profiles(items) == {"3g.71gb": 1}
+
+
+def test_count_mig_profiles_prefers_allocatable_over_label():
+    items = [
+        {
+            "metadata": {"labels": {"nvidia.com/mig.profile": "1g.18gb"}},
+            "status": {"allocatable": {"nvidia.com/mig-1g.18gb": "7"}},
+        }
+    ]
+    assert count_mig_profiles(items) == {"1g.18gb": 7}
+
+
+def test_sanitize_items_projects_allowlisted_fields():
+    items = [
+        {
+            "metadata": {
+                "name": "pod-1",
+                "namespace": "default",
+                "labels": {"app": "web", "secret-token": "leak"},
+                "annotations": {"kubectl.kubernetes.io/last-applied": "x"},
+            },
+            "spec": {"volumes": [{"secret": {"secretName": "s"}}]},
+            "status": {"phase": "Running"},
             "data": {"kubeconfig": "leak"},
-            "token": "abc",
-            "secret": "xyz",
         }
     ]
     out = sanitize_items("pods", items)
-    assert out[0]["metadata"]["name"] == "secret-cm"
-    assert "data" not in out[0]
-    assert "token" not in out[0]
-    assert "secret" not in out[0]
-    assert "kubeconfig" not in str(out[0])
+    assert out == [
+        {
+            "kind": "pods",
+            "name": "pod-1",
+            "namespace": "default",
+            "labels": {"app": "web"},
+            "status": {"phase": "Running"},
+        }
+    ]
 
 
 def test_sanitize_configmap_names_only():
     items = [{"metadata": {"name": "app-config"}, "data": {"key": "value"}}]
     out = sanitize_items("configmap", items)
-    assert out == [{"name": "app-config"}]
+    assert out == [{"kind": "configmap", "name": "app-config"}]
 
 
 def test_list_resources_rejects_unknown_kind():
@@ -130,7 +159,7 @@ def test_list_resources_uses_injected_list_fn():
     result = asyncio.run(run())
     assert seen == [("nodes", None)]
     assert result["kind"] == "nodes"
-    assert result["items"][0]["metadata"]["name"] == "node-1"
+    assert result["items"][0] == {"kind": "nodes", "name": "node-1"}
 
 
 def test_get_mig_actual_adapter_not_configured():
@@ -164,7 +193,7 @@ def test_get_mig_actual_counts_profiles():
         return await ops.get_mig_actual()
 
     result = asyncio.run(run())
-    assert result["actual"] == {"1g.18gb": 8}
+    assert result["actual"] == {"1g.18gb": 7}
     assert "error" not in result
 
 
@@ -252,8 +281,25 @@ def test_k8s_resources_strips_secrets(client):
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["items"][0]["metadata"]["name"] == "pod-1"
-    assert "token" not in body["items"][0].get("spec", {})
+    assert body["items"][0] == {"kind": "pods", "name": "pod-1"}
+
+
+def test_list_resources_gateway_honors_namespace():
+    seen: list[tuple[str, str | None]] = []
+
+    async def list_fn(kind: str, namespace: str | None) -> dict:
+        seen.append((kind, namespace))
+        return {"items": [{"metadata": {"name": "gw-1", "namespace": namespace}}]}
+
+    ops = K8sOps(list_fn=list_fn)
+
+    async def run() -> dict:
+        return await ops.list_resources("gateway", "edge")
+
+    result = asyncio.run(run())
+    assert seen == [("gateway", "edge")]
+    assert result["items"][0]["name"] == "gw-1"
+    assert result["items"][0]["namespace"] == "edge"
 
 
 def test_allowed_kinds_match_brief():

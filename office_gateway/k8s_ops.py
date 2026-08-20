@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any, Awaitable, Callable, Optional
 
 import httpx
@@ -18,9 +19,10 @@ ALLOWED_KINDS = frozenset(
     }
 )
 
-_SENSITIVE_KEYS = frozenset({"data", "secret", "token", "kubeconfig"})
 _MIG_PROFILE_LABEL = "nvidia.com/mig.profile"
+_GPU_PRODUCT_LABEL = "nvidia.com/gpu.product"
 _MIG_RESOURCE_PREFIX = "nvidia.com/mig-"
+_SENSITIVE_LABEL_RE = re.compile(r"secret|token|password|kubeconfig|data", re.I)
 
 ListFn = Callable[[str, Optional[str]], Awaitable[dict[str, Any]]]
 
@@ -29,48 +31,93 @@ class AdapterNotConfigured(Exception):
     pass
 
 
-def count_mig_profiles(items: list[dict[str, Any]]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for item in items:
-        labels = (item.get("metadata") or {}).get("labels") or {}
-        profile = labels.get(_MIG_PROFILE_LABEL)
-        if profile:
-            counts[profile] = counts.get(profile, 0) + 1
+def _profile_from_labels(labels: dict[str, Any]) -> Optional[str]:
+    profile = labels.get(_MIG_PROFILE_LABEL)
+    if profile:
+        return str(profile)
+    product = labels.get(_GPU_PRODUCT_LABEL)
+    if product:
+        return str(product)
+    return None
 
-        allocatable = (item.get("status") or {}).get("allocatable") or {}
-        for key, value in allocatable.items():
-            if not str(key).startswith(_MIG_RESOURCE_PREFIX):
-                continue
-            profile_name = str(key)[len(_MIG_RESOURCE_PREFIX) :]
-            try:
-                amount = int(value)
-            except (TypeError, ValueError):
-                continue
-            if amount:
-                counts[profile_name] = counts.get(profile_name, 0) + amount
+
+def _mig_allocatable_counts(allocatable: dict[str, Any]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for key, value in allocatable.items():
+        if not str(key).startswith(_MIG_RESOURCE_PREFIX):
+            continue
+        profile_name = str(key)[len(_MIG_RESOURCE_PREFIX) :]
+        try:
+            amount = int(value)
+        except (TypeError, ValueError):
+            continue
+        if amount:
+            counts[profile_name] = counts.get(profile_name, 0) + amount
     return counts
 
 
-def _strip_sensitive(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {
-            key: _strip_sensitive(item)
-            for key, item in value.items()
-            if str(key).lower() not in _SENSITIVE_KEYS
-        }
-    if isinstance(value, list):
-        return [_strip_sensitive(item) for item in value]
-    return value
+def count_mig_profiles(items: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in items:
+        allocatable = (item.get("status") or {}).get("allocatable") or {}
+        mig_counts = _mig_allocatable_counts(allocatable)
+        if mig_counts:
+            for profile, amount in mig_counts.items():
+                counts[profile] = counts.get(profile, 0) + amount
+            continue
+
+        labels = (item.get("metadata") or {}).get("labels") or {}
+        profile = _profile_from_labels(labels)
+        if profile:
+            counts[profile] = counts.get(profile, 0) + 1
+    return counts
+
+
+def _filter_labels(labels: dict[str, Any]) -> dict[str, str]:
+    return {
+        str(key): str(value)
+        for key, value in labels.items()
+        if not _SENSITIVE_LABEL_RE.search(str(key))
+    }
+
+
+def _project_status(status: dict[str, Any]) -> dict[str, Any]:
+    projected: dict[str, Any] = {}
+    if "phase" in status:
+        projected["phase"] = status["phase"]
+    if "ready" in status:
+        projected["ready"] = status["ready"]
+    return projected
+
+
+def project_item(kind: str, item: dict[str, Any]) -> dict[str, Any]:
+    meta = item.get("metadata") or {}
+    projected: dict[str, Any] = {
+        "kind": kind,
+        "name": meta.get("name", ""),
+    }
+    namespace = meta.get("namespace")
+    if namespace:
+        projected["namespace"] = namespace
+
+    labels = _filter_labels(meta.get("labels") or {})
+    if labels:
+        projected["labels"] = labels
+
+    status = _project_status(item.get("status") or {})
+    if status:
+        projected["status"] = status
+
+    return projected
 
 
 def sanitize_items(kind: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if kind == "configmap":
-        sanitized: list[dict[str, Any]] = []
-        for item in items:
-            meta = item.get("metadata") or {}
-            sanitized.append({"name": meta.get("name", "")})
-        return sanitized
-    return [_strip_sensitive(item) for item in items]
+        return [
+            {"kind": kind, "name": (item.get("metadata") or {}).get("name", "")}
+            for item in items
+        ]
+    return [project_item(kind, item) for item in items]
 
 
 def _kind_path(kind: str, namespace: Optional[str]) -> str:
@@ -88,6 +135,8 @@ def _kind_path(kind: str, namespace: Optional[str]) -> str:
         ns = namespace or "default"
         return f"/api/v1/namespaces/{ns}/configmaps"
     if kind == "gateway":
+        if namespace:
+            return f"/apis/gateway.networking.k8s.io/v1/namespaces/{namespace}/gateways"
         return "/apis/gateway.networking.k8s.io/v1/gateways"
     if kind == "httproute":
         ns = namespace or "default"
@@ -145,11 +194,19 @@ def _list_via_kubernetes(kind: str, namespace: Optional[str]) -> dict[str, Any]:
         items = [item.to_dict() for item in api.list_namespaced_config_map(namespace=ns).items]
     elif kind == "gateway":
         api = client.CustomObjectsApi()
-        payload = api.list_cluster_custom_object(
-            group="gateway.networking.k8s.io",
-            version="v1",
-            plural="gateways",
-        )
+        if namespace:
+            payload = api.list_namespaced_custom_object(
+                group="gateway.networking.k8s.io",
+                version="v1",
+                namespace=namespace,
+                plural="gateways",
+            )
+        else:
+            payload = api.list_cluster_custom_object(
+                group="gateway.networking.k8s.io",
+                version="v1",
+                plural="gateways",
+            )
         items = payload.get("items", [])
     elif kind == "httproute":
         api = client.CustomObjectsApi()
