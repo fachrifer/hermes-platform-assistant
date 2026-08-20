@@ -95,9 +95,16 @@ def test_lab_host_warns_self_restart():
 
 
 def test_all_skills_forbid_delegate_task():
-    for skill_dir in sorted(ROOT.iterdir()):
-        skill_md = skill_dir / "SKILL.md"
-        if not skill_md.is_file():
-            continue
+    ban_phrase = "do not use `delegate_task`"
+    for role in (
+        "supervisor",
+        "lab-host",
+        "vector",
+        "cluster-gpu",
+        "llm-edge",
+        "obs",
+    ):
+        skill_md = ROOT / role / "SKILL.md"
+        assert skill_md.is_file(), f"missing {skill_md}"
         normalized = skill_md.read_text().lower().replace("*", "")
-        assert "do not use `delegate_task`" in normalized, f"{skill_md} must forbid delegate_task"
+        assert ban_phrase in normalized, f"{skill_md} must forbid delegate_task"
