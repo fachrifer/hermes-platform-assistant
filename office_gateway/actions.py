@@ -17,6 +17,12 @@ def validate_propose(config, role: str, action: str, target: str) -> None:
         raise ActionError("unknown target")
 
 
+def validate_execute(config, role: str, proposed_role: str, action: str, target: str) -> None:
+    if role != proposed_role:
+        raise ActionError("forbidden")
+    validate_propose(config, role, action, target)
+
+
 class ActionService:
     def __init__(self, config, store) -> None:
         self.config = config
@@ -30,6 +36,7 @@ class ActionService:
         return self.store.propose(
             action=action,
             target=target,
+            role=role,
             params=params,
             summary=summary,
         )
@@ -40,6 +47,7 @@ class ActionService:
         action = self.store.get_action(action_id)
         if action is None:
             raise ActionError("action not found")
+        validate_execute(self.config, role, action.role, action.action, action.target)
         claimed = self.store.claim_pending(action_id)
         if claimed is None:
             action = self.store.get_action(action_id)
@@ -51,7 +59,6 @@ class ActionService:
                 self.store.mark_expired_if_needed(action)
                 raise ActionError("action expired")
             raise ActionError("action not pending")
-        validate_propose(self.config, role, claimed.action, claimed.target)
         result = self.store.mark_executed(
             action_id,
             ok=False,

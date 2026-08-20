@@ -37,6 +37,7 @@ class PendingAction:
     action_id: str
     action: str
     target: str
+    role: str
     params_json: str
     summary: str
     created_at: str
@@ -64,6 +65,7 @@ class GatewayStore:
                     action_id TEXT PRIMARY KEY,
                     action TEXT NOT NULL,
                     target TEXT NOT NULL,
+                    role TEXT NOT NULL,
                     params_json TEXT NOT NULL,
                     summary TEXT NOT NULL,
                     created_at TEXT NOT NULL,
@@ -79,11 +81,20 @@ class GatewayStore:
                 );
                 """
             )
+            columns = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(actions)").fetchall()
+            }
+            if "role" not in columns:
+                conn.execute(
+                    "ALTER TABLE actions ADD COLUMN role TEXT NOT NULL DEFAULT ''"
+                )
 
     def propose(
         self,
         action: str,
         target: str,
+        role: str,
         params: dict | None = None,
         summary: str = "",
     ) -> PendingAction:
@@ -99,11 +110,21 @@ class GatewayStore:
             conn.execute(
                 """
                 INSERT INTO actions (
-                    action_id, action, target, params_json, summary,
+                    action_id, action, target, role, params_json, summary,
                     created_at, expires_at, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (action_id, action, target, params_json, summary, created_at, expires_at, status),
+                (
+                    action_id,
+                    action,
+                    target,
+                    role,
+                    params_json,
+                    summary,
+                    created_at,
+                    expires_at,
+                    status,
+                ),
             )
             conn.execute(
                 """
@@ -117,6 +138,7 @@ class GatewayStore:
             action_id=action_id,
             action=action,
             target=target,
+            role=role,
             params_json=params_json,
             summary=summary,
             created_at=created_at,
@@ -135,6 +157,7 @@ class GatewayStore:
             action_id=row["action_id"],
             action=row["action"],
             target=row["target"],
+            role=row["role"],
             params_json=row["params_json"],
             summary=row["summary"],
             created_at=row["created_at"],
@@ -166,6 +189,7 @@ class GatewayStore:
             action_id=action.action_id,
             action=action.action,
             target=action.target,
+            role=action.role,
             params_json=action.params_json,
             summary=action.summary,
             created_at=action.created_at,
@@ -178,6 +202,7 @@ class GatewayStore:
             action_id=row["action_id"],
             action=row["action"],
             target=row["target"],
+            role=row["role"],
             params_json=row["params_json"],
             summary=row["summary"],
             created_at=row["created_at"],
@@ -232,6 +257,7 @@ class GatewayStore:
             action_id=action.action_id,
             action=action.action,
             target=action.target,
+            role=action.role,
             params_json=action.params_json,
             summary=action.summary,
             created_at=action.created_at,

@@ -129,7 +129,7 @@ def test_audit_detail_allowlisted_only(tmp_path):
     from office_gateway.store import ALLOWED_AUDIT_DETAIL_CODES, GatewayStore
 
     store = GatewayStore(str(tmp_path / "gateway.db"))
-    pending = store.propose("restart_service", "milvus-standalone")
+    pending = store.propose("restart_service", "milvus-standalone", role="vector")
     assert store.claim_pending(pending.action_id) is not None
     store.mark_executed(
         pending.action_id,
@@ -151,7 +151,7 @@ def test_audit_api_returns_allowlisted_codes_only(tmp_path):
     config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
     client = TestClient(create_app(config))
     store = GatewayStore(config.db_path)
-    pending = store.propose("restart_service", "milvus-standalone")
+    pending = store.propose("restart_service", "milvus-standalone", role="vector")
     assert store.claim_pending(pending.action_id) is not None
     store.mark_executed(
         pending.action_id,
@@ -208,7 +208,7 @@ def test_claim_pending_is_atomic(tmp_path):
     from office_gateway.store import GatewayStore
 
     store = GatewayStore(str(tmp_path / "gateway.db"))
-    pending = store.propose("restart_service", "milvus-standalone")
+    pending = store.propose("restart_service", "milvus-standalone", role="vector")
     first = store.claim_pending(pending.action_id)
     second = store.claim_pending(pending.action_id)
     assert first is not None
@@ -221,7 +221,7 @@ def test_claim_pending_rejects_expired_without_two_step_check(tmp_path):
     from office_gateway.store import GatewayStore, _iso_z
 
     store = GatewayStore(str(tmp_path / "gateway.db"), action_ttl_seconds=1)
-    pending = store.propose("restart_service", "milvus-standalone")
+    pending = store.propose("restart_service", "milvus-standalone", role="vector")
     expired_at = _iso_z(datetime.now(timezone.utc) - timedelta(seconds=5))
     with store._connect() as conn:
         conn.execute(
@@ -251,3 +251,56 @@ def test_execute_expired_action_returns_action_expired(tmp_path):
         )
     with pytest.raises(ActionError, match="action expired"):
         service.execute("vector", pending.action_id)
+
+
+def test_propose_persists_role(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    store = GatewayStore(str(tmp_path / "gateway.db"))
+    pending = store.propose("restart_service", "milvus-standalone", role="vector")
+    row = store.get_action(pending.action_id)
+    assert row is not None
+    assert row.role == "vector"
+
+
+def test_execute_wrong_role_returns_forbidden_without_claiming(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
+    service = ActionService(config, GatewayStore(config.db_path, config.action_ttl_seconds))
+    pending = service.propose("vector", "restart_service", "milvus-standalone")
+    with pytest.raises(ActionError, match="forbidden"):
+        service.execute("lab-host", pending.action_id)
+    row = service.store.get_action(pending.action_id)
+    assert row is not None
+    assert row.status == "pending"
+
+
+def test_execute_wrong_role_api_returns_403_without_claiming(client):
+    propose = client.post(
+        "/v1/actions/propose",
+        headers={"Authorization": "Bearer tok-vec"},
+        json={"action": "restart_service", "target": "milvus-standalone"},
+    )
+    assert propose.status_code == 200
+    action_id = propose.json()["action_id"]
+    response = client.post(
+        "/v1/actions/execute",
+        headers={"Authorization": "Bearer tok-lab"},
+        json={"action_id": action_id},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "forbidden"
+
+
+def test_validate_execute_rejects_role_mismatch(tmp_path):
+    from office_gateway.store import GatewayStore
+
+    config = replace(_test_config(), db_path=str(tmp_path / "gateway.db"))
+    service = ActionService(config, GatewayStore(config.db_path, config.action_ttl_seconds))
+    pending = service.propose("lab-host", "restart_service", "aiplatform-dashboard")
+    with pytest.raises(ActionError, match="forbidden"):
+        service.execute("vector", pending.action_id)
+    row = service.store.get_action(pending.action_id)
+    assert row is not None
+    assert row.status == "pending"
