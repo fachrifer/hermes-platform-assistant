@@ -10,13 +10,12 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
 
 ## Setup
 
-1. Copy environment templates:
+From `deploy/office-assistant`:
+
+1. Copy environment templates (skips files that already exist):
 
    ```bash
-   cp .env.example .env
-   for role in supervisor lab-host vector cluster-gpu llm-edge obs; do
-     cp "hermes/$role/.env.example" "hermes/$role/.env"
-   done
+   ./scripts/copy-env.sh
    ```
 
 2. Fill the operator `.env` with all six `OFFICE_GATEWAY_TOKEN_*` values,
@@ -36,19 +35,27 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
    supervisor env. Set supervisor dashboard username/password before binding
    to the Lab LAN.
 
-4. After the first `docker compose up -d --build`, run `docker compose ps -a`
-   and update `OFFICE_WRITE_LAB_HOST` in `.env` with the actual Hermes
-   container names if they differ from the placeholders.
-
-5. Start the fleet:
+4. Start the fleet (loads `images/office-fleet-images.tar.gz` when present):
 
    ```bash
-   docker compose up -d --build
+   ./scripts/load-and-start.sh
    ```
 
-6. Open the Dashboard at `http://10.216.4.80:9119` (or the host in
+   After the first start, run `./scripts/status.sh` and update
+   `OFFICE_WRITE_LAB_HOST` in `.env` with the actual Hermes container names
+   if they differ from the placeholders.
+
+5. Open the Dashboard at `http://10.216.4.80:9119` (or the host in
    `HERMES_DASHBOARD_PUBLISH`) and sign in with the supervisor's
    `HERMES_DASHBOARD_USERNAME` / `HERMES_DASHBOARD_PASSWORD`.
+
+Other scripts:
+
+```bash
+./scripts/status.sh
+./scripts/restart.sh          # optional service names as extra args
+./scripts/stop.sh
+```
 
 ## Topology
 
@@ -83,16 +90,22 @@ Manual verification once the fleet is running:
 
 ## Air-gap image shipping
 
-On a networked machine:
+On a networked machine (from `deploy/office-assistant`):
 
 ```bash
-docker pull nousresearch/hermes-agent:<tag>
-docker build -f Dockerfile.office-gateway -t office-gw:local ../..
-docker save nousresearch/hermes-agent:<tag> office-gw:local | gzip > office-fleet-images.tar.gz
+./scripts/save-images.sh
+# default output: images/office-fleet-images.tar.gz
+# optional: ./scripts/save-images.sh /tmp/office-fleet-images.tar.gz
 ```
 
-On the Lab VM:
+Copy the tarball (and this repo) to the Lab VM. Then:
 
 ```bash
-docker load < office-fleet-images.tar.gz
+./scripts/load-and-start.sh
+# or: ./scripts/load-and-start.sh /path/to/office-fleet-images.tar.gz
 ```
+
+`save-images.sh` pulls the pinned `HERMES_IMAGE`, `busybox:1.36`, and builds
+`office-gw:local`. `load-and-start.sh` runs `docker load` when the tarball
+exists, then `docker compose up -d` (or `up -d --build` if the gateway image
+is not already loaded).

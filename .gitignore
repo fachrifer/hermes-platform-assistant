@@ -4,5 +4,6 @@ __pycache__/
 .env
 deploy/office-assistant/.env
 deploy/office-assistant/hermes/**/.env
+deploy/office-assistant/images/*.tar.gz
 .superpowers/
 graphify-out/
