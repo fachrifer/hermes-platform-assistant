@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from office_gateway.actions import ActionError, ActionService
 from office_gateway.collectors import HttpServiceCollector
 from office_gateway.config import GatewayConfig
+from office_gateway.docker_ops import DockerOps
 from office_gateway.roles import can_read, can_write, role_for_token
 from office_gateway.store import GatewayStore
 
@@ -25,9 +26,10 @@ class ExecuteRequest(BaseModel):
     action_id: str
 
 
-def create_app(config: GatewayConfig) -> FastAPI:
+def create_app(config: GatewayConfig, docker_ops: DockerOps | None = None) -> FastAPI:
     store = GatewayStore(config.db_path, config.action_ttl_seconds)
-    actions = ActionService(config, store)
+    ops = docker_ops or DockerOps()
+    actions = ActionService(config, store, docker_ops=ops)
     collector = HttpServiceCollector(config.service_urls)
     app = FastAPI(title="office-gateway")
 
@@ -70,6 +72,17 @@ def create_app(config: GatewayConfig) -> FastAPI:
     ) -> dict:
         _require_read(role, "/v1/audit")
         return {"entries": store.list_audit(limit=limit)}
+
+    @app.get("/v1/docker/inspect/{container}")
+    async def docker_inspect(
+        container: str,
+        role: str = Depends(_role_from_request),
+    ) -> dict:
+        _require_read(role, "/v1/docker/inspect")
+        try:
+            return ops.inspect(container)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="container not found") from exc
 
     @app.post("/v1/actions/propose")
     async def propose_action(

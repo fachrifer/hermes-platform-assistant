@@ -1,6 +1,14 @@
 from __future__ import annotations
 
+import os
+import re
+
+import httpx
+
+from office_gateway.docker_ops import DockerOps
 from office_gateway.roles import can_write
+
+_SERVICE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 
 class ActionError(Exception):
@@ -23,10 +31,26 @@ def validate_execute(config, role: str, proposed_role: str, action: str, target:
     validate_propose(config, role, action, target)
 
 
+def _adapter_endpoints() -> dict[str, str]:
+    raw = os.getenv("OFFICE_ADAPTER_ENDPOINTS", "").strip()
+    if not raw:
+        return {}
+    endpoints: dict[str, str] = {}
+    for item in (part.strip() for part in raw.split(",") if part.strip()):
+        name, separator, url = item.partition("=")
+        if not separator or not _SERVICE_NAME_RE.fullmatch(name) or not url.startswith(
+            ("http://", "https://")
+        ):
+            continue
+        endpoints[name] = url
+    return endpoints
+
+
 class ActionService:
-    def __init__(self, config, store) -> None:
+    def __init__(self, config, store, docker_ops: DockerOps | None = None) -> None:
         self.config = config
         self.store = store
+        self.docker_ops = docker_ops or DockerOps()
 
     def propose(self, role: str, action: str, target: str, params: dict | None = None):
         if action != "restart_service":
@@ -59,11 +83,27 @@ class ActionService:
                 self.store.mark_expired_if_needed(action)
                 raise ActionError("action expired")
             raise ActionError("action not pending")
-        result = self.store.mark_executed(
-            action_id,
-            ok=False,
-            detail="failed:adapter_unavailable",
-        )
+        ok = False
+        detail = "failed:adapter_unavailable"
+        try:
+            self._restart_target(claimed.target)
+            ok = True
+            detail = "ok"
+        except ValueError:
+            detail = "failed:not_found"
+        except Exception:
+            detail = "failed:adapter_unavailable"
+        result = self.store.mark_executed(action_id, ok=ok, detail=detail)
         if result is None:
             raise ActionError("action not pending")
         return result
+
+    def _restart_target(self, target: str) -> None:
+        endpoints = _adapter_endpoints()
+        if target in endpoints:
+            response = httpx.post(endpoints[target], timeout=30.0)
+            if response.status_code == 404:
+                raise ValueError(f"container not found: {target}")
+            response.raise_for_status()
+            return
+        self.docker_ops.restart(target)
