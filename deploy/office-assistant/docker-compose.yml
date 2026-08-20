@@ -20,10 +20,17 @@ services:
     restart: "no"
     volumes:
       - office_gateway_data:/var/lib/hermes-office-gateway
+      - ${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro
     command:
       - sh
       - -c
-      - chown -R 10001:10001 /var/lib/hermes-office-gateway
+      - |
+        chown -R 10001:10001 /var/lib/hermes-office-gateway
+        if [ -f /etc/office/kubeconfig ]; then
+          cp /etc/office/kubeconfig /var/lib/hermes-office-gateway/kubeconfig
+          chown 10001:10001 /var/lib/hermes-office-gateway/kubeconfig
+          chmod 0640 /var/lib/hermes-office-gateway/kubeconfig
+        fi
 
   office-gateway:
     build:
@@ -45,12 +52,11 @@ services:
     volumes:
       - office_gateway_data:/var/lib/hermes-office-gateway
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro
     environment:
       OFFICE_GATEWAY_BIND_HOST: 0.0.0.0
       OFFICE_GATEWAY_PORT: "8080"
       OFFICE_GATEWAY_DB_PATH: /var/lib/hermes-office-gateway/gateway.db
-      KUBECONFIG: /etc/office/kubeconfig
+      KUBECONFIG: /var/lib/hermes-office-gateway/kubeconfig
 
   hermes-agent:
     image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.3}

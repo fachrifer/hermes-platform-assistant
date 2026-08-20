@@ -7,9 +7,21 @@ import httpx
 
 MAX_QUERY_CHARS = 500
 MAX_RESULT_SERIES = 50
+MAX_RESULT_SAMPLES = 50
 _SENSITIVE_LABEL_RE = re.compile(
-    r"password|token|secret|api_key|authorization",
+    r"password|passwd|token|secret|api_key|authorization|credential|bearer|private_key",
     re.IGNORECASE,
+)
+_BANNED_QUERY_SUBSTRINGS = (
+    "password",
+    "passwd",
+    "token",
+    "api_key",
+    "secret",
+    "authorization",
+    "credential",
+    "bearer",
+    "private_key",
 )
 
 
@@ -26,7 +38,11 @@ def _sanitize_series(series: dict[str, Any]) -> dict[str, Any]:
     if "value" in series:
         sanitized["value"] = series["value"]
     elif "values" in series:
-        sanitized["values"] = series["values"]
+        values = series["values"]
+        if isinstance(values, list):
+            sanitized["values"] = values[:MAX_RESULT_SAMPLES]
+        else:
+            sanitized["values"] = values
     return sanitized
 
 
@@ -61,7 +77,7 @@ async def instant_query(metrics_url: str, query: str) -> dict:
         raise ValueError("query tidak valid")
     # Deny obvious secret-scraping label selectors by refusing `password|token|api_key`
     lowered = q.lower()
-    for banned in ("password", "token", "api_key", "secret", "authorization"):
+    for banned in _BANNED_QUERY_SUBSTRINGS:
         if banned in lowered:
             raise ValueError("query not allowlisted")
     url = f"{metrics_url.rstrip('/')}/api/v1/query"

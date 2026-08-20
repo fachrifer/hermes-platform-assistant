@@ -127,8 +127,11 @@ def create_app(
         _require_read(role, "/v1/k8s/resources")
         if not kind.strip():
             raise HTTPException(status_code=400, detail="kind required")
+        normalized = kind.strip().lower()
+        if role == "llm-edge" and normalized not in {"httproute", "gateway"}:
+            raise HTTPException(status_code=403, detail="forbidden")
         try:
-            return await k8s.list_resources(kind.strip(), namespace)
+            return await k8s.list_resources(normalized, namespace)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except AdapterNotConfigured as exc:

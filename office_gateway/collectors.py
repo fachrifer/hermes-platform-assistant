@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 import httpx
@@ -10,7 +11,10 @@ class HttpServiceCollector:
         self.endpoints = endpoints
 
     async def collect(self) -> list[dict]:
-        return [await self.collect_one(name) for name in self.endpoints]
+        names = list(self.endpoints)
+        if not names:
+            return []
+        return list(await asyncio.gather(*(self.collect_one(name) for name in names)))
 
     async def collect_one(self, name: str) -> dict:
         url = self.endpoints.get(name)

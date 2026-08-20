@@ -24,6 +24,12 @@ Supervisor Hermes (Dashboard) plus five specialist agents and one `office-gatewa
    `OFFICE_KUBECONFIG`, and `DOCKER_GID`. This file is loaded only by
    `office-gateway`, never by a Hermes agent.
 
+   When `OFFICE_KUBECONFIG` points at a host file, `office-gateway-init`
+   copies it into the gateway data volume at
+   `/var/lib/hermes-office-gateway/kubeconfig` with owner `10001:10001` and
+   mode `0640`. The gateway process reads that copy via `KUBECONFIG`. If no
+   source kubeconfig is mounted, the copy step is skipped.
+
 3. Fill each `hermes/<role>/.env` with only that agent's gateway token, a
    role-scoped LiteLLM key, and its A2A credentials. Each specialist's
    `A2A_BEARER_TOKEN` must match the corresponding `A2A_TOKEN_*` in the

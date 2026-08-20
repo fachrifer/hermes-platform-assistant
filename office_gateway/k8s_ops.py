@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 from typing import Any, Awaitable, Callable, Optional
@@ -239,7 +240,7 @@ def _list_via_kubernetes(kind: str, namespace: Optional[str]) -> dict[str, Any]:
 
 async def _default_list(kind: str, namespace: Optional[str]) -> dict[str, Any]:
     try:
-        return _list_via_kubernetes(kind, namespace)
+        return await asyncio.to_thread(_list_via_kubernetes, kind, namespace)
     except AdapterNotConfigured:
         pass
     return await _list_via_httpx(kind, namespace)

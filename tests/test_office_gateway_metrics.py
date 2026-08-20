@@ -114,9 +114,45 @@ def test_metrics_query_redacts_sensitive_labels_and_caps_series(tmp_path):
             for key in series["metric"]
             for sensitive in (
                 "password",
+                "passwd",
                 "token",
                 "secret",
                 "api_key",
                 "authorization",
+                "credential",
+                "bearer",
+                "private_key",
             )
         )
+
+
+def test_metrics_query_caps_matrix_samples_per_series(tmp_path):
+    config = replace(_metrics_config(str(tmp_path / "gateway.db")))
+    client = TestClient(create_app(config))
+    upstream_result = [
+        {
+            "metric": {"__name__": "up", "instance": "node-1"},
+            "values": [[index, str(index)] for index in range(60)],
+        }
+    ]
+    mock_response = MagicMock()
+    mock_response.raise_for_status = MagicMock()
+    mock_response.json.return_value = {
+        "status": "success",
+        "data": {"resultType": "matrix", "result": upstream_result},
+    }
+    mock_client = AsyncMock()
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+    mock_client.get = AsyncMock(return_value=mock_response)
+
+    with patch("office_gateway.metrics.httpx.AsyncClient", return_value=mock_client):
+        response = client.get(
+            "/v1/metrics/query",
+            params={"query": "up"},
+            headers={"Authorization": "Bearer tok-obs"},
+        )
+
+    assert response.status_code == 200
+    series = response.json()["data"]["result"][0]
+    assert len(series["values"]) == 50

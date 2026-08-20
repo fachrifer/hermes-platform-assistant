@@ -262,6 +262,31 @@ def test_k8s_resources_unknown_kind_returns_400(client):
     assert response.status_code == 400
 
 
+def test_llm_edge_k8s_allows_gateway_and_httproute(client):
+    for kind in ("gateway", "httproute"):
+        response = client.get(
+            f"/v1/k8s/resources?kind={kind}",
+            headers={"Authorization": "Bearer tok-llm"},
+        )
+        assert response.status_code == 200
+
+
+def test_llm_edge_k8s_forbids_other_kinds(client):
+    response = client.get(
+        "/v1/k8s/resources?kind=pods&namespace=default",
+        headers={"Authorization": "Bearer tok-llm"},
+    )
+    assert response.status_code == 403
+
+
+def test_cluster_gpu_k8s_keeps_full_allowed_kinds(client):
+    response = client.get(
+        "/v1/k8s/resources?kind=pods&namespace=default",
+        headers={"Authorization": "Bearer tok-gpu"},
+    )
+    assert response.status_code == 200
+
+
 def test_k8s_resources_strips_secrets(client):
     from office_gateway.app import create_app
 

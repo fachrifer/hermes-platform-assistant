@@ -188,9 +188,14 @@ def test_hermes_v2026_8_a2a_model_and_dashboard_config():
 
 def test_compose_mounts_kubeconfig_and_pins_hermes_image():
     compose = COMPOSE.read_text()
+    init = _service_block(compose, "office-gateway-init")
+    assert "${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro" in init
+    assert "cp /etc/office/kubeconfig /var/lib/hermes-office-gateway/kubeconfig" in init
+    assert "chmod 0640 /var/lib/hermes-office-gateway/kubeconfig" in init
+
     gateway = _service_block(compose, "office-gateway")
-    assert "${OFFICE_KUBECONFIG}:/etc/office/kubeconfig:ro" in gateway
-    assert "KUBECONFIG: /etc/office/kubeconfig" in gateway
+    assert "KUBECONFIG: /var/lib/hermes-office-gateway/kubeconfig" in gateway
+    assert "${OFFICE_KUBECONFIG}" not in gateway
 
     root_env = (DEPLOY_ROOT / ".env.example").read_text()
     image_line = next(
