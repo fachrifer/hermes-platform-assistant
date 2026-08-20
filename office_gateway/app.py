@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException
@@ -106,14 +107,20 @@ def create_app(config: GatewayConfig, docker_ops: DockerOps | None = None) -> Fa
         _require_read(role, "/v1/metrics/query")
         try:
             return await instant_query(config.metrics_url, query)
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=502, detail="metrics upstream error") from exc
         except ValueError as exc:
             msg = str(exc)
             if msg == "query not allowlisted":
                 detail = "query not allowlisted"
             elif msg == "query tidak valid":
                 detail = "query not valid"
-            else:
+            elif msg == "OFFICE_METRICS_URL tidak diisi":
                 detail = "metrics not configured"
+            else:
+                raise HTTPException(
+                    status_code=502, detail="metrics upstream error"
+                ) from exc
             raise HTTPException(status_code=400, detail=detail) from exc
         except httpx.HTTPError:
             raise HTTPException(status_code=502, detail="metrics upstream error")
