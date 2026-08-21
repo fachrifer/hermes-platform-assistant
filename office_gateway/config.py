@@ -24,7 +24,17 @@ def _required(name: str) -> str:
     return value
 
 
-def _service_urls(value: str) -> dict[str, str]:
+_DEFAULT_SERVICE_URLS = (
+    "gateway=http://office-gateway:8080/health,"
+    "hermes-lab-host=http://hermes-lab-host:9900/.well-known/agent.json,"
+    "hermes-vector=http://hermes-vector:9900/.well-known/agent.json,"
+    "hermes-cluster-gpu=http://hermes-cluster-gpu:9900/.well-known/agent.json,"
+    "hermes-llm-edge=http://hermes-llm-edge:9900/.well-known/agent.json,"
+    "hermes-obs=http://hermes-obs:9900/.well-known/agent.json"
+)
+
+
+def _parse_service_urls(value: str) -> dict[str, str]:
     endpoints: dict[str, str] = {}
     for item in (part.strip() for part in value.split(",") if part.strip()):
         name, separator, url = item.partition("=")
@@ -33,6 +43,11 @@ def _service_urls(value: str) -> dict[str, str]:
         ):
             raise ValueError("OFFICE_SERVICE_URLS berisi service atau URL tidak valid")
         endpoints[name] = url
+    return endpoints
+
+
+def _service_urls(value: str) -> dict[str, str]:
+    endpoints = {**_parse_service_urls(_DEFAULT_SERVICE_URLS), **_parse_service_urls(value)}
     if not endpoints:
         raise ValueError("OFFICE_SERVICE_URLS wajib memiliki minimal satu service")
     return endpoints
@@ -102,6 +117,9 @@ class GatewayConfig:
     action_ttl_seconds: int = 600
     bind_host: str = "0.0.0.0"
     bind_port: int = 8080
+    hermes_dashboard_url: str = ""
+    hermes_dashboard_username: str = ""
+    hermes_dashboard_password: str = ""
 
     @classmethod
     def from_env(cls) -> "GatewayConfig":
@@ -115,7 +133,7 @@ class GatewayConfig:
             panels[name] = int(pid)
         return cls(
             tokens=tokens,
-            service_urls=_service_urls(_required("OFFICE_SERVICE_URLS")),
+            service_urls=_service_urls(os.getenv("OFFICE_SERVICE_URLS", "").strip()),
             write_targets={
                 "lab-host": _csv_set(os.getenv("OFFICE_WRITE_LAB_HOST", "")),
                 "vector": _csv_set(os.getenv("OFFICE_WRITE_VECTOR", "milvus-standalone,attu")),
@@ -137,4 +155,7 @@ class GatewayConfig:
             action_ttl_seconds=max(60, int(os.getenv("OFFICE_ACTION_TTL_SECONDS", "600"))),
             bind_host=os.getenv("OFFICE_GATEWAY_BIND_HOST", "0.0.0.0"),
             bind_port=int(os.getenv("OFFICE_GATEWAY_PORT", "8080")),
+            hermes_dashboard_url=os.getenv("HERMES_DASHBOARD_URL", "").rstrip("/"),
+            hermes_dashboard_username=os.getenv("HERMES_DASHBOARD_USERNAME", "").strip(),
+            hermes_dashboard_password=os.getenv("HERMES_DASHBOARD_PASSWORD", "").strip(),
         )

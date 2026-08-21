@@ -10,6 +10,8 @@ from pydantic import BaseModel
 import httpx
 
 from office_gateway.actions import ActionError, ActionService
+from office_gateway.brief import build_brief
+from office_gateway.chat import fetch_chat_bubble
 from office_gateway.collectors import HttpServiceCollector
 from office_gateway.config import GatewayConfig
 from office_gateway.docker_ops import DockerOps
@@ -37,12 +39,13 @@ def create_app(
     config: GatewayConfig,
     docker_ops: DockerOps | None = None,
     k8s_ops: K8sOps | None = None,
+    collector: HttpServiceCollector | None = None,
 ) -> FastAPI:
     store = GatewayStore(config.db_path, config.action_ttl_seconds)
     ops = docker_ops or DockerOps()
     k8s = k8s_ops or K8sOps(service_urls=config.service_urls)
     actions = ActionService(config, store, docker_ops=ops)
-    collector = HttpServiceCollector(config.service_urls)
+    collector = collector or HttpServiceCollector(config.service_urls)
     app = FastAPI(title="office-gateway")
 
     def _role_from_request(
@@ -68,6 +71,34 @@ def create_app(
         _require_read(role, "/v1/status")
         services = await collector.collect()
         return {"services": services}
+
+    @app.get("/v1/fleet/brief")
+    async def fleet_brief(role: str = Depends(_role_from_request)) -> dict:
+        _require_read(role, "/v1/fleet")
+        services = await collector.collect()
+        links = build_links(
+            base=config.grafana_base_url,
+            dashboards=config.grafana_dashboards,
+            panels=config.grafana_panel_ids,
+        )
+        try:
+            mig_data = await k8s.get_mig_actual()
+            mig = compare_mig(config.mig_expected, mig_data.get("actual", {}))
+            if mig_data.get("error"):
+                mig["ok"] = False
+                mig["error"] = mig_data["error"]
+        except Exception:
+            mig = {"ok": False, "error": "mig unavailable"}
+        return build_brief(services=services, mig=mig, grafana_links=links)
+
+    @app.get("/v1/fleet/chat")
+    async def fleet_chat(role: str = Depends(_role_from_request)) -> dict:
+        _require_read(role, "/v1/fleet")
+        return await fetch_chat_bubble(
+            base_url=config.hermes_dashboard_url,
+            username=config.hermes_dashboard_username,
+            password=config.hermes_dashboard_password,
+        )
 
     @app.get("/v1/services/{name}")
     async def service_status(

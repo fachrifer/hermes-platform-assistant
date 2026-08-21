@@ -28,7 +28,37 @@ def _test_config(db_path: str = "/tmp/test-gateway.db") -> GatewayConfig:
     )
 
 
-def test_roles_are_the_six_fleet_roles():
+def test_from_env_defaults_service_urls_when_blank(monkeypatch, tmp_path):
+    for env_name in (
+        "OFFICE_GATEWAY_TOKEN_SUPERVISOR",
+        "OFFICE_GATEWAY_TOKEN_LAB_HOST",
+        "OFFICE_GATEWAY_TOKEN_VECTOR",
+        "OFFICE_GATEWAY_TOKEN_CLUSTER",
+        "OFFICE_GATEWAY_TOKEN_LLM",
+        "OFFICE_GATEWAY_TOKEN_OBS",
+    ):
+        monkeypatch.setenv(env_name, "tok")
+    monkeypatch.setenv("OFFICE_SERVICE_URLS", "")
+    monkeypatch.setenv("OFFICE_GATEWAY_DB_PATH", str(tmp_path / "gw.db"))
+    config = GatewayConfig.from_env()
+    assert config.service_urls["gateway"] == "http://office-gateway:8080/health"
+    assert config.service_urls["hermes-lab-host"].endswith("/.well-known/agent.json")
+    assert config.service_urls["hermes-vector"].endswith("/.well-known/agent.json")
+    assert config.service_urls["hermes-cluster-gpu"].endswith("/.well-known/agent.json")
+    assert config.service_urls["hermes-llm-edge"].endswith("/.well-known/agent.json")
+    assert config.service_urls["hermes-obs"].endswith("/.well-known/agent.json")
+
+    monkeypatch.setenv("OFFICE_SERVICE_URLS", "gateway=http://office-gateway:8080/health")
+    merged = GatewayConfig.from_env()
+    assert merged.service_urls["gateway"] == "http://office-gateway:8080/health"
+    assert "hermes-lab-host" in merged.service_urls
+
+
+def test_from_env_rejects_blank_supervisor_token(monkeypatch):
+    monkeypatch.setenv("OFFICE_GATEWAY_TOKEN_SUPERVISOR", "")
+    monkeypatch.setenv("OFFICE_SERVICE_URLS", "gateway=http://office-gateway:8080/health")
+    with pytest.raises(ValueError, match="OFFICE_GATEWAY_TOKEN_SUPERVISOR"):
+        GatewayConfig.from_env()
     assert ROLES == frozenset(
         {"supervisor", "lab-host", "vector", "cluster-gpu", "llm-edge", "obs"}
     )

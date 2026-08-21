@@ -1,12 +1,21 @@
 # Supervisor Hermes — office fleet orchestrator (star A2A topology).
 agent:
   name: supervisor
+  # Dashboard Chat waits on this build (tools/MCP/model metadata). Default 600s.
+  build_wait_timeout: 90
+  api_max_retries: 1
 
 model:
-  provider: custom
-  default: gpt-4o
-  base_url: ${OPENAI_BASE_URL}
-  api_key: ${OPENAI_API_KEY}
+  default: ${OPENAI_MODEL}
+  provider: office-litellm
+
+providers:
+  office-litellm:
+    base_url: ${OPENAI_BASE_URL}
+    api_key: ${OPENAI_API_KEY}
+    key_env: OPENAI_API_KEY
+    api_mode: chat_completions
+    request_timeout_seconds: 60
 
 dashboard:
   enabled: true
@@ -16,29 +25,48 @@ dashboard:
     username: ${HERMES_DASHBOARD_USERNAME}
     password: ${HERMES_DASHBOARD_PASSWORD}
 
+# Skip Playwright/npx browser probes on every session start.
+browser:
+  backend: "off"
+
+# Empty map disables MCP discovery (unreachable npx servers stall Chat start).
+mcp_servers: {}
+
 # Peers: supervisor is the only agent that lists specialists.
+# Default A2A client timeout is 120s; keep fan-out well under the 300s inbound reply cap.
 a2a_agents:
   lab-host:
     url: http://hermes-lab-host:9900
     auth: { type: bearer, token: "${A2A_TOKEN_LAB_HOST}" }
+    timeout: 45
   vector:
     url: http://hermes-vector:9900
     auth: { type: bearer, token: "${A2A_TOKEN_VECTOR}" }
+    timeout: 45
   cluster-gpu:
     url: http://hermes-cluster-gpu:9900
     auth: { type: bearer, token: "${A2A_TOKEN_CLUSTER_GPU}" }
+    timeout: 45
   llm-edge:
     url: http://hermes-llm-edge:9900
     auth: { type: bearer, token: "${A2A_TOKEN_LLM_EDGE}" }
+    timeout: 45
   obs:
     url: http://hermes-obs:9900
     auth: { type: bearer, token: "${A2A_TOKEN_OBS}" }
+    timeout: 45
 
-# Preserve the v2026.8 CLI defaults and opt into the otherwise-off A2A toolset.
+# Do not use hermes-cli here: that preset loads browser/web/vision/image_gen
+# and makes Dashboard Chat pay those check_fn probes on every new session.
 platform_toolsets:
   cli:
-    - hermes-cli
     - a2a
+    - kanban
+    - skills
+    - todo
+    - clarify
+    - session_search
+    - memory
 
 # Kanban dispatcher runs on the supervisor gateway only (specialists: dispatch_in_gateway false).
 kanban:

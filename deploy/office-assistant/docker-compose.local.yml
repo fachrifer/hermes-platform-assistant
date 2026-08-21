@@ -1,0 +1,14 @@
+name: office
+
+services:
+  hermes-agent:
+    ports:
+      - "127.0.0.1:9119:9119"
+
+  office-gateway:
+    ports:
+      - "127.0.0.1:18080:8080"
+
+  office-console:
+    ports:
+      - "127.0.0.1:9120:80"

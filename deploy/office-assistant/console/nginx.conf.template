@@ -1,0 +1,131 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    gzip on;
+    absolute_redirect off;
+    port_in_redirect on;
+    # Docker DNS. Variable proxy_pass so nginx can start before upstreams exist.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    location /api/fleet/ {
+        set $office_gateway http://office-gateway:8080;
+        rewrite ^/api/fleet/(.*)$ /v1/fleet/$1 break;
+        proxy_pass $office_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization "Bearer ${OFFICE_GATEWAY_TOKEN_SUPERVISOR}";
+    }
+
+    location /api/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/api/(.*)$ /api/$1 break;
+        proxy_pass $hermes_agent;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_redirect /login?next=%2F /dash/login?next=%2Fdash%2F;
+        proxy_redirect /login /dash/login;
+        proxy_redirect ~^/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/login(.*)$ /dash/login$1;
+    }
+
+    location = /login {
+        set $hermes_agent http://hermes-agent:9119;
+        proxy_pass $hermes_agent/login$is_args$args;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_redirect /login?next=%2F /dash/login?next=%2Fdash%2F;
+        proxy_redirect /login /dash/login;
+        proxy_redirect ~^/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/login(.*)$ /dash/login$1;
+    }
+
+    location /auth/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/auth/(.*)$ /auth/$1 break;
+        proxy_pass $hermes_agent;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_redirect /login?next=%2F /dash/login?next=%2Fdash%2F;
+        proxy_redirect /login /dash/login;
+        proxy_redirect ~^/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/login(.*)$ /dash/login$1;
+    }
+
+    location /fonts/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/fonts/(.*)$ /fonts/$1 break;
+        proxy_pass $hermes_agent;
+        proxy_set_header Host $http_host;
+    }
+
+    location /fonts-terminal/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/fonts-terminal/(.*)$ /fonts-terminal/$1 break;
+        proxy_pass $hermes_agent;
+        proxy_set_header Host $http_host;
+    }
+
+    location /assets/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/assets/(.*)$ /assets/$1 break;
+        proxy_pass $hermes_agent;
+        proxy_set_header Host $http_host;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+    }
+
+    location /dashboard-plugins/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/dashboard-plugins/(.*)$ /dashboard-plugins/$1 break;
+        proxy_pass $hermes_agent;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_redirect /login?next=%2F /dash/login?next=%2Fdash%2F;
+        proxy_redirect /login /dash/login;
+    }
+
+    location = /favicon.ico {
+        set $hermes_agent http://hermes-agent:9119;
+        proxy_pass $hermes_agent/favicon.ico;
+        proxy_set_header Host $http_host;
+    }
+
+    location /dash/ {
+        set $hermes_agent http://hermes-agent:9119;
+        rewrite ^/dash/(.*)$ /$1 break;
+        proxy_pass $hermes_agent;
+        proxy_http_version 1.1;
+        proxy_set_header Host $http_host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        proxy_redirect /login?next=%2F /dash/login?next=%2Fdash%2F;
+        proxy_redirect /login /dash/login;
+        proxy_redirect ~^/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/$ /dash/;
+        proxy_redirect ~^https?://[^/]+/login(.*)$ /dash/login$1;
+    }
+
+    location /avatars/ {
+        alias /avatars/;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

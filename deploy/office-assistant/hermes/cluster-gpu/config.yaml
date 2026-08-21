@@ -1,12 +1,39 @@
 # Cluster-GPU specialist — k8s reads, MIG map, Traefik/OpenEBS.
 agent:
   name: cluster-gpu
+  build_wait_timeout: 90
+  api_max_retries: 1
 
 model:
-  provider: custom
-  default: gpt-4o
-  base_url: ${OPENAI_BASE_URL}
-  api_key: ${OPENAI_API_KEY}
+  default: ${OPENAI_MODEL}
+  provider: office-litellm
+
+providers:
+  office-litellm:
+    base_url: ${OPENAI_BASE_URL}
+    api_key: ${OPENAI_API_KEY}
+    key_env: OPENAI_API_KEY
+    api_mode: chat_completions
+    request_timeout_seconds: 60
+
+browser:
+  backend: "off"
+
+mcp_servers: {}
+
+platform_toolsets:
+  a2a:
+    - terminal
+    - file
+    - skills
+    - todo
+    - clarify
+  cli:
+    - terminal
+    - file
+    - skills
+    - todo
+    - clarify
 
 gateway:
   platforms:
