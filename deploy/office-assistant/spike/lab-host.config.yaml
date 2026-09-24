@@ -3,6 +3,7 @@ agent:
   build_wait_timeout: 30
   api_max_retries: 1
   max_turns: 6
+  reasoning_effort: none
   run_budget_seconds: 180
   bot_mode_protocol: false
   disabled_toolsets: [terminal, file, web, browser, code_execution, delegation, memory, session_search, todo, kanban, clarify]
@@ -17,6 +18,9 @@ providers:
     key_env: OFFICE_LLM_API_KEY
     transport: chat_completions
     request_timeout_seconds: 60
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
 
 platform_toolsets:
   cli: [skills]

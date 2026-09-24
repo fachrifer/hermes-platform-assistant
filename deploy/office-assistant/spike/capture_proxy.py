@@ -24,6 +24,28 @@ def summarize(method: str, path: str, has_auth: bool, body: bytes) -> dict:
         entry["messages"] = len(data.get("messages") or [])
         entry["tools"] = len(data.get("tools") or [])
         entry["chat_template_kwargs"] = data.get("chat_template_kwargs")
+        entry["reasoning_effort"] = data.get("reasoning_effort")
+    return entry
+
+
+def summarize_response(path: str, status: int, body: bytes) -> dict:
+    entry = {"ts": time.time(), "response_to": path, "status": status,
+             "reasoning_chunks": 0, "usage": None}
+    text = body.decode("utf-8", "replace")
+    payloads = [line[5:].strip() for line in text.splitlines() if line.startswith("data:")] or [text]
+    for payload in payloads:
+        try:
+            data = json.loads(payload)
+        except ValueError:
+            continue
+        if not isinstance(data, dict):
+            continue
+        if data.get("usage"):
+            entry["usage"] = data["usage"]
+        for choice in data.get("choices") or []:
+            part = choice.get("delta") or choice.get("message") or {}
+            if part.get("reasoning_content") or part.get("reasoning"):
+                entry["reasoning_chunks"] += 1
     return entry
 
 
@@ -50,12 +72,17 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", resp.headers.get("Content-Type", "application/json"))
         self.end_headers()
+        seen = bytearray()
         while True:
             chunk = resp.read(4096)
             if not chunk:
                 break
+            seen.extend(chunk)
             self.wfile.write(chunk)
             self.wfile.flush()
+        if self.path.endswith("/chat/completions"):
+            with open(LOG, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(summarize_response(self.path, status, bytes(seen))) + "\n")
 
     do_GET = _forward
     do_POST = _forward
