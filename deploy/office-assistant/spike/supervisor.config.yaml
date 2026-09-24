@@ -1,0 +1,58 @@
+agent:
+  name: supervisor
+  build_wait_timeout: 30
+  api_max_retries: 1
+  max_turns: 6
+  disabled_toolsets: [terminal, file, web, browser, code_execution, delegation, memory, session_search, todo, kanban, clarify]
+
+model:
+  default: qwen3.8-fast
+  provider: office-litellm
+
+providers:
+  office-litellm:
+    api: http://llm-capture:8000/v1
+    key_env: OFFICE_LLM_API_KEY
+    transport: chat_completions
+    request_timeout_seconds: 60
+
+platform_toolsets:
+  cli: [skills]
+  tui: [skills]
+  api_server: [skills]
+
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
+  warn_after: {exact_failure: 1, same_tool_failure: 1, idempotent_no_progress: 1}
+  hard_stop_after: {exact_failure: 2, same_tool_failure: 2, idempotent_no_progress: 2}
+
+browser:
+  backend: "off"
+security:
+  allow_lazy_installs: false
+mcp_servers: {}
+model_catalog:
+  enabled: false
+network:
+  force_ipv4: true
+updates:
+  check: false
+
+dashboard:
+  enabled: true
+  host: 0.0.0.0
+  port: 9119
+  public_url: ${HERMES_DASHBOARD_PUBLIC_URL}
+  basic_auth:
+    username: ${SPIKE_DASHBOARD_USER}
+    password: ${SPIKE_DASHBOARD_PASSWORD}
+
+gateway:
+  platforms:
+    api_server:
+      enabled: true
+
+bot_peers:
+  lab-host:
+    url: http://spike-lab-host:8642

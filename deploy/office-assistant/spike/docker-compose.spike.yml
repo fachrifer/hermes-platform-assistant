@@ -1,0 +1,87 @@
+name: fleet-spike
+
+x-airgap-hosts: &airgap-hosts
+  - "models.dev:127.0.0.1"
+  - "api.github.com:127.0.0.1"
+  - "github.com:127.0.0.1"
+  - "raw.githubusercontent.com:127.0.0.1"
+  - "registry.npmjs.org:127.0.0.1"
+  - "portal.nousresearch.com:127.0.0.1"
+  - "openrouter.ai:127.0.0.1"
+  - "pypi.org:127.0.0.1"
+  - "files.pythonhosted.org:127.0.0.1"
+
+x-hermes-env: &hermes-env
+  HERMES_HOME: /opt/data
+  TZ: Asia/Jakarta
+  OFFICE_LLM_API_KEY: ${OFFICE_LLM_API_KEY}
+  API_SERVER_ENABLED: "true"
+  API_SERVER_HOST: "0.0.0.0"
+  API_SERVER_PORT: "8642"
+  HERMES_DASHBOARD: "1"
+  HERMES_DASHBOARD_HOST: "0.0.0.0"
+  HERMES_DASHBOARD_PORT: "9119"
+  HERMES_DASHBOARD_TUI: "1"
+  HERMES_DASHBOARD_TRUST_LAN: "1"
+  HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${SPIKE_DASHBOARD_USER}
+  HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${SPIKE_DASHBOARD_PASSWORD}
+  HERMES_DASHBOARD_BASIC_AUTH_SECRET: ${SPIKE_DASHBOARD_SECRET}
+  SPIKE_DASHBOARD_USER: ${SPIKE_DASHBOARD_USER}
+  SPIKE_DASHBOARD_PASSWORD: ${SPIKE_DASHBOARD_PASSWORD}
+
+networks:
+  spike:
+    driver: bridge
+
+volumes:
+  spike_supervisor_data:
+  spike_lab_host_data:
+
+services:
+  llm-capture:
+    image: python:3.11-slim
+    networks: [spike]
+    environment:
+      UPSTREAM_BASE: ${LITELLM_BASE_URL}
+      CAPTURE_LOG: /capture/requests.jsonl
+    volumes:
+      - ./capture_proxy.py:/app/capture_proxy.py:ro
+      - ./capture:/capture
+    command: ["python", "/app/capture_proxy.py"]
+
+  spike-lab-host:
+    image: nousresearch/hermes-agent:v2026.9.21
+    networks: [spike]
+    depends_on: [llm-capture]
+    extra_hosts: *airgap-hosts
+    ports:
+      - "127.0.0.1:19121:9119"
+    environment:
+      <<: *hermes-env
+      API_SERVER_KEY: ${SPIKE_LAB_HOST_API_KEY}
+      HERMES_DASHBOARD_PUBLIC_URL: http://127.0.0.1:19121
+    volumes:
+      - spike_lab_host_data:/opt/data
+      - ./${LAB_HOST_CONFIG:-lab-host.config.yaml}:/opt/data/config.yaml:ro
+      - ../scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
+      - ./bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
+    command: ["gateway", "run"]
+
+  spike-supervisor:
+    image: nousresearch/hermes-agent:v2026.9.21
+    networks: [spike]
+    depends_on: [llm-capture, spike-lab-host]
+    extra_hosts: *airgap-hosts
+    ports:
+      - "127.0.0.1:19119:9119"
+    environment:
+      <<: *hermes-env
+      API_SERVER_KEY: ${SPIKE_SUPERVISOR_API_KEY}
+      HERMES_PEER_LAB_HOST_KEY: ${SPIKE_LAB_HOST_API_KEY}
+      HERMES_DASHBOARD_PUBLIC_URL: http://127.0.0.1:19119
+    volumes:
+      - spike_supervisor_data:/opt/data
+      - ./supervisor.config.yaml:/opt/data/config.yaml:ro
+      - ../scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
+      - ./bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
+    command: ["gateway", "run"]
