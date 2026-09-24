@@ -32,3 +32,27 @@ Spec: `2026-09-24-office-fleet-redesign-design.md` §14 · Hermes `v2026.9.21` �
 - S1: the specialist's "Bot Chat" session keeps accumulating peer turns (lab-host request carried prior PONG turns). Compression threshold in spec §8 must cover long-lived specialist Bot Chats.
 - S1: the LiteLLM route caches identical requests (repeat calls returned in 0.2 s with identical output). Benchmarks and spike measurements must use a nonce in the prompt.
 - S4: ~5k input tokens for a trivial prompt with only the `skills` toolset. Bundled skills are seeded into every profile; Phase 1b should prune them to the office skills only.
+
+## Phase 1b local smoke (2026-09-24, operator PC, Docker Desktop)
+
+Full stack (7 agents, gateway, Traefik, www) from a `git archive` of the branch, flattened to the VM layout, with an LLM stub in place of LiteLLM (logs each request's tool list and system prompt).
+
+| Check | Result |
+|---|---|
+| All 10 containers up, cont-inits OK | PASS |
+| MCP contract per role (tool catalog filtered by role token) | PASS, all 7 |
+| Approvals over Traefik HTTPS: no auth / wrong password / agent bearer → 401; forged `X-Approver` overwritten by the basic-auth user; agent calling `/v1/approvals` directly → 403; approve → `succeeded` and `office-www` really restarted; second approve → 409; `action_status` over MCP → `succeeded`; audit rows proposed/approved/succeeded/rejected | PASS |
+| `fleet_status` shows all 7 agents ok | PASS |
+| api_server turn per role: tools sent directly (no `tool_search` bridge), role skill auto-loaded in the system prompt, `chat_template_kwargs.enable_thinking: false` | PASS, all 7; tool counts supervisor 4, lab-host 10, ingress 11, llm 5, cluster-gpu 6, vector 4, obs 6 (MCP tools + `skills_list`/`skill_view`/`skill_manage`); system prompt 14–15.4k chars |
+| Supervisor canonical "Bot Chat" one-shot | PASS: `fleet_status`, skill tools, `message_agent` |
+| Warm-up with the LLM reachable | 3.6–4.6 s |
+
+Findings fixed during the smoke:
+
+- Configs lacked `_config_version`; the image's config migration warned "predates version 12". All configs now carry `_config_version: 45`.
+- `tools.tool_search.enabled` defaults to `auto`, which always defers MCP tools behind `tool_search`/`tool_describe`/`tool_call`; the model saw only the bridge. Set to `off`; `tools.connectors.enabled: false`.
+- `skills.auto_load` is only injected when the agent has a skills tool, so the `skills` toolset stays (there is no read-only variant). To keep `skill_manage` from becoming a write path or an extra LLM loop: `skills.write_approval: true`, `creation_nudge_interval: 0`, `project_discovery: false`, `auxiliary.background_review.enabled: false` (post-turn fork replaying the conversation), `curator.enabled: false`, memory off.
+- `/opt/data/skills` was created root-owned by the nested read-only skill mount, breaking Hermes skill operations (`PermissionError` on `skills/.hub`). The bot-mode cont-init now chowns that directory (not recursive).
+- The bundled-skill opt-out marker takes effect from the second boot; only the builtin `hermes-agent` skill is listed next to the role skill.
+
+Local-only artifact: after an in-place `docker compose restart`, `docker exec` into some containers failed with "unable to find user" while the agent kept serving `/health`; recreating the container cleared it. Recheck `docker exec` after an approved restart on the VM.
