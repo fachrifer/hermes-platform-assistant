@@ -365,6 +365,7 @@ def test_unpack_keeps_env_and_live_routes_and_retires_old_files(tmp_path):
             "edge/edge-routes": "shipped routes\n",
             "edge/traefik-dynamic/routes.yml": "shipped\n",
             "scripts/migrate-env-phase1b.sh": "#!/usr/bin/env bash\n",
+            "scripts/lib.sh": "# lib\n",
         },
     )
     _tgz(vm / "images" / "fleet-p1b-gateway.tgz", {"office_gateway/app.py": "new\n", "Dockerfile.office-gateway": "FROM x\n"})
@@ -390,12 +391,27 @@ def test_unpack_keeps_env_and_live_routes_and_retires_old_files(tmp_path):
     assert not [n for n in names if n.startswith("./images")]
 
 
+def test_unpack_refuses_crlf_tree(tmp_path):
+    home = tmp_path / "home"
+    vm = home / "hermes-assistant"
+    (vm / "images").mkdir(parents=True)
+    (vm / ".env").write_text("KEEP=1\n")
+    _tgz(vm / "images" / "fleet-p1b-tree.tgz", {"scripts/lib.sh": "# lib\r\n"})
+    _tgz(vm / "images" / "fleet-p1b-gateway.tgz", {"office_gateway/app.py": "new\n"})
+    env = {**os.environ, "HOME": str(home), "PATH": "/usr/bin:/bin"}
+    result = _run(["bash", str(_script("unpack-phase1b.sh"))], env=env)
+    assert result.returncode != 0
+    assert "CRLF" in result.stderr
+    assert not list(home.glob("hermes-assistant-pre-phase1b-*.tgz"))
+
+
 def test_ship_script_ships_committed_files_only():
     text = _read("ship-phase1b.ps1")
     assert "git archive" in text
     assert "HEAD:deploy/office-assistant" in text
     assert "ls-files --eol" in text
     assert "core.fileMode=false" in text
+    assert '"core.autocrlf=false"' in text
     assert "id_ed25519_hermes_lab" in text
     assert "BatchMode=yes" in text
     assert "unpack-phase1b.sh" in text

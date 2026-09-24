@@ -31,8 +31,11 @@ try {
     New-Item -ItemType Directory -Force $out | Out-Null
     $tree = Join-Path $out "fleet-p1b-tree.tgz"
     $gateway = Join-Path $out "fleet-p1b-gateway.tgz"
-    Invoke-Checked "git archive tree" { git archive --format=tar.gz -o $tree "HEAD:deploy/office-assistant" }
-    Invoke-Checked "git archive gateway" { git archive --format=tar.gz -o $gateway HEAD office_gateway Dockerfile.office-gateway }
+    # A subtree archive does not see the root .gitattributes, so Git for Windows'
+    # system core.autocrlf=true would turn every file into CRLF.
+    $noConvert = @("-c", "core.autocrlf=false", "-c", "core.eol=lf")
+    Invoke-Checked "git archive tree" { git @noConvert archive --format=tar.gz -o $tree "HEAD:deploy/office-assistant" }
+    Invoke-Checked "git archive gateway" { git @noConvert archive --format=tar.gz -o $gateway HEAD office_gateway Dockerfile.office-gateway }
     $unpack = Join-Path $repo "deploy\office-assistant\scripts\unpack-phase1b.sh"
     if ([IO.File]::ReadAllText($unpack).Contains("`r")) { throw "unpack-phase1b.sh has CRLF line endings" }
     $files = @($tree, $gateway, $unpack)

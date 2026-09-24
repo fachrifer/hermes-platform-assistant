@@ -25,6 +25,10 @@ cd "$DIR"
 for f in fleet-p1b-tree.tgz fleet-p1b-gateway.tgz; do
   [[ -f "$IMAGES/$f" ]] || { echo "error: $IMAGES/$f missing; run ship-phase1b.ps1 first" >&2; exit 1; }
 done
+if tar -xzOf "$IMAGES/fleet-p1b-tree.tgz" scripts/lib.sh | grep -q $'\r'; then
+  echo "error: fleet-p1b-tree.tgz has CRLF line endings; re-ship from the PC" >&2
+  exit 1
+fi
 if [[ -n "$(docker compose ps -q 2>/dev/null)" ]]; then
   echo "error: fleet containers still running; run: docker compose down --remove-orphans" >&2
   exit 1
