@@ -1,37 +1,76 @@
-# Vector specialist — Milvus/Attu dev restarts; prod read-only.
+# Vector specialist. Tools: MCP office (vector catalog) + skills.
 agent:
   name: vector
-  offline: true
-  build_wait_timeout: 90
+  build_wait_timeout: 30
   api_max_retries: 1
+  max_turns: 6
+  reasoning_effort: none
+  bot_mode_protocol: false
+  run_budget_seconds: 180
+  disabled_toolsets: [terminal, file, web, browser, code_execution, delegation, memory, session_search, todo, kanban, clarify, a2a, vision, image_gen, tts, cronjob]
 
 model:
-  default: ${OPENAI_MODEL}
+  default: qwen3.8-fast
   provider: office-litellm
-  base_url: ${OPENAI_BASE_URL}
-  api_key: ${OPENAI_API_KEY}
 
 providers:
   office-litellm:
-    base_url: ${OPENAI_BASE_URL}
-    api_key: ${OPENAI_API_KEY}
-    key_env: OPENAI_API_KEY
-    api_mode: chat_completions
+    api: ${OFFICE_LLM_BASE_URL}
+    key_env: OFFICE_LLM_API_KEY
+    transport: chat_completions
     request_timeout_seconds: 60
-  custom:
-    base_url: ${OPENAI_BASE_URL}
-    api_key: ${OPENAI_API_KEY}
-    key_env: OPENAI_API_KEY
-    api_mode: chat_completions
-    request_timeout_seconds: 60
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
 
+mcp_servers:
+  office:
+    url: http://office-gateway:8080/mcp
+    headers:
+      Authorization: "Bearer ${OFFICE_GATEWAY_TOKEN}"
+    timeout: 15
+    connect_timeout: 5
+mcp:
+  discovery_concurrency: 1
+
+platform_toolsets:
+  cli: [mcp-office, skills]
+  tui: [mcp-office, skills]
+  api_server: [mcp-office, skills]
+  gui: [mcp-office, skills]
+  desktop: [mcp-office, skills]
+  dashboard: [mcp-office, skills]
+  web: [mcp-office, skills]
+
+skills:
+  auto_load: [office-vector]
+
+compression:
+  threshold_tokens: 32000
+
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
+  warn_after: {exact_failure: 1, same_tool_failure: 1, idempotent_no_progress: 1}
+  hard_stop_after: {exact_failure: 2, same_tool_failure: 2, idempotent_no_progress: 2}
+
+model_catalog:
+  enabled: false
+model_overrides:
+  office-litellm: &office-models
+    qwen3.8-fast: {context_window: 131072, supports_tools: true, supports_reasoning: false}
+  custom:office-litellm: *office-models
+auxiliary:
+  title_generation:
+    model_upgrade_enabled: false
+network:
+  force_ipv4: true
+updates:
+  check: false
 browser:
   backend: "off"
-
 security:
   allow_lazy_installs: false
-
-mcp_servers: {}
 
 dashboard:
   enabled: true
@@ -45,19 +84,7 @@ dashboard:
     username: ${HERMES_DASHBOARD_USERNAME}
     password: ${HERMES_DASHBOARD_PASSWORD}
 
-platform_toolsets:
-  a2a:
-    - terminal
-    - skills
-  cli:
-    - terminal
-    - skills
-
 gateway:
   platforms:
-    a2a:
-      enabled: true
-      extra:
-        port: 9900
     api_server:
       enabled: true

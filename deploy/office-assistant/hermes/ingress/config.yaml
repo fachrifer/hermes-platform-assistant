@@ -1,6 +1,6 @@
-# Obs specialist. Tools: MCP office (obs catalog) + skills.
+# Ingress specialist. Tools: MCP office (ingress catalog) + skills.
 agent:
-  name: obs
+  name: ingress
   build_wait_timeout: 30
   api_max_retries: 1
   max_turns: 6
@@ -43,7 +43,7 @@ platform_toolsets:
   web: [mcp-office, skills]
 
 skills:
-  auto_load: [office-obs]
+  auto_load: [office-ingress]
 
 compression:
   threshold_tokens: 32000
