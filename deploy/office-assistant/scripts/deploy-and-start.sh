@@ -90,6 +90,7 @@ TLS_IP="${TLS_IP:-10.216.4.80}" "$SCRIPT_DIR/init-lab-ca.sh"
 TLS_IP="${TLS_IP:-10.216.4.80}" "$SCRIPT_DIR/issue-edge-cert.sh"
 python3 "$SCRIPT_DIR/render-edge-traefik.py"
 "$SCRIPT_DIR/render-traefik-core.sh"
+"$SCRIPT_DIR/ensure-approver.sh"
 
 
 echo "docker compose down --remove-orphans"

@@ -10,7 +10,7 @@ else
   REPO_ROOT="$(cd "$DEPLOY_DIR/../.." && pwd)"
 fi
 DEFAULT_TARBALL="$DEPLOY_DIR/images/office-fleet-images.tar.gz"
-HERMES_ROLES="supervisor lab-host vector cluster-gpu llm-edge obs edge"
+HERMES_ROLES="supervisor lab-host ingress llm cluster-gpu vector obs"
 BUSYBOX_IMAGE="busybox:1.36"
 CONSOLE_IMAGE="nginx:1.27-alpine"
 OFFICE_GW_IMAGE="office-gw:local"
@@ -33,7 +33,7 @@ office_hermes_image() {
       fi
     fi
   done
-  printf '%s\n' "nousresearch/hermes-agent:v2026.8.31"
+  printf '%s\n' "nousresearch/hermes-agent:v2026.9.21"
 }
 
 office_compose() {

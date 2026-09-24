@@ -14,14 +14,13 @@ SERVICES=(
   hermes-lab-host
   hermes-vector
   hermes-cluster-gpu
-  hermes-llm-edge
+  hermes-llm
   hermes-obs
-  hermes-edge
+  hermes-ingress
 )
 
 echo "hermes doctor — office fleet"
-echo "Look for: MCP servers, agent-browser/npx, Playwright Chromium,"
-echo "provider/API key, Node.js, and state.db warnings."
+echo "Look for: the office MCP server, provider/API key, and state.db warnings."
 echo
 
 failed=0

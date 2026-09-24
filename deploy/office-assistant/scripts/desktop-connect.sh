@@ -51,12 +51,13 @@ else:
     kv["console"] = "https://10.216.4.80"
     kv.pop("console_http", None)
     kv["url"] = "http://10.216.4.80:9119"
-order = ("console", "console_http", "url", "session_token", "username", "password")
+order = ("console", "console_http", "url", "session_token", "username", "password", "approver_user", "approver_password")
 lines = [f"{key}={kv[key]}" for key in order if key in kv]
 for key, value in kv.items():
     if key not in order:
         lines.append(f"{key}={value}")
 path.write_text("\n".join(lines) + "\n")
+path.chmod(0o600)
 
 
 def upsert(env_path: Path, values: dict[str, str]) -> None:
@@ -105,7 +106,7 @@ echo "Specialist Remote gateways (same session token; not OAuth; IP:port like At
 echo "  http://${BIND}:9121  lab-host"
 echo "  http://${BIND}:9122  vector"
 echo "  http://${BIND}:9123  cluster-gpu"
-echo "  http://${BIND}:9124  llm-edge"
+echo "  http://${BIND}:9124  llm"
 echo "  http://${BIND}:9125  obs"
-echo "  http://${BIND}:9126  edge"
+echo "  http://${BIND}:9126  ingress"
 echo "Do not use http://${BIND}/bots/… in Desktop — HTTP Test can pass while /api/ws fails."
