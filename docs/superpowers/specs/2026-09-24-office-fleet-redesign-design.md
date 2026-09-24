@@ -418,7 +418,7 @@ Containers started with outbound internet blocked: first agent build < 10 s, no 
 
 ## 14. Verification spikes (first tasks of Phase 1)
 
-Each is a go/no-go check with a fallback:
+Each is a go/no-go check with a fallback. The three `message_agent` spikes (terminal disabled, web Dashboard "Bot Chat", Desktop relay vs `bot_peers`) run first, on `v2026.9.21`, and block the rest of Phase 1: the user delegates through the supervisor from the web Dashboard when outside the office, so remote delegation is a hard requirement.
 
 | Spike | Fallback if it fails |
 |---|---|
