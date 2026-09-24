@@ -19,13 +19,17 @@ from office_gateway.edge_ops import EdgeRoute, EdgeRoutesOps
 from office_gateway.grafana_links import build_links
 from office_gateway.k8s_ops import AdapterNotConfigured, K8sOps
 from office_gateway.llm_ops import fetch_litellm_status
+from office_gateway.mcp_server import build_router
 from office_gateway.metrics import instant_query
 from office_gateway.mig import compare_mig
+from office_gateway.proc_ops import ProcOps
 from office_gateway.redact import redact_text
 from office_gateway.reports import queries
 from office_gateway.roles import APPROVER_ROLE, can_read, can_write, role_for_token
 from office_gateway.store import GatewayStore
+from office_gateway.systemd_ops import SystemdOps
 from office_gateway.tls_ops import tls_cert_status
+from office_gateway.tools.core import ToolContext
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -105,6 +109,19 @@ def create_app(
         if role is None:
             raise HTTPException(status_code=401, detail="invalid token")
         return role
+
+    tool_ctx = ToolContext(
+        config=config,
+        store=store,
+        actions=actions,
+        docker=ops,
+        edge=edge,
+        k8s=k8s,
+        collector=collector,
+        proc=proc_ops or ProcOps(),
+        systemd=systemd_ops or SystemdOps(),
+    )
+    app.include_router(build_router(tool_ctx, _role_from_request))
 
     def _require_read(role: str, route_prefix: str) -> None:
         if not can_read(role, route_prefix):
