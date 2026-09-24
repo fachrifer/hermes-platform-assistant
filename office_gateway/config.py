@@ -14,6 +14,7 @@ _TOKEN_ENV = {
     "cluster-gpu": "OFFICE_GATEWAY_TOKEN_CLUSTER",
     "llm-edge": "OFFICE_GATEWAY_TOKEN_LLM",
     "obs": "OFFICE_GATEWAY_TOKEN_OBS",
+    "edge": "OFFICE_GATEWAY_TOKEN_EDGE",
 }
 
 
@@ -30,7 +31,8 @@ _DEFAULT_SERVICE_URLS = (
     "hermes-vector=http://hermes-vector:9900/.well-known/agent.json,"
     "hermes-cluster-gpu=http://hermes-cluster-gpu:9900/.well-known/agent.json,"
     "hermes-llm-edge=http://hermes-llm-edge:9900/.well-known/agent.json,"
-    "hermes-obs=http://hermes-obs:9900/.well-known/agent.json"
+    "hermes-obs=http://hermes-obs:9900/.well-known/agent.json,"
+    "hermes-edge=http://hermes-edge:9900/.well-known/agent.json"
 )
 
 
@@ -107,6 +109,7 @@ class GatewayConfig:
     tokens: dict[str, str]
     service_urls: dict[str, str]
     write_targets: dict[str, frozenset[str]] = field(default_factory=dict)
+    log_targets: dict[str, frozenset[str]] = field(default_factory=dict)
     vector_env: dict[str, str] = field(default_factory=dict)
     grafana_base_url: str = ""
     grafana_dashboards: dict[str, str] = field(default_factory=dict)
@@ -120,6 +123,12 @@ class GatewayConfig:
     hermes_dashboard_url: str = ""
     hermes_dashboard_username: str = ""
     hermes_dashboard_password: str = ""
+    edge_routes_path: str = ""
+    edge_locations_path: str = ""
+    edge_tls_cert_path: str = ""
+    autoheal_deny: frozenset[str] = field(default_factory=frozenset)
+    litellm_url: str = ""
+    litellm_master_key: str = ""
 
     @classmethod
     def from_env(cls) -> "GatewayConfig":
@@ -137,6 +146,10 @@ class GatewayConfig:
             write_targets={
                 "lab-host": _csv_set(os.getenv("OFFICE_WRITE_LAB_HOST", "")),
                 "vector": _csv_set(os.getenv("OFFICE_WRITE_VECTOR", "milvus-standalone,attu")),
+                "edge": _csv_set(os.getenv("OFFICE_WRITE_EDGE", "edge-routes")),
+            },
+            log_targets={
+                "lab-host": _csv_set(os.getenv("OFFICE_READ_LOGS_LAB_HOST", "")),
             },
             vector_env=_vector_env(
                 os.getenv(
@@ -158,4 +171,21 @@ class GatewayConfig:
             hermes_dashboard_url=os.getenv("HERMES_DASHBOARD_URL", "").rstrip("/"),
             hermes_dashboard_username=os.getenv("HERMES_DASHBOARD_USERNAME", "").strip(),
             hermes_dashboard_password=os.getenv("HERMES_DASHBOARD_PASSWORD", "").strip(),
+            edge_routes_path=os.getenv("OFFICE_EDGE_ROUTES_PATH", "").strip(),
+            edge_locations_path=(
+                os.getenv("OFFICE_EDGE_DYNAMIC_PATH", "").strip()
+                or os.getenv("OFFICE_EDGE_LOCATIONS_PATH", "").strip()
+            ),
+            edge_tls_cert_path=os.getenv(
+                "OFFICE_EDGE_TLS_CERT_PATH", "/certs/tls.crt"
+            ).strip(),
+            autoheal_deny=_csv_set(os.getenv("OFFICE_AUTOHEAL_DENY", "")),
+            litellm_url=(
+                os.getenv("OFFICE_LITELLM_URL", "").strip()
+                or os.getenv("LITELLM_URL", "").strip()
+            ),
+            litellm_master_key=(
+                os.getenv("OFFICE_LITELLM_MASTER_KEY", "").strip()
+                or os.getenv("LITELLM_MASTER_KEY", "").strip()
+            ),
         )

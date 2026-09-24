@@ -1,0 +1,33 @@
+# Generated from edge-routes — do not edit by hand.
+http:
+  routers:
+    attu:
+      rule: "PathPrefix(`/attu`)"
+      entryPoints:
+        - websecure
+      tls: {}
+      service: attu
+      priority: 20
+      middlewares:
+        - attu-strip
+    toolbox:
+      rule: "PathPrefix(`/toolbox`)"
+      entryPoints:
+        - websecure
+      tls: {}
+      service: toolbox
+      priority: 20
+  middlewares:
+    attu-strip:
+      stripPrefix:
+        prefixes:
+          - "/attu"
+  services:
+    attu:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8000"
+    toolbox:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:555"

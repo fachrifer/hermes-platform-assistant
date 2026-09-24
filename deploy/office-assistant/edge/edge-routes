@@ -1,0 +1,12 @@
+# name | public_path | upstream | websocket | strip_prefix (optional, default 1)
+# strip_prefix=0 keeps the public path (needed for Next.js basePath apps).
+# Edit this file to add HTTP services behind https://10.216.4.80/<path>/
+# Then: python3 scripts/render-edge-traefik.py && docker compose up -d office-edge
+# (or let Janus apply_edge_routes via office-gateway)
+#
+# Isolation: these paths are ONLY Lab HTTP app front-doors via Traefik.
+# They must never shadow reserved console paths (/dash/, /api/, /auth/, …).
+# Host :8000 is Attu — not office-gateway (:8080 on the Docker network).
+# Raw :555/:8000 are unchanged by this stack (firewall not modified here).
+attu        /attu/        127.0.0.1:8000   0
+toolbox     /toolbox/     127.0.0.1:555    0  0

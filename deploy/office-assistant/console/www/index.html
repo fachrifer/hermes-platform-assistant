@@ -4,28 +4,59 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Agent Specialist Fleet</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <script>
+    if (window.self !== window.top) {
+      document.documentElement.style.display = "none";
+      window.location.replace("/dash/");
+    }
+  </script>
+  <link rel="stylesheet" href="/styles.css?v=29" />
 </head>
 <body>
   <header class="top">
     <p class="eyebrow">Agent Specialist Fleet</p>
     <span class="top-rule" aria-hidden="true">|</span>
-    <h1>Athena <span>- Orchestrator</span></h1>
+    <h1>Athena - Orchestrator</h1>
     <button type="button" class="guide-open" id="guide-open" aria-haspopup="dialog">How to use</button>
   </header>
 
   <div class="layout">
-    <aside class="rail">
-      <div class="athena">
-        <p class="bubble" id="bubble" hidden role="status" aria-live="polite"><span id="bubble-text"></span><span class="dots" aria-hidden="true"></span></p>
-        <div class="portrait" id="athena-rig">
-          <img class="layer base" alt="Athena" src="/avatars/athena/vtuber/athena-vtuber-idle.png" />
-          <img class="layer mouth" id="athena-mouth" alt="" />
-          <img class="layer eyes" id="athena-eyes" alt="" />
+    <aside class="rail" aria-label="Operations village">
+      <div class="village-shell">
+        <div class="village" id="village">
+          <svg class="map" id="ops-map" viewBox="0 0 340 480" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <rect class="station" data-id="hephaestus" x="82" y="154" width="40" height="28" fill="none" />
+            <rect class="station" data-id="janus" x="88" y="66" width="40" height="28" fill="none" />
+            <rect class="station" data-id="iris" x="224" y="134" width="40" height="28" fill="none" />
+            <rect class="station" data-id="surtr" x="255" y="311" width="40" height="28" fill="none" />
+            <rect class="station" data-id="argus" x="145" y="428" width="40" height="28" fill="none" />
+            <rect class="station" data-id="mnemosyne" x="58" y="334" width="40" height="28" fill="none" />
+            <g fill="none" stroke="transparent" stroke-width="8">
+              <path id="path-hephaestus" d="M170 252 C 138 214, 116 186, 102 168" />
+              <path id="path-janus" d="M170 252 C 140 190, 120 128, 108 80" />
+              <path id="path-iris" d="M170 252 C 206 210, 230 172, 244 148" />
+              <path id="path-surtr" d="M170 252 C 220 286, 255 312, 275 325" />
+              <path id="path-argus" d="M170 252 C 168 320, 166 392, 165 442" />
+              <path id="path-mnemosyne" d="M170 252 C 124 296, 96 328, 78 348" />
+            </g>
+            <g id="orb-layer"></g>
+          </svg>
+          <div class="fx" id="fx-layer"></div>
+          <div class="actors" id="actors"></div>
+          <div class="owls" id="owl-layer"></div>
+          <div class="pins" id="pins"></div>
+          <div class="orbs" id="orbs"></div>
+          <div class="balloon-layer"></div>
         </div>
-        <p class="pin-name">Athena - Orchestrator</p>
       </div>
-      <ul class="specialists" id="specialists" aria-label="Specialists"></ul>
+      <div class="athena-window" id="athena-window">
+        <img class="athena-portrait" src="/avatars/ops-map/athena-portrait.png?v=5" alt="" width="56" height="56" />
+        <div class="athena-window-copy">
+          <p class="athena-name">Athena</p>
+          <p class="athena-msg" id="athena-msg" role="status" aria-live="polite"></p>
+        </div>
+        <span class="athena-caret" aria-hidden="true"></span>
+      </div>
     </aside>
 
     <section class="chat-wrap">
@@ -36,7 +67,8 @@
   <div id="guide" class="guide" hidden>
     <div class="guide-card" role="dialog" aria-labelledby="guide-title" aria-modal="true">
       <h2 id="guide-title">How to use Athena</h2>
-      <p>Sign in on the right, then type in <strong>Ops chat</strong>. You talk only to Athena. She asks specialists for you. A green dot means that agent is up.</p>
+      <p>Sign in on the right, then type in <strong>Ops chat</strong>. You talk only to Athena. She asks specialists for you. The left rail is the village map. A green pin means that agent is up.</p>
+      <p>Athena may ask you to confirm with <strong>YES</strong>, <strong>OK</strong>, <strong>ya</strong>, <strong>lanjut</strong>, or <strong>go</strong> before she runs a live inspect, deep read, or other multi-step action. Simple status questions like <strong>Lab Docker status</strong> or <strong>ada yang rusak?</strong> use cached snapshots and work <strong>without YES</strong>. Fleet reports show <strong>what each agent can do</strong> and <strong>which endpoints are up</strong>.</p>
       <ul class="guide-cast">
         <li><strong>Athena</strong> — orchestrator. Routes questions. Does not restart machines herself.</li>
         <li><strong>Hephaestus</strong> — Lab Docker inspect. Restarts only after you approve.</li>
@@ -44,18 +76,23 @@
         <li><strong>Surtr</strong> — GPU cluster / MIG. Read-only.</li>
         <li><strong>Iris</strong> — LiteLLM and HTTP routes. Read-only.</li>
         <li><strong>Argus</strong> — metrics and Grafana links. Read-only.</li>
+        <li><strong>Janus</strong> — Lab HTTPS path routes (Traefik / office-edge) + TLS leaf status/expiry. He applies routes through the gateway after you approve — not by writing files, and not via Hephaestus. Restarts office-edge only after you approve.</li>
       </ul>
       <p>Copy a starter, paste it into Ops chat, then send:</p>
       <div class="guide-prompts">
-        <button type="button" data-prompt="use a2a_call to lab-host only. Ask Hephaestus for Lab host + Docker container status. Do not restart anything.">Lab Docker status</button>
-        <button type="button" data-prompt="How is the fleet? Ask each specialist for their domain status only. Do not restart anything.">Fleet check</button>
+        <button type="button" data-prompt="How is the fleet? Ask each specialist for their domain status only. Do not restart anything.">How is the fleet?</button>
+        <button type="button" data-prompt="Lab Docker status — show container health counts. Do not restart anything.">Lab Docker status</button>
+        <button type="button" data-prompt="List current HTTPS edge routes. Do not apply or restart anything.">HTTPS edge routes</button>
+        <button type="button" data-prompt="When does the HTTPS cert expire? What should I do next if renewal is needed? Do not restart anything.">When does the HTTPS cert expire?</button>
+        <button type="button" data-prompt="Add HTTPS path /foo/ to host port 9999. Validate first; warn me before any restart.">Add HTTPS path</button>
         <button type="button" data-prompt="List each specialist and what I should ask them. Do not call them yet.">Who does what</button>
       </div>
-      <p class="guide-note">If Athena shows <code>APPROVE &lt;id&gt;</code>, paste that phrase back exactly. Do not ask anyone to restart unless you mean it.</p>
+      <p class="guide-note">Restarts and other writes still need <code>APPROVE &lt;id&gt;</code> — paste that phrase back exactly. The hourly autoheal scheduler is <strong>off</strong>. Do not ask anyone to restart unless you mean it.</p>
       <button type="button" class="guide-close" id="guide-close">Got it</button>
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/ops-map.js?v=29"></script>
+  <script src="/app.js?v=29"></script>
 </body>
 </html>

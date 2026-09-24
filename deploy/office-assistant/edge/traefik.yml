@@ -1,0 +1,35 @@
+# Traefik static config — Lab HTTP(S) front door (office-edge).
+# Dynamic routers: /etc/traefik/dynamic/{core.yml,routes.yml}
+
+entryPoints:
+  web:
+    address: ":80"
+    # No entryPoint-wide HTTP→HTTPS redirect: Desktop needs plain HTTP /bots/
+    # (Electron rejects the Lab Internal CA). Other HTTP paths redirect via
+    # the http-to-https router in core.yml.
+    transport:
+      respondingTimeouts:
+        readTimeout: 0s
+        writeTimeout: 0s
+        idleTimeout: 86400s
+  websecure:
+    address: ":443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 0s
+        writeTimeout: 0s
+        idleTimeout: 86400s
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: false
+  insecure: false
+
+log:
+  level: INFO
+
+accessLog: {}

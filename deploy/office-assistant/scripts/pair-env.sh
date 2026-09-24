@@ -8,6 +8,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 python3 - "$DEPLOY_DIR" <<'PY'
 from pathlib import Path
+import secrets
 import sys
 
 deploy = Path(sys.argv[1])
@@ -18,6 +19,7 @@ gateway_map = {
     "cluster-gpu": "OFFICE_GATEWAY_TOKEN_CLUSTER",
     "llm-edge": "OFFICE_GATEWAY_TOKEN_LLM",
     "obs": "OFFICE_GATEWAY_TOKEN_OBS",
+    "edge": "OFFICE_GATEWAY_TOKEN_EDGE",
 }
 a2a_map = {
     "lab-host": "A2A_TOKEN_LAB_HOST",
@@ -25,6 +27,15 @@ a2a_map = {
     "cluster-gpu": "A2A_TOKEN_CLUSTER_GPU",
     "llm-edge": "A2A_TOKEN_LLM_EDGE",
     "obs": "A2A_TOKEN_OBS",
+    "edge": "A2A_TOKEN_EDGE",
+}
+peer_map = {
+    "lab-host": "HERMES_PEER_LAB_HOST_KEY",
+    "vector": "HERMES_PEER_VECTOR_KEY",
+    "cluster-gpu": "HERMES_PEER_CLUSTER_GPU_KEY",
+    "llm-edge": "HERMES_PEER_LLM_EDGE_KEY",
+    "obs": "HERMES_PEER_OBS_KEY",
+    "edge": "HERMES_PEER_EDGE_KEY",
 }
 
 
@@ -86,5 +97,47 @@ for role, env_key in gateway_map.items():
             "A2A_BEARER_TOKEN": supervisor[a2a_map[role]],
         },
     )
+peer_keys = {}
+for role, peer_env in peer_map.items():
+    role_env = load(deploy / "hermes" / role / ".env")
+    api_key = (role_env.get("API_SERVER_KEY") or "").strip() or secrets.token_urlsafe(32)
+    upsert(deploy / "hermes" / role / ".env", {"API_SERVER_KEY": api_key})
+    peer_keys[peer_env] = api_key
+upsert(deploy / "hermes" / "supervisor" / ".env", peer_keys)
+session_key = "HERMES_DASHBOARD_SESSION_TOKEN"
+session = (
+    (root.get(session_key) or "").strip()
+    or (supervisor.get(session_key) or "").strip()
+    or secrets.token_urlsafe(32)
+)
+upsert(deploy / ".env", {session_key: session})
+upsert(deploy / "hermes" / "supervisor" / ".env", {session_key: session})
+for role in peer_map:
+    upsert(deploy / "hermes" / role / ".env", {session_key: session})
+publish = (root.get("HERMES_DASHBOARD_PUBLISH") or "10.216.4.80:9119").strip()
+public_url = f"http://{publish}"
+upsert(deploy / ".env", {"HERMES_DASHBOARD_PUBLIC_URL": public_url})
+upsert(
+    deploy / "hermes" / "supervisor" / ".env",
+    {"HERMES_DASHBOARD_PUBLIC_URL": public_url},
+)
+user = (
+    (supervisor.get("HERMES_DASHBOARD_USERNAME") or "").strip()
+    or (root.get("HERMES_DASHBOARD_USERNAME") or "").strip()
+)
+password = (
+    (supervisor.get("HERMES_DASHBOARD_PASSWORD") or "").strip()
+    or (root.get("HERMES_DASHBOARD_PASSWORD") or "").strip()
+)
+tls = (root.get("HERMES_CONSOLE_TLS_PUBLISH") or "10.216.4.80:443").strip()
+host, _, port = tls.partition(":")
+console = f"https://{host}" if port in {"", "443"} else f"https://{host}:{port}"
+(deploy / ".local-login").write_text(
+    f"console={console}\n"
+    f"url=http://{publish}\n"
+    f"session_token={session}\n"
+    f"username={user}\n"
+    f"password={password}\n"
+)
 print("paired office-gateway and A2A tokens across hermes role .env files")
 PY

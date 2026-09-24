@@ -1,15 +1,24 @@
 # Vector specialist — Milvus/Attu dev restarts; prod read-only.
 agent:
   name: vector
+  offline: true
   build_wait_timeout: 90
   api_max_retries: 1
 
 model:
   default: ${OPENAI_MODEL}
   provider: office-litellm
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
 
 providers:
   office-litellm:
+    base_url: ${OPENAI_BASE_URL}
+    api_key: ${OPENAI_API_KEY}
+    key_env: OPENAI_API_KEY
+    api_mode: chat_completions
+    request_timeout_seconds: 60
+  custom:
     base_url: ${OPENAI_BASE_URL}
     api_key: ${OPENAI_API_KEY}
     key_env: OPENAI_API_KEY
@@ -19,21 +28,30 @@ providers:
 browser:
   backend: "off"
 
+security:
+  allow_lazy_installs: false
+
 mcp_servers: {}
+
+dashboard:
+  enabled: true
+  host: 0.0.0.0
+  port: 9119
+  public_url: ${HERMES_DASHBOARD_PUBLIC_URL}
+  trusted_proxies:
+    - "172.16.0.0/12"
+    - "172.30.80.0/24"
+  basic_auth:
+    username: ${HERMES_DASHBOARD_USERNAME}
+    password: ${HERMES_DASHBOARD_PASSWORD}
 
 platform_toolsets:
   a2a:
     - terminal
-    - file
     - skills
-    - todo
-    - clarify
   cli:
     - terminal
-    - file
     - skills
-    - todo
-    - clarify
 
 gateway:
   platforms:
@@ -41,3 +59,5 @@ gateway:
       enabled: true
       extra:
         port: 9900
+    api_server:
+      enabled: true

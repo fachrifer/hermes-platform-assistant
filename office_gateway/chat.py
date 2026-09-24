@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from typing import Any
 
@@ -9,9 +10,31 @@ import httpx
 
 from office_gateway.brief import FLEET_AGENTS
 
-LISTEN = {"kind": "listen", "text": "Whenever you're ready.", "target": None}
-THINK = {"kind": "think", "text": "Give me a moment", "target": None}
-TALK = {"kind": "talk", "text": "Done.", "target": None}
+_SPECIALIST_ORDER = tuple(
+    agent["name"] for agent in FLEET_AGENTS if agent["id"] != "supervisor"
+)
+
+LISTEN = {
+    "kind": "listen",
+    "text": "Whenever you're ready.",
+    "target": None,
+    "targets": [],
+    "completed": [],
+}
+THINK = {
+    "kind": "think",
+    "text": "Give me a moment",
+    "target": None,
+    "targets": [],
+    "completed": [],
+}
+TALK = {
+    "kind": "talk",
+    "text": "Done.",
+    "target": None,
+    "targets": [],
+    "completed": [],
+}
 IDLE_AFTER = 15 * 60
 _SESSION_COOKIE = "hermes_session_at"
 
@@ -20,7 +43,6 @@ _SPECIALISTS = {
     for agent in FLEET_AGENTS
     if agent["id"] != "supervisor"
 }
-_NAME_HINTS = {name.lower(): name for name in _SPECIALISTS.values()}
 
 _clients: dict[tuple[str, str], httpx.AsyncClient] = {}
 _locks: dict[tuple[str, str], asyncio.Lock] = {}
@@ -44,20 +66,62 @@ def _as_text(content: Any) -> str:
     return str(content).strip()
 
 
-def _asked_specialist(message: dict) -> str | None:
-    blob = json.dumps(message.get("tool_calls") or [], default=str).lower()
-    blob += " " + str(message.get("name") or "").lower()
-    blob += " " + str(message.get("tool_name") or "").lower()
-    blob += " " + _as_text(message.get("content")).lower()[:200]
-    for agent_id, name in _SPECIALISTS.items():
-        if agent_id in blob or name.lower() in blob:
-            return name
-    for hint, name in _NAME_HINTS.items():
-        if hint in blob:
-            return name
-    if "a2a" in blob or "specialist" in blob:
-        return "a specialist"
-    return None
+def _blob(message: dict) -> str:
+    parts = [
+        json.dumps(message.get("tool_calls") or [], default=str).lower(),
+        str(message.get("name") or "").lower(),
+        str(message.get("tool_name") or "").lower(),
+    ]
+    role = str(message.get("role") or message.get("type") or "").lower()
+    if role in {"tool", "function"}:
+        parts.append(_as_text(message.get("content")).lower()[:400])
+    return " ".join(parts)
+
+
+def _token_in(blob: str, token: str) -> bool:
+    """Word-boundary match so short ids like ``obs`` / ``edge`` do not hit substrings."""
+    if not token:
+        return False
+    return re.search(rf"(?<![a-z0-9_]){re.escape(token.lower())}(?![a-z0-9_])", blob) is not None
+
+
+def _names_in(message: dict) -> list[str]:
+    blob = _blob(message)
+    found = [
+        name
+        for agent_id, name in _SPECIALISTS.items()
+        if _token_in(blob, agent_id) or _token_in(blob, name)
+    ]
+    ordered = [name for name in _SPECIALIST_ORDER if name in found]
+    if ordered:
+        return ordered
+    # Fan-out only for orchestrate-style markers (not a bare "*" in tool text).
+    if "orchestrat" in blob:
+        return list(_SPECIALIST_ORDER)
+    match = re.search(r"(\d+)\s*peer", blob)
+    if match and int(match.group(1)) >= 5:
+        return list(_SPECIALIST_ORDER)
+    return []
+
+
+def _ask_text(names: list[str]) -> str:
+    if len(names) == 1:
+        return f"Asking {names[0]}."
+    if len(names) > 1:
+        return "I'm asking everyone."
+    return "Give me a second — I'm asking a specialist."
+
+
+def _snap(kind: str, text: str, *, targets: list[str] | None = None, completed: list[str] | None = None) -> dict:
+    names = list(targets or [])
+    done = list(completed or [])
+    return {
+        "kind": kind,
+        "text": text,
+        "target": names[0] if names else None,
+        "targets": names,
+        "completed": done,
+    }
 
 
 def _age_seconds(stamp: Any, now: float) -> float:
@@ -84,40 +148,40 @@ def bubble_from_messages(messages: list[dict], *, now: float | None = None) -> d
     if not messages:
         return dict(LISTEN)
     current = now if now is not None else time.time()
+    last_user = max((i for i, m in enumerate(messages) if str(m.get("role") or "").lower() == "user"), default=None)
     last = messages[-1]
     role = str(last.get("role") or last.get("type") or "").lower()
     age = _age_seconds(last.get("timestamp") or last.get("created_at") or last.get("ts"), current)
-    asked = _asked_specialist(last)
-    if role in {"tool", "function"} or (asked and role not in {"user", "assistant", "system"}):
-        who = asked or "a specialist"
-        return {
-            "kind": "ask",
-            "text": f"Give me a second — I'm asking {who}.",
-            "target": None if who == "a specialist" else who,
-        }
-    if role == "user":
+    window = messages[last_user:] if last_user is not None else messages
+
+    called: list[str] = []
+    completed: list[str] = []
+    for msg in window:
+        for name in _names_in(msg):
+            if name not in called:
+                called.append(name)
+        r = str(msg.get("role") or msg.get("type") or "").lower()
+        if r in {"tool", "function"} and "orchestrat" not in _blob(msg):
+            for name in _names_in(msg):
+                if name not in completed:
+                    completed.append(name)
+
+    in_flight = [n for n in _SPECIALIST_ORDER if n in called and n not in completed]
+
+    if last_user is not None and last_user == len(messages) - 1:
         return dict(THINK)
     if role in {"assistant", "system"}:
         text = _as_text(last.get("content"))
-        if asked and not text:
-            who = asked
-            return {
-                "kind": "ask",
-                "text": f"Give me a second — I'm asking {who}.",
-                "target": None if who == "a specialist" else who,
-            }
+        if not text and in_flight:
+            return _snap("ask", _ask_text(in_flight), targets=in_flight, completed=completed)
         if not text:
             return dict(THINK)
         if age > IDLE_AFTER:
             return dict(LISTEN)
-        return dict(TALK)
-    if asked:
-        who = asked
-        return {
-            "kind": "ask",
-            "text": f"Give me a second — I'm asking {who}.",
-            "target": None if who == "a specialist" else who,
-        }
+        return _snap("talk", TALK["text"], targets=[], completed=called)
+    if in_flight or (completed and role in {"tool", "function"}):
+        ask_names = called if len(called) > 1 else (in_flight or called)
+        return _snap("ask", _ask_text(ask_names), targets=in_flight, completed=completed)
     return dict(LISTEN)
 
 

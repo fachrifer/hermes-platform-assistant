@@ -1,6 +1,8 @@
 # Supervisor Hermes — office fleet orchestrator (star A2A topology).
 agent:
   name: supervisor
+  # Skip models.dev + git ls-remote on air-gapped Lab (no-op if older Hermes).
+  offline: true
   # Dashboard Chat waits on this build (tools/MCP/model metadata). Default 600s.
   build_wait_timeout: 90
   api_max_retries: 1
@@ -8,9 +10,17 @@ agent:
 model:
   default: ${OPENAI_MODEL}
   provider: office-litellm
+  base_url: ${OPENAI_BASE_URL}
+  api_key: ${OPENAI_API_KEY}
 
 providers:
   office-litellm:
+    base_url: ${OPENAI_BASE_URL}
+    api_key: ${OPENAI_API_KEY}
+    key_env: OPENAI_API_KEY
+    api_mode: chat_completions
+    request_timeout_seconds: 60
+  custom:
     base_url: ${OPENAI_BASE_URL}
     api_key: ${OPENAI_API_KEY}
     key_env: OPENAI_API_KEY
@@ -21,40 +31,58 @@ dashboard:
   enabled: true
   host: 0.0.0.0
   port: 9119
+  public_url: ${HERMES_DASHBOARD_PUBLIC_URL}
   basic_auth:
     username: ${HERMES_DASHBOARD_USERNAME}
     password: ${HERMES_DASHBOARD_PASSWORD}
 
+# Unattended gateway: stop a wedged tool loop instead of burning retries.
+tool_loop_guardrails:
+  hard_stop_enabled: true
+  hard_stop_after:
+    exact_failure: 5
+    idempotent_no_progress: 5
+
 # Skip Playwright/npx browser probes on every session start.
 browser:
   backend: "off"
+
+# Do not npx/uvx-install tools when the Lab has no registry access.
+security:
+  allow_lazy_installs: false
 
 # Empty map disables MCP discovery (unreachable npx servers stall Chat start).
 mcp_servers: {}
 
 # Peers: supervisor is the only agent that lists specialists.
 # Default A2A client timeout is 120s; keep fan-out well under the 300s inbound reply cap.
+# One peer per specialist container. Hephaestus is the avatar for lab-host — do not
+# register a second peer to the same URL (double a2a_call queues and hits the 45s cap).
 a2a_agents:
   lab-host:
     url: http://hermes-lab-host:9900
     auth: { type: bearer, token: "${A2A_TOKEN_LAB_HOST}" }
-    timeout: 45
+    timeout: 90
   vector:
     url: http://hermes-vector:9900
     auth: { type: bearer, token: "${A2A_TOKEN_VECTOR}" }
-    timeout: 45
+    timeout: 90
   cluster-gpu:
     url: http://hermes-cluster-gpu:9900
     auth: { type: bearer, token: "${A2A_TOKEN_CLUSTER_GPU}" }
-    timeout: 45
+    timeout: 90
   llm-edge:
     url: http://hermes-llm-edge:9900
     auth: { type: bearer, token: "${A2A_TOKEN_LLM_EDGE}" }
-    timeout: 45
+    timeout: 90
   obs:
     url: http://hermes-obs:9900
     auth: { type: bearer, token: "${A2A_TOKEN_OBS}" }
-    timeout: 45
+    timeout: 90
+  Janus:
+    url: http://hermes-edge:9900
+    auth: { type: bearer, token: "${A2A_TOKEN_EDGE}" }
+    timeout: 90
 
 # Do not use hermes-cli here: that preset loads browser/web/vision/image_gen
 # and makes Dashboard Chat pay those check_fn probes on every new session.
@@ -63,6 +91,7 @@ platform_toolsets:
     - a2a
     - kanban
     - skills
+    - terminal
     - todo
     - clarify
     - session_search
@@ -72,5 +101,24 @@ platform_toolsets:
 kanban:
   dispatch_in_gateway: true
 
-# Nightly fleet check: paste prompt from cron.fleet-check.md into Dashboard Cron
-# (Hermes cron job storage is version-dependent; see cron.fleet-check.md).
+# Peer URLs are static (config is bind-mounted :ro). Keys live in supervisor
+# .env as HERMES_PEER_<ROLE>_KEY and must match each specialist API_SERVER_KEY.
+bot_peers:
+  lab-host:
+    url: http://hermes-lab-host:8642
+  vector:
+    url: http://hermes-vector:8642
+  cluster-gpu:
+    url: http://hermes-cluster-gpu:8642
+  llm-edge:
+    url: http://hermes-llm-edge:8642
+  obs:
+    url: http://hermes-obs:8642
+  edge:
+    url: http://hermes-edge:8642
+
+# Cron ticker lives in `gateway run` (not dashboard-only). Pin the office model
+# so unpinned Dashboard jobs are not skipped by the model-drift guard.
+cron:
+  model: ${OPENAI_MODEL}
+  model_provider: office-litellm

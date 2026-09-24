@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from office_gateway.roles import WATCH_SPECIALIST_ROLES, WATCH_STALE_SECONDS
+
 ALLOWED_AUDIT_DETAIL_CODES = frozenset(
     {
         "ok",
@@ -78,6 +80,14 @@ class GatewayStore:
                     event TEXT NOT NULL,
                     detail TEXT NOT NULL,
                     created_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS watch_snapshots (
+                    role TEXT PRIMARY KEY,
+                    snapshot TEXT NOT NULL,
+                    ts TEXT NOT NULL,
+                    alert INTEGER NOT NULL,
+                    summary TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
                 );
                 """
             )
@@ -299,6 +309,62 @@ class GatewayStore:
             expires_at=action.expires_at,
             status=status,
         )
+
+    def upsert_watch(
+        self,
+        role: str,
+        snapshot: str,
+        ts: str,
+        alert: bool,
+        summary: str,
+    ) -> None:
+        updated_at = _iso_z(_utc_now())
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO watch_snapshots (
+                    role, snapshot, ts, alert, summary, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (role, snapshot, ts, int(alert), summary, updated_at),
+            )
+
+    def list_watch_summary(self, now: datetime) -> dict:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT role, ts, alert, summary FROM watch_snapshots"
+            ).fetchall()
+        by_role = {row["role"]: row for row in rows}
+        roles_out: list[dict] = []
+        for role in sorted(WATCH_SPECIALIST_ROLES):
+            row = by_role.get(role)
+            if row is None:
+                roles_out.append(
+                    {
+                        "role": role,
+                        "alert": False,
+                        "summary": "",
+                        "ts": None,
+                        "age_seconds": None,
+                        "stale": True,
+                    }
+                )
+                continue
+            ts_str = row["ts"]
+            ts_dt = datetime.fromisoformat(ts_str)
+            age_seconds = int((now - ts_dt).total_seconds())
+            stale = age_seconds > WATCH_STALE_SECONDS
+            roles_out.append(
+                {
+                    "role": role,
+                    "alert": bool(row["alert"]),
+                    "summary": row["summary"],
+                    "ts": ts_str,
+                    "age_seconds": age_seconds,
+                    "stale": stale,
+                }
+            )
+        return {"roles": roles_out}
 
     def list_audit(self, limit: int = 50) -> list[dict]:
         with self._connect() as conn:

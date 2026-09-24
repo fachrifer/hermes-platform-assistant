@@ -8,5 +8,13 @@ deploy/office-assistant/.local-login
 deploy/office-assistant/.kubeconfig.local
 deploy/office-assistant/models.env
 deploy/office-assistant/images/*.tar.gz
+deploy/office-assistant/.env.bak
+deploy/office-assistant/ca/*
+!deploy/office-assistant/ca/.gitkeep
+deploy/office-assistant/certs/*
+!deploy/office-assistant/certs/.gitkeep
+deploy/office-assistant/*_exporter-*/
+deploy/office-assistant/*_exporter-*.tar.gz
+.DS_Store
 .superpowers/
 graphify-out/

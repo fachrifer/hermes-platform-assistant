@@ -1,0 +1,2 @@
+# Lab Internal CA lives here (ca.crt / ca.key). Never mount this directory
+# into office-console. Generated files are gitignored.

@@ -1,0 +1,22 @@
+{
+  "agent": "supervisor",
+  "display": "Athena · Ruler",
+  "pin": "dashboard-bottom-right",
+  "base": "athena-vtuber-idle.png",
+  "layers": {
+    "blink": "layers/eyes-blink.png",
+    "listen": "layers/eyes-listen.png",
+    "visemes": {
+      "a": "layers/mouth-a.png",
+      "e": "layers/mouth-e.png",
+      "i": "layers/mouth-i.png",
+      "o": "layers/mouth-o.png",
+      "u": "layers/mouth-u.png"
+    }
+  },
+  "streaming": {
+    "loop_ms": 140,
+    "order": ["a", "e", "i", "o", "u"],
+    "blink_every_ms": 4200
+  }
+}

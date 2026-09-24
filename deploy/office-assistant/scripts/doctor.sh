@@ -16,6 +16,7 @@ SERVICES=(
   hermes-cluster-gpu
   hermes-llm-edge
   hermes-obs
+  hermes-edge
 )
 
 echo "hermes doctor — office fleet"

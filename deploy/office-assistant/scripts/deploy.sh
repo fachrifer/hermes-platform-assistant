@@ -14,6 +14,7 @@ set -euo pipefail
 #
 #   ./scripts/deploy.sh
 #   OFFICE_DEPLOY_REBUILD=1 ./scripts/deploy.sh
+#   OFFICE_DEPLOY_SKIP_IMAGES=1 ./scripts/deploy.sh  # code only; Lab already has images
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
@@ -57,7 +58,9 @@ LAB_SCRIPTS=(
   deploy.sh
 )
 
-if [[ "${OFFICE_DEPLOY_REBUILD:-0}" == "1" || ! -f "$TARBALL" ]]; then
+if [[ "${OFFICE_DEPLOY_SKIP_IMAGES:-0}" == "1" ]]; then
+  echo "skip image save/rsync (OFFICE_DEPLOY_SKIP_IMAGES=1); Lab keeps loaded images"
+elif [[ "${OFFICE_DEPLOY_REBUILD:-0}" == "1" || ! -f "$TARBALL" ]]; then
   echo "save images -> $TARBALL"
   "$SCRIPT_DIR/save-images.sh" "$TARBALL"
 elif find "$REPO_ROOT/office_gateway" "$REPO_ROOT/Dockerfile.office-gateway" -newer "$TARBALL" | grep -q .; then
@@ -65,7 +68,7 @@ elif find "$REPO_ROOT/office_gateway" "$REPO_ROOT/Dockerfile.office-gateway" -ne
   "$SCRIPT_DIR/save-images.sh" "$TARBALL"
 fi
 
-if [[ ! -f "$TARBALL" ]]; then
+if [[ "${OFFICE_DEPLOY_SKIP_IMAGES:-0}" != "1" && ! -f "$TARBALL" ]]; then
   echo "error: missing $TARBALL" >&2
   exit 1
 fi
@@ -108,8 +111,8 @@ if [[ ! -f "$DEPLOY_DIR/.env" ]]; then
   exit 1
 fi
 
-echo "pair office-gateway and A2A tokens across hermes role .env files"
-"$SCRIPT_DIR/pair-env.sh"
+echo "pair tokens + Hermes Desktop card (.local-login, Lab HTTP dashboard)"
+"$SCRIPT_DIR/desktop-connect.sh" --lab
 
 # Overwrite Lab env with laptop files. mv through a temp name so a root-owned
 # Lab .env can still be replaced when the directory is writable.
@@ -142,6 +145,9 @@ lab = dict(
         "OFFICE_GATEWAY_CONTEXT=.",
         "HERMES_DASHBOARD_PUBLISH=10.216.4.80:9119",
         "HERMES_CONSOLE_PUBLISH=10.216.4.80:80",
+        "HERMES_CONSOLE_TLS_PUBLISH=10.216.4.80:443",
+        "HERMES_BOT_PUBLIC_ORIGIN=http://10.216.4.80",
+        "HERMES_BOT_BIND=10.216.4.80",
         "OFFICE_KUBECONFIG=./kubeconfig.absent",
     )
 )
@@ -165,8 +171,13 @@ root.write_text("\n".join(out) + "\n")
 print("pinned Lab OFFICE_GATEWAY_CONTEXT / Dashboard / console / kubeconfig")
 PY
 
-echo "rsync office-fleet-images.tar.gz -> $REMOTE:$OFFICE_DEPLOY_DIR/images/"
-rsync -az --progress "$TARBALL" "$REMOTE:$OFFICE_DEPLOY_DIR/images/office-fleet-images.tar.gz"
+if [[ "${OFFICE_DEPLOY_SKIP_IMAGES:-0}" == "1" ]]; then
+  echo "skip rsync of office-fleet-images.tar.gz"
+else
+  echo "rsync office-fleet-images.tar.gz -> $REMOTE:$OFFICE_DEPLOY_DIR/images/"
+  rsync -az --partial --progress "$TARBALL" "$REMOTE:$OFFICE_DEPLOY_DIR/images/office-fleet-images.tar.gz.partial"
+  "${SSH[@]}" "$REMOTE" "mv -f '$OFFICE_DEPLOY_DIR/images/office-fleet-images.tar.gz.partial' '$OFFICE_DEPLOY_DIR/images/office-fleet-images.tar.gz'"
+fi
 
 echo "chmod Lab VM scripts"
 "${SSH[@]}" "$REMOTE" "chmod a+x '$OFFICE_DEPLOY_DIR'/scripts/*.sh"

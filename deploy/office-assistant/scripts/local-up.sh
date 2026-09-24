@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 deploy = Path(sys.argv[1])
-roles = ("supervisor", "lab-host", "vector", "cluster-gpu", "llm-edge", "obs")
+roles = ("supervisor", "lab-host", "vector", "cluster-gpu", "llm-edge", "obs", "edge")
 
 
 def load(path: Path) -> list[str]:
@@ -67,6 +67,7 @@ gw_tokens = {
     "OFFICE_GATEWAY_TOKEN_CLUSTER": get(root_env, "OFFICE_GATEWAY_TOKEN_CLUSTER") or secrets.token_urlsafe(24),
     "OFFICE_GATEWAY_TOKEN_LLM": get(root_env, "OFFICE_GATEWAY_TOKEN_LLM") or secrets.token_urlsafe(24),
     "OFFICE_GATEWAY_TOKEN_OBS": get(root_env, "OFFICE_GATEWAY_TOKEN_OBS") or secrets.token_urlsafe(24),
+    "OFFICE_GATEWAY_TOKEN_EDGE": get(root_env, "OFFICE_GATEWAY_TOKEN_EDGE") or secrets.token_urlsafe(24),
 }
 a2a = {
     "lab-host": get(supervisor, "A2A_TOKEN_LAB_HOST") or secrets.token_urlsafe(24),
@@ -74,9 +75,15 @@ a2a = {
     "cluster-gpu": get(supervisor, "A2A_TOKEN_CLUSTER_GPU") or secrets.token_urlsafe(24),
     "llm-edge": get(supervisor, "A2A_TOKEN_LLM_EDGE") or secrets.token_urlsafe(24),
     "obs": get(supervisor, "A2A_TOKEN_OBS") or secrets.token_urlsafe(24),
+    "edge": get(supervisor, "A2A_TOKEN_EDGE") or secrets.token_urlsafe(24),
 }
 dash_user = get(supervisor, "HERMES_DASHBOARD_USERNAME") or "athena"
 dash_pass = get(supervisor, "HERMES_DASHBOARD_PASSWORD") or secrets.token_urlsafe(12)
+dash_secret = (
+    get(root_env, "HERMES_DASHBOARD_BASIC_AUTH_SECRET")
+    or get(supervisor, "HERMES_DASHBOARD_BASIC_AUTH_SECRET")
+    or secrets.token_urlsafe(32)
+)
 
 
 def load_map(path: Path) -> dict[str, str]:
@@ -127,6 +134,7 @@ upsert(
         "OFFICE_SERVICE_URLS": existing_urls or "gateway=http://office-gateway:8080/health",
         "OFFICE_GATEWAY_CONTEXT": "../..",
         "HERMES_CONSOLE_PUBLISH": "127.0.0.1:9120",
+        "HERMES_CONSOLE_TLS_PUBLISH": "127.0.0.1:9443",
     },
     only_empty=True,
 )
@@ -137,9 +145,13 @@ upsert(
         "OFFICE_KUBECONFIG": str(kube),
         "HERMES_DASHBOARD_PUBLISH": "127.0.0.1:9119",
         "HERMES_CONSOLE_PUBLISH": "127.0.0.1:9120",
+        "HERMES_CONSOLE_TLS_PUBLISH": "127.0.0.1:9443",
         "HERMES_DASHBOARD_URL": "http://hermes-agent:9119",
         "HERMES_DASHBOARD_USERNAME": dash_user,
         "HERMES_DASHBOARD_PASSWORD": dash_pass,
+        "HERMES_DASHBOARD_BASIC_AUTH_SECRET": dash_secret,
+        "HERMES_BOT_PUBLIC_ORIGIN": "http://127.0.0.1:9120",
+        "HERMES_BOT_BIND": "127.0.0.1",
         "OFFICE_GATEWAY_CONTEXT": "../..",
     },
     only_empty=False,
@@ -153,8 +165,10 @@ upsert(
         "A2A_TOKEN_CLUSTER_GPU": a2a["cluster-gpu"],
         "A2A_TOKEN_LLM_EDGE": a2a["llm-edge"],
         "A2A_TOKEN_OBS": a2a["obs"],
+        "A2A_TOKEN_EDGE": a2a["edge"],
         "HERMES_DASHBOARD_USERNAME": dash_user,
         "HERMES_DASHBOARD_PASSWORD": dash_pass,
+        "HERMES_DASHBOARD_BASIC_AUTH_SECRET": dash_secret,
     },
 )
 if model_keys:
@@ -165,8 +179,9 @@ role_token = {
     "cluster-gpu": gw_tokens["OFFICE_GATEWAY_TOKEN_CLUSTER"],
     "llm-edge": gw_tokens["OFFICE_GATEWAY_TOKEN_LLM"],
     "obs": gw_tokens["OFFICE_GATEWAY_TOKEN_OBS"],
+    "edge": gw_tokens["OFFICE_GATEWAY_TOKEN_EDGE"],
 }
-for role in ("lab-host", "vector", "cluster-gpu", "llm-edge", "obs"):
+for role in ("lab-host", "vector", "cluster-gpu", "llm-edge", "obs", "edge"):
     payload = {
         "OFFICE_GATEWAY_TOKEN": role_token[role],
         "A2A_BEARER_TOKEN": a2a[role],
@@ -174,8 +189,52 @@ for role in ("lab-host", "vector", "cluster-gpu", "llm-edge", "obs"):
     }
     upsert(deploy / "hermes" / role / ".env", payload, only_empty=False if model_keys else True)
 
+peer_map = {
+    "lab-host": "HERMES_PEER_LAB_HOST_KEY",
+    "vector": "HERMES_PEER_VECTOR_KEY",
+    "cluster-gpu": "HERMES_PEER_CLUSTER_GPU_KEY",
+    "llm-edge": "HERMES_PEER_LLM_EDGE_KEY",
+    "obs": "HERMES_PEER_OBS_KEY",
+    "edge": "HERMES_PEER_EDGE_KEY",
+}
+peer_keys = {}
+for role, peer_env in peer_map.items():
+    role_path = deploy / "hermes" / role / ".env"
+    api_key = get(role_path, "API_SERVER_KEY") or secrets.token_urlsafe(32)
+    upsert(role_path, {"API_SERVER_KEY": api_key}, only_empty=True)
+    peer_keys[peer_env] = get(role_path, "API_SERVER_KEY") or api_key
+upsert(supervisor, peer_keys)
+
+session = (
+    get(root_env, "HERMES_DASHBOARD_SESSION_TOKEN")
+    or get(supervisor, "HERMES_DASHBOARD_SESSION_TOKEN")
+    or secrets.token_urlsafe(32)
+)
+upsert(root_env, {"HERMES_DASHBOARD_SESSION_TOKEN": session}, only_empty=False)
+upsert(supervisor, {"HERMES_DASHBOARD_SESSION_TOKEN": session}, only_empty=False)
+upsert(
+    root_env,
+    {"HERMES_DASHBOARD_PUBLIC_URL": "http://127.0.0.1:9119"},
+    only_empty=False,
+)
+upsert(
+    supervisor,
+    {"HERMES_DASHBOARD_PUBLIC_URL": "http://127.0.0.1:9119"},
+    only_empty=False,
+)
+for role in ("lab-host", "vector", "cluster-gpu", "llm-edge", "obs", "edge"):
+    upsert(
+        deploy / "hermes" / role / ".env",
+        {"HERMES_DASHBOARD_SESSION_TOKEN": session},
+        only_empty=False,
+    )
+
 login_path.write_text(
-    f"console=http://127.0.0.1:9120\nurl=http://127.0.0.1:9119\nusername={dash_user}\npassword={dash_pass}\n"
+    f"console=https://127.0.0.1:9443\n"
+    f"console_http=http://127.0.0.1:9120\n"
+    f"url=http://127.0.0.1:9119\n"
+    f"session_token={session}\n"
+    f"username={dash_user}\npassword={dash_pass}\n"
 )
 print("wrote dashboard login to deploy/office-assistant/.local-login")
 model_name = model_keys.get("OPENAI_MODEL", "")
@@ -197,8 +256,14 @@ if [[ -S /var/run/docker.sock ]]; then
   fi
 fi
 
-echo "docker compose up (Athena console http://127.0.0.1:9120)"
+TLS_IP=127.0.0.1 "$SCRIPT_DIR/init-lab-ca.sh"
+TLS_IP=127.0.0.1 "$SCRIPT_DIR/issue-edge-cert.sh"
+python3 "$SCRIPT_DIR/render-edge-traefik.py"
+"$SCRIPT_DIR/render-traefik-core.sh"
+
+
+echo "docker compose up (Athena console https://127.0.0.1:9443)"
 docker compose -f "$DEPLOY_DIR/docker-compose.yml" -f "$DEPLOY_DIR/docker-compose.local.yml" up -d --build --force-recreate --remove-orphans
 docker compose -f "$DEPLOY_DIR/docker-compose.yml" -f "$DEPLOY_DIR/docker-compose.local.yml" ps
-echo "Open http://127.0.0.1:9120  (Athena console: specialists + chat)"
+echo "Open https://127.0.0.1:9443  (import ca/ca.crt into the trust store once; HTTP :9120 redirects)"
 echo "Raw Hermes chat: http://127.0.0.1:9119  (credentials in deploy/office-assistant/.local-login)"

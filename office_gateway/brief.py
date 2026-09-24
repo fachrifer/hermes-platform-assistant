@@ -61,6 +61,16 @@ FLEET_AGENTS = (
         "ready_service": "hermes-obs",
         "service_names": ("grafana", "victoria", "prometheus"),
     },
+    {
+        "id": "edge",
+        "name": "Janus",
+        "fate_class": "Gatekeeper",
+        "role": "edge",
+        "purpose": "HTTPS edge + TLS",
+        "avatar": "/avatars/janus-gatekeeper.png",
+        "ready_service": "hermes-edge",
+        "service_names": ("office-edge", "office-console"),
+    },
 )
 
 

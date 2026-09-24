@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ops map interaction test</title>
+  <style>
+    :root {
+      --bg: #081018;
+      --panel: #101820;
+      --gold: #c7a45a;
+      --text: #e6edf3;
+      --muted: #8b9aaa;
+      --ok: #3dba86;
+      --warn: #d4a017;
+      --critical: #d4544a;
+      --rail: 340px;
+      --line: #1e2a36;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 48px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+    }
+    .eyebrow {
+      margin: 0;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-size: 10px;
+    }
+    h1 {
+      margin: 0;
+      font-family: Palatino, "Palatino Linotype", serif;
+      font-weight: 500;
+      font-size: 20px;
+    }
+    h1 span { color: var(--gold); font-weight: 400; }
+    .badge {
+      margin-left: auto;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      border: 1px solid var(--gold);
+      border-radius: 999px;
+      padding: 5px 10px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: var(--rail) minmax(0, 1fr);
+      height: calc(100vh - 48px);
+    }
+    .rail {
+      position: relative;
+      min-height: 0;
+      border-right: 1px solid var(--line);
+      overflow: hidden;
+      background: #7ec56a;
+    }
+    .village {
+      position: absolute;
+      inset: 0;
+      image-rendering: pixelated;
+    }
+    .village svg.map {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .actors, .pins, .orbs, .balloon-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .actor {
+      position: absolute;
+      width: 48px;
+      height: 56px;
+      margin-left: -24px;
+      margin-top: -40px;
+      transform-origin: 50% 90%;
+    }
+    .actor .body {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pixel-head {
+      width: 18px;
+      height: 16px;
+      border: 2px solid #2a1d12;
+      position: relative;
+      z-index: 2;
+    }
+    .pixel-hair {
+      width: 22px;
+      height: 8px;
+      margin-bottom: -2px;
+      border: 2px solid #2a1d12;
+      z-index: 3;
+    }
+    .pixel-torso {
+      width: 22px;
+      height: 18px;
+      border: 2px solid #2a1d12;
+      margin-top: -2px;
+    }
+    .pixel-legs {
+      width: 18px;
+      height: 10px;
+      border: 2px solid #2a1d12;
+      border-top: 0;
+      display: flex;
+    }
+    .pixel-legs span {
+      flex: 1;
+      border-right: 2px solid #2a1d12;
+    }
+    .pixel-legs span:last-child { border-right: 0; }
+    .pixel-crystal {
+      position: absolute;
+      right: 4px;
+      top: 18px;
+      width: 8px;
+      height: 10px;
+      border: 2px solid #2a1d12;
+    }
+    .runes, .sparks, .eye {
+      position: absolute;
+      inset: -8px;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .runes::before, .runes::after {
+      content: "";
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border: 2px solid #7ec8ff;
+      border-radius: 1px;
+    }
+    .runes::before { top: 0; left: 8px; }
+    .runes::after { top: 6px; right: 4px; }
+    .actor.think .runes,
+    .actor.dispatch .runes,
+    .actor.aggregating .runes { opacity: 1; animation: spin 1.2s linear infinite; }
+    .actor.work .sparks { opacity: 1; }
+    .sparks::before, .sparks::after {
+      content: "";
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #ffd36a;
+      top: 8px;
+    }
+    .sparks::before { left: 2px; animation: spark 0.45s steps(2) infinite; }
+    .sparks::after { right: 4px; animation: spark 0.45s steps(2) infinite 0.2s; }
+    .actor.athena .pixel-hair { background: #f3f1ea; }
+    .actor.athena .pixel-head { background: #f0d2b0; }
+    .actor.athena .pixel-torso { background: #dce9f8; }
+    .actor.athena .pixel-legs { background: #5a7cb8; }
+    .actor.athena .pixel-crystal { background: #6ecbff; }
+    .actor.hephaestus .pixel-hair { background: #a34b2e; }
+    .actor.hephaestus .pixel-head { background: #e0b089; }
+    .actor.hephaestus .pixel-torso { background: #3d2a22; }
+    .actor.hephaestus .pixel-legs { background: #6b4228; }
+    .actor.hephaestus .pixel-crystal { background: #c47a3a; }
+    .actor.mnemosyne .pixel-hair { background: #5b2d7a; }
+    .actor.mnemosyne .pixel-head { background: #e8c4b0; }
+    .actor.mnemosyne .pixel-torso { background: #6b4ea3; }
+    .actor.mnemosyne .pixel-legs { background: #3a2a6e; }
+    .actor.mnemosyne .pixel-crystal { background: #c9a5ff; }
+    .actor.surtr .pixel-hair { background: #3a2418; }
+    .actor.surtr .pixel-head { background: #d9a078; }
+    .actor.surtr .pixel-torso { background: #2a1a14; }
+    .actor.surtr .pixel-legs { background: #c45c1a; }
+    .actor.surtr .pixel-crystal { background: #ff7a2a; }
+    .actor.iris .pixel-hair { background: #b79adf; }
+    .actor.iris .pixel-head { background: #f0d0bc; }
+    .actor.iris .pixel-torso { background: #6d6ad4; }
+    .actor.iris .pixel-legs { background: #3f3ea8; }
+    .actor.iris .pixel-crystal { background: #c9b6ff; }
+    .actor.argus .pixel-hair { background: #1e2a24; }
+    .actor.argus .pixel-head { background: #d4b08c; }
+    .actor.argus .pixel-torso { background: #1f3a2c; }
+    .actor.argus .pixel-legs { background: #2f5a40; }
+    .actor.argus .pixel-crystal { background: #7dffb0; }
+    .actor.janus .pixel-hair { background: #c5d4e0; }
+    .actor.janus .pixel-head { background: #edd4bc; }
+    .actor.janus .pixel-torso { background: #1d3a62; }
+    .actor.janus .pixel-legs { background: #f3f6fb; }
+    .actor.janus .pixel-crystal { background: #7ec8ff; }
+
+    .actor.idle { animation: breathe 1.7s ease-in-out infinite; }
+    .actor.think { animation: sway 1.1s ease-in-out infinite; }
+    .actor.dispatch { animation: raise 0.55s ease-out; }
+    .actor.work { animation: work 0.55s steps(2) infinite; }
+    .actor.receive { animation: notice 0.4s ease-out; }
+    .actor.complete { animation: pop 0.45s ease-out; }
+    .actor.aggregating { animation: sway 0.9s ease-in-out infinite; }
+    .actor.responding { animation: pop 0.6s ease-out; }
+    .actor:nth-child(1) { animation-delay: 0s; }
+    .actor:nth-child(2) { animation-delay: -0.25s; }
+    .actor:nth-child(3) { animation-delay: -0.5s; }
+    .actor:nth-child(4) { animation-delay: -0.75s; }
+    .actor:nth-child(5) { animation-delay: -1s; }
+    .actor:nth-child(6) { animation-delay: -1.2s; }
+    .actor:nth-child(7) { animation-delay: -1.45s; }
+
+    @keyframes breathe {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+    @keyframes sway {
+      0%, 100% { transform: translateY(-1px) rotate(-2deg); }
+      50% { transform: translateY(-3px) rotate(2deg); }
+    }
+    @keyframes raise {
+      0% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
+      100% { transform: translateY(-2px); }
+    }
+    @keyframes work {
+      0%, 100% { transform: translate(0, 0); }
+      50% { transform: translate(1px, -2px); }
+    }
+    @keyframes notice {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.08) translateY(-3px); }
+      100% { transform: scale(1); }
+    }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    @keyframes spark {
+      0%, 100% { opacity: 1; transform: translateY(0); }
+      50% { opacity: 0; transform: translateY(-6px); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-station {
+      0%, 100% { filter: none; }
+      50% { filter: drop-shadow(0 0 6px #d4544a); }
+    }
+    .station.critical { animation: pulse-station 1.1s ease-in-out infinite; }
+
+    .pin {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 18px;
+      margin-top: -28px;
+      background: rgba(8, 16, 24, 0.72);
+      color: #f4f7fb;
+      font-size: 9px;
+      line-height: 1;
+      padding: 3px 6px 3px 4px;
+      border-radius: 999px;
+      white-space: nowrap;
+      max-width: 92px;
+      pointer-events: none;
+    }
+    .pin span.name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #5d7183;
+      flex-shrink: 0;
+    }
+    .dot.ok { background: var(--ok); }
+    .dot.warn { background: var(--warn); }
+    .dot.critical { background: var(--critical); }
+
+    .map .orb-gold { fill: #f3c34a; stroke: #fff4c4; stroke-width: 1; }
+    .map .orb-green { fill: #5ee0a0; stroke: #e9fff4; stroke-width: 1; }
+    .map .orb-red { fill: #ff6b5a; stroke: #ffd0c8; stroke-width: 1; }
+
+    .balloon {
+      position: absolute;
+      box-sizing: border-box;
+      width: max-content;
+      max-width: 132px;
+      min-width: 44px;
+      transform: translateX(-50%);
+      background: #ebf3fb;
+      color: #111;
+      border-radius: 12px;
+      padding: 7px 8px;
+      font-size: 11px;
+      line-height: 1.3;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .balloon-text {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+    }
+    .balloon[hidden] { display: none; }
+    .balloon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -7px;
+      transform: translateX(-50%);
+      border: 7px solid transparent;
+      border-top-color: #ebf3fb;
+      border-bottom-width: 0;
+    }
+    .balloon.agent {
+      box-sizing: border-box;
+      width: 36px;
+      height: 22px;
+      min-width: 36px;
+      min-height: 22px;
+      max-width: 112px;
+      padding: 4px 6px;
+      font-size: 10px;
+      line-height: 1.25;
+      border-radius: 8px;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .balloon.agent:not(.think) {
+      width: max-content;
+      height: auto;
+      min-height: 22px;
+    }
+    .balloon.agent::after {
+      border-width: 5px;
+      bottom: -5px;
+    }
+    .balloon .dots { display: none; }
+    .balloon.think .dots {
+      display: inline-block;
+      width: 3ch;
+      height: 1em;
+      overflow: hidden;
+      text-align: left;
+      font-variant-numeric: tabular-nums;
+    }
+    .balloon.think .dots::after {
+      content: "...";
+      display: inline-block;
+      width: 3ch;
+      animation: ellipsis 1.4s steps(4, end) infinite;
+    }
+    @keyframes ellipsis {
+      0% { content: ""; }
+      25% { content: "."; }
+      50% { content: ".."; }
+      75% { content: "..."; }
+    }
+
+    .chat-wrap {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      background: #0b141c;
+    }
+    .chat-head {
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .chat-head h2 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .chat-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .scenarios {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .scenarios button {
+      background: #15202a;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .scenarios button:hover { border-color: var(--gold); color: var(--gold); }
+    .scenarios button.primary {
+      background: var(--gold);
+      color: #081018;
+      border-color: var(--gold);
+      font-weight: 700;
+    }
+    .log {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 12px 16px 20px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .log .row { margin: 0 0 8px; }
+    .log .kind {
+      color: var(--gold);
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .state {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: #9ec3a8;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 900px) {
+      html, body { overflow: auto; }
+      .layout { grid-template-columns: 1fr; height: auto; }
+      .rail { height: 48vh; max-height: 48vh; border-right: 0; border-bottom: 1px solid var(--line); }
+      .chat-wrap { min-height: 60vh; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .actor, .runes, .sparks, .orb, .station.critical { animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <p class="eyebrow">Agent Specialist Fleet</p>
+    <span aria-hidden="true" style="color:var(--gold);opacity:.65">|</span>
+    <h1>Athena <span>- Orchestrator</span></h1>
+    <span class="badge">Interaction test</span>
+  </header>
+
+  <div class="layout">
+    <aside class="rail" aria-label="Operations village">
+      <div class="village" id="village">
+        <svg class="map" id="map" viewBox="0 0 340 480" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <defs>
+            <pattern id="grass" width="16" height="16" patternUnits="userSpaceOnUse">
+              <rect width="16" height="16" fill="#7ec56a" />
+              <rect x="2" y="9" width="2" height="4" fill="#6bb85a" />
+              <rect x="10" y="3" width="2" height="5" fill="#8ed173" />
+            </pattern>
+          </defs>
+          <rect width="340" height="480" fill="url(#grass)" />
+          <path d="M0 300 C 80 280, 70 360, 0 380" fill="#6ec3d8" opacity=".85" />
+          <path d="M250 0 C 270 80, 300 60, 340 90 L 340 0 Z" fill="#9ad47a" />
+          <rect x="148" y="200" width="44" height="44" rx="4" fill="#d8c7a1" stroke="#b9a57a" />
+          <circle cx="170" cy="222" r="16" fill="#c7b48a" stroke="#a89060" />
+          <!-- Hephaestus workshop -->
+          <rect class="station" data-id="hephaestus" x="18" y="70" width="52" height="40" fill="#8a5a3a" stroke="#5a341c" />
+          <rect x="44" y="52" width="12" height="20" fill="#6a3a24" />
+          <rect x="46" y="44" width="8" height="10" fill="#ff7a3a" />
+          <!-- Janus gate -->
+          <rect class="station" data-id="janus" x="146" y="18" width="48" height="36" fill="#3a5a88" stroke="#dce9f8" />
+          <path d="M154 50 V 28 H 186 V 50" fill="none" stroke="#7ec8ff" stroke-width="3" />
+          <!-- Iris tower -->
+          <rect class="station" data-id="iris" x="268" y="72" width="44" height="38" fill="#6d5bb8" stroke="#c9b6ff" />
+          <rect x="282" y="42" width="16" height="32" fill="#4a3e96" />
+          <circle cx="290" cy="40" r="7" fill="#c9b6ff" />
+          <!-- Surtr -->
+          <rect class="station" data-id="surtr" x="266" y="200" width="50" height="42" fill="#3a2418" stroke="#ff7a2a" />
+          <circle cx="291" cy="220" r="10" fill="#ff7a2a" />
+          <!-- Argus -->
+          <rect class="station" data-id="argus" x="146" y="368" width="48" height="38" fill="#1f3a2c" stroke="#7dffb0" />
+          <rect x="154" y="376" width="12" height="10" fill="#7ec8ff" />
+          <rect x="172" y="376" width="12" height="10" fill="#7ec8ff" />
+          <!-- Mnemosyne -->
+          <rect class="station" data-id="mnemosyne" x="16" y="330" width="52" height="40" fill="#4a2e6e" stroke="#c9a5ff" />
+          <circle cx="42" cy="344" r="8" fill="#c9a5ff" />
+          <!-- paths -->
+          <g fill="none" stroke="#e6d7b3" stroke-width="7" stroke-linecap="round">
+            <path id="path-hephaestus" d="M170 222 C 120 180, 90 130, 44 90" />
+            <path id="path-janus" d="M170 222 C 170 160, 170 100, 170 42" />
+            <path id="path-iris" d="M170 222 C 220 180, 250 130, 290 90" />
+            <path id="path-surtr" d="M170 222 C 220 222, 250 222, 291 221" />
+            <path id="path-argus" d="M170 222 C 170 280, 170 330, 170 386" />
+            <path id="path-mnemosyne" d="M170 222 C 110 260, 70 310, 42 350" />
+          </g>
+          <g fill="none" stroke="#f7edd4" stroke-width="3" stroke-linecap="round">
+            <path d="M170 222 C 120 180, 90 130, 44 90" />
+            <path d="M170 222 C 170 160, 170 100, 170 42" />
+            <path d="M170 222 C 220 180, 250 130, 290 90" />
+            <path d="M170 222 C 220 222, 250 222, 291 221" />
+            <path d="M170 222 C 170 280, 170 330, 170 386" />
+            <path d="M170 222 C 110 260, 70 310, 42 350" />
+          </g>
+          <g id="orb-layer"></g>
+        </svg>
+        <div class="actors" id="actors"></div>
+        <div class="pins" id="pins"></div>
+        <div class="orbs" id="orbs"></div>
+        <div class="balloon-layer">
+          <p class="balloon" id="balloon" hidden><span class="balloon-text" id="balloon-text"></span><span class="dots"></span></p>
+        </div>
+      </div>
+    </aside>
+
+    <section class="chat-wrap">
+      <div class="chat-head">
+        <h2>Ops chat (mock)</h2>
+        <p>Play a snapshot the way Athena’s fleet chat would. One balloon per agent: waiting shows only the three-dot animation, a reply replaces those dots, and the balloon hides if no result comes in.</p>
+      </div>
+      <div class="scenarios">
+        <button type="button" data-act="idle">Idle</button>
+        <button type="button" data-act="think">User query</button>
+        <button type="button" data-act="ask-one">Ask Hephaestus</button>
+        <button type="button" data-act="fanout">Fan-out all six</button>
+        <button type="button" data-act="one-done">Hephaestus done</button>
+        <button type="button" data-act="all-done">Athena responds</button>
+        <button type="button" data-act="critical">Hephaestus critical</button>
+        <button type="button" class="primary" data-act="play">Play full A2A</button>
+      </div>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+
+  <script>
+    const SPECIALISTS = [
+      { id: "hephaestus", name: "Hephaestus", x: 44, y: 90, role: "Lab host", reply: "Lab Docker ok." },
+      { id: "janus", name: "Janus", x: 170, y: 42, role: "HTTPS edge", reply: "TLS 89 days left." },
+      { id: "iris", name: "Iris", x: 290, y: 90, role: "LLM edge", reply: "LiteLLM ready." },
+      { id: "surtr", name: "Surtr", x: 291, y: 221, role: "GPU cluster", reply: "MIG map ready." },
+      { id: "argus", name: "Argus", x: 170, y: 386, role: "Observability", reply: "Metrics green." },
+      { id: "mnemosyne", name: "Mnemosyne", x: 42, y: 350, role: "Vector store", reply: "Milvus healthy." },
+    ];
+    const ATHENA = { id: "athena", name: "Athena", x: 170, y: 222 };
+    const ALL_IDS = SPECIALISTS.map((s) => s.id);
+
+    const village = document.getElementById("village");
+    const actorsEl = document.getElementById("actors");
+    const pinsEl = document.getElementById("pins");
+    const orbsEl = document.getElementById("orbs");
+    const balloonLayer = document.querySelector(".balloon-layer");
+    const balloon = document.getElementById("balloon");
+    const balloonText = document.getElementById("balloon-text");
+    const logEl = document.getElementById("log");
+
+    const map = document.getElementById("map");
+    const orbLayer = document.getElementById("orb-layer");
+
+    const seenGold = new Set();
+    const seenGreen = new Set();
+    let redCount = 0;
+    let playTimer = 0;
+    let snapshot = {
+      kind: "listen",
+      text: "",
+      targets: [],
+      completed: [],
+      statuses: Object.fromEntries(ALL_IDS.map((id) => [id, "ok"])),
+      athenaPose: "idle",
+      poses: Object.fromEntries(ALL_IDS.map((id) => [id, "idle"])),
+    };
+
+    function mapPoint(x, y) {
+      const pt = map.createSVGPoint();
+      pt.x = x;
+      pt.y = y;
+      const loc = pt.matrixTransform(map.getScreenCTM());
+      const box = village.getBoundingClientRect();
+      return { left: `${loc.x - box.left}px`, top: `${loc.y - box.top}px` };
+    }
+
+    function place(el, x, y) {
+      const pos = mapPoint(x, y);
+      el.style.left = pos.left;
+      el.style.top = pos.top;
+    }
+
+    function balloonEl(id) {
+      return document.getElementById(id === "athena" ? "balloon" : `balloon-${id}`);
+    }
+
+    function placeAgentBalloon(id) {
+      const el = balloonEl(id);
+      if (!el || el.hidden) {
+        return;
+      }
+      const actor = document.getElementById(`actor-${id}`);
+      const villageBox = village.getBoundingClientRect();
+      const box = actor.getBoundingClientRect();
+      const gap = id === "athena" ? 32 : 16;
+      let top = box.top - villageBox.top - el.offsetHeight - gap;
+      if (top < 4) {
+        top = 4;
+      }
+      el.style.left = `${box.left + box.width / 2 - villageBox.left}px`;
+      el.style.top = `${top}px`;
+    }
+
+    function placeBalloon() {
+      placeAgentBalloon("athena");
+      SPECIALISTS.forEach((agent) => placeAgentBalloon(agent.id));
+    }
+
+    function layout() {
+      place(document.getElementById("actor-athena"), ATHENA.x, ATHENA.y);
+      SPECIALISTS.forEach((agent) => {
+        place(document.getElementById(`actor-${agent.id}`), agent.x, agent.y);
+        place(document.getElementById(`pin-${agent.id}`), agent.x, agent.y);
+      });
+      placeBalloon();
+    }
+
+    function figure(agent, extraClass) {
+      const el = document.createElement("div");
+      el.className = `actor ${agent.id} ${extraClass || "idle"}`;
+      el.id = `actor-${agent.id}`;
+      el.innerHTML = `
+        <div class="body">
+          <div class="pixel-hair"></div>
+          <div class="pixel-head"></div>
+          <div class="pixel-torso"></div>
+          <div class="pixel-legs"><span></span><span></span></div>
+          <div class="pixel-crystal"></div>
+        </div>
+        <div class="runes"></div>
+        <div class="sparks"></div>
+      `;
+      return el;
+    }
+
+    function mount() {
+      actorsEl.appendChild(figure(ATHENA, "idle"));
+      SPECIALISTS.forEach((agent) => {
+        actorsEl.appendChild(figure(agent, "idle"));
+        const pin = document.createElement("div");
+        pin.className = "pin";
+        pin.id = `pin-${agent.id}`;
+        pin.innerHTML = `<span class="dot ok"></span><span class="name">${agent.name}</span>`;
+        pinsEl.appendChild(pin);
+        const reply = document.createElement("p");
+        reply.className = "balloon agent";
+        reply.id = `balloon-${agent.id}`;
+        reply.hidden = true;
+        reply.innerHTML = `<span class="balloon-text"></span><span class="dots"></span>`;
+        balloonLayer.appendChild(reply);
+      });
+      layout();
+      window.addEventListener("resize", layout);
+      requestAnimationFrame(layout);
+    }
+
+    function setPose(id, pose) {
+      const el = document.getElementById(`actor-${id}`);
+      const keep = id === "athena" ? "actor athena" : `actor ${id}`;
+      el.className = `${keep} ${pose}`;
+    }
+
+    function setAgentBalloon(id, text, kind) {
+      const el = balloonEl(id);
+      const label = el.querySelector(".balloon-text");
+      const waiting = kind === "think" && !text;
+      if (!text && !waiting) {
+        el.hidden = true;
+        return;
+      }
+      el.hidden = false;
+      const base = id === "athena" ? "balloon" : "balloon agent";
+      el.className = waiting ? `${base} think` : base;
+      label.textContent = text || "";
+      placeAgentBalloon(id);
+    }
+
+    function setBalloon(text, kind) {
+      setAgentBalloon("athena", text, kind === "think" && !text ? "think" : kind);
+    }
+
+    function syncSpecialistBalloons(next) {
+      const working = new Set(next.targets);
+      const done = new Set(next.completed);
+      SPECIALISTS.forEach((agent) => {
+        if (done.has(agent.id)) {
+          setAgentBalloon(agent.id, agent.reply, "talk");
+        } else if (working.has(agent.id)) {
+          setAgentBalloon(agent.id, "", "think");
+        } else {
+          setAgentBalloon(agent.id, "", "");
+        }
+      });
+    }
+
+    function spawnOrb(kind, agentId, dir) {
+      const ns = "http://www.w3.org/2000/svg";
+      const circle = document.createElementNS(ns, "circle");
+      circle.setAttribute("r", "5");
+      circle.setAttribute("class", `orb-${kind}`);
+      const motion = document.createElementNS(ns, "animateMotion");
+      motion.setAttribute("dur", "0.85s");
+      motion.setAttribute("fill", "freeze");
+      motion.setAttribute("rotate", "0");
+      if (dir === "in") {
+        motion.setAttribute("keyPoints", "1;0");
+        motion.setAttribute("keyTimes", "0;1");
+        motion.setAttribute("calcMode", "linear");
+      }
+      const mpath = document.createElementNS(ns, "mpath");
+      mpath.setAttribute("href", `#path-${agentId}`);
+      motion.appendChild(mpath);
+      circle.appendChild(motion);
+      orbLayer.appendChild(circle);
+      if (motion.beginElement) motion.beginElement();
+      window.setTimeout(() => circle.remove(), 900);
+    }
+
+    function applySnapshot(next, note) {
+      const prevTargets = new Set(snapshot.targets);
+      const prevCompleted = new Set(snapshot.completed);
+      snapshot = next;
+      setPose("athena", next.athenaPose);
+      SPECIALISTS.forEach((agent) => {
+        setPose(agent.id, next.poses[agent.id]);
+        const pin = document.getElementById(`pin-${agent.id}`);
+        pin.querySelector(".dot").className = `dot ${next.statuses[agent.id]}`;
+        const station = document.querySelector(`.station[data-id="${agent.id}"]`);
+        station.classList.toggle("critical", next.statuses[agent.id] === "critical");
+      });
+      if (next.kind === "listen") setBalloon("", "");
+      else setBalloon(next.text, next.kind === "think" ? "think" : "talk");
+      syncSpecialistBalloons(next);
+
+      next.targets.forEach((id) => {
+        if (!seenGold.has(id)) {
+          seenGold.add(id);
+          spawnOrb("gold", id, "out");
+        }
+      });
+      next.completed.forEach((id) => {
+        if (!seenGreen.has(id)) {
+          seenGreen.add(id);
+          spawnOrb("green", id, "in");
+        }
+      });
+      if (next.statuses.hephaestus === "critical" && redCount < 2 && !next.targets.length) {
+        redCount += 1;
+        spawnOrb("red", "hephaestus", "out");
+      }
+      if (next.kind === "listen") {
+        seenGold.clear();
+        seenGreen.clear();
+      }
+      logRow(note, next, prevTargets, prevCompleted);
+    }
+
+    function logRow(note, next) {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `<span class="kind">${next.kind}</span>${note || ""}
+        <div class="state">targets=${JSON.stringify(next.targets)} completed=${JSON.stringify(next.completed)}</div>`;
+      logEl.prepend(row);
+    }
+
+    function base(over) {
+      return {
+        kind: "listen",
+        text: "",
+        targets: [],
+        completed: [],
+        statuses: { ...snapshot.statuses, ...(over.statuses || {}) },
+        athenaPose: "idle",
+        poses: Object.fromEntries(ALL_IDS.map((id) => [id, "idle"])),
+        ...over,
+      };
+    }
+
+    const scenes = {
+      idle() {
+        redCount = 0;
+        seenGold.clear();
+        seenGreen.clear();
+        applySnapshot(base({
+          kind: "listen",
+          statuses: Object.fromEntries(ALL_IDS.map((id) => [id, "ok"])),
+        }), "Village idle. Balloon hidden. Everyone breathing.");
+      },
+      think() {
+        applySnapshot(base({
+          kind: "think",
+          text: "Give me a moment",
+          athenaPose: "think",
+        }), "User sent a message. Athena thinking.");
+      },
+      "ask-one"() {
+        applySnapshot(base({
+          kind: "ask",
+          text: "Asking Hephaestus.",
+          targets: ["hephaestus"],
+          athenaPose: "dispatch",
+          poses: { hephaestus: "work", janus: "idle", iris: "idle", surtr: "idle", argus: "idle", mnemosyne: "idle" },
+        }), "Single a2a_call. One gold orb. Only Hephaestus works.");
+        window.setTimeout(() => {
+          if (snapshot.targets.includes("hephaestus")) setPose("athena", "think");
+        }, 700);
+      },
+      fanout() {
+        const poses = Object.fromEntries(ALL_IDS.map((id) => [id, "work"]));
+        applySnapshot(base({
+          kind: "ask",
+          text: "I'm asking everyone.",
+          targets: [...ALL_IDS],
+          athenaPose: "dispatch",
+          poses,
+        }), "Fan-out. Six gold orbs at once. All specialists work in parallel.");
+        window.setTimeout(() => {
+          if (snapshot.kind === "ask") setPose("athena", "think");
+        }, 700);
+      },
+      "one-done"() {
+        const poses = { ...snapshot.poses, hephaestus: "complete" };
+        const completed = Array.from(new Set([...snapshot.completed, "hephaestus"]));
+        const targets = snapshot.targets.filter((id) => id !== "hephaestus");
+        applySnapshot(base({
+          kind: "ask",
+          text: snapshot.targets.length > 1 ? "I'm asking everyone." : "Asking Hephaestus.",
+          targets,
+          completed,
+          athenaPose: "aggregating",
+          poses,
+        }), "Hephaestus tool result. Green orb returns. Others keep working.");
+        window.setTimeout(() => setPose("hephaestus", "idle"), 500);
+      },
+      "all-done"() {
+        const called = seenGold.size ? Array.from(seenGold) : [...ALL_IDS];
+        applySnapshot(base({
+          kind: "talk",
+          text: "Done.",
+          targets: [],
+          completed: called,
+          athenaPose: "responding",
+          poses: Object.fromEntries(ALL_IDS.map((id) => [id, called.includes(id) ? "complete" : "idle"])),
+        }), "Athena synthesizes. Remaining green orbs return.");
+        window.setTimeout(() => scenes.idle(), 2400);
+      },
+      critical() {
+        applySnapshot(base({
+          kind: "listen",
+          statuses: { ...snapshot.statuses, hephaestus: "critical" },
+        }), "Pin critical. Red orb at most twice.");
+      },
+      play() {
+        window.clearTimeout(playTimer);
+        const steps = [
+          () => scenes.idle(),
+          () => scenes.think(),
+          () => scenes.fanout(),
+          () => scenes["one-done"](),
+          () => scenes["all-done"](),
+        ];
+        let i = 0;
+        const tick = () => {
+          steps[i]();
+          i += 1;
+          if (i < steps.length) playTimer = window.setTimeout(tick, i === 2 ? 1600 : 1200);
+        };
+        tick();
+      },
+    };
+
+    mount();
+    scenes.idle();
+    document.querySelectorAll("[data-act]").forEach((button) => {
+      button.addEventListener("click", () => scenes[button.getAttribute("data-act")]());
+    });
+  </script>
+</body>
+</html>

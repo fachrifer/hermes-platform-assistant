@@ -1,0 +1,11 @@
+Every day at 01:00 (Asia/Jakarta): create a Kanban card titled "nightly fleet check".
+One a2a_orchestrate to lab-host, vector, cluster-gpu, llm-edge, obs, Janus with this exact payload to each peer:
+
+FAST: run bash /opt/office/office-gw-fast.sh and reply with its stdout only. No extra probes. Do not propose writes.
+
+Comment each specialist reply on the card. Complete the card, or block it naming any failed peer.
+Never send automated Lab restarts during the nightly check. Do not propose writes.
+
+If Janus reports TLS leaf status expired or expires_soon, block the card and include the operator command: ./scripts/issue-edge-cert.sh
+
+Synthesis must include: lab-host Lab Docker/container status (running vs exited, unhealthy, Compose names, host usage); cluster-gpu MIG map plus Kubernetes inventory (namespaces, GPU pods and node placement, capacity vs allocatable); Janus HTTPS edge routes and TLS expiry; obs Grafana panel links.
