@@ -7,17 +7,29 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from office_gateway.roles import WATCH_SPECIALIST_ROLES, WATCH_STALE_SECONDS
+STATUSES = ("pending", "executing", "succeeded", "failed", "rejected", "expired")
 
 ALLOWED_AUDIT_DETAIL_CODES = frozenset(
     {
         "ok",
+        "rejected",
         "failed:adapter_unavailable",
         "failed:not_found",
+        "failed:invalid",
+        "failed:rolled_back",
         "failed:claim_conflict",
         "failed:expired",
     }
 )
+
+_ACTION_COLUMNS = {
+    "role": "TEXT NOT NULL DEFAULT ''",
+    "executing_at": "TEXT",
+    "approver": "TEXT NOT NULL DEFAULT ''",
+    "decided_at": "TEXT NOT NULL DEFAULT ''",
+    "detail": "TEXT NOT NULL DEFAULT ''",
+    "result_json": "TEXT NOT NULL DEFAULT '{}'",
+}
 
 
 def normalize_audit_detail(detail: str) -> str:
@@ -45,6 +57,18 @@ class PendingAction:
     created_at: str
     expires_at: str
     status: str
+    approver: str = ""
+    decided_at: str = ""
+    detail: str = ""
+    result_json: str = "{}"
+
+    @property
+    def params(self) -> dict:
+        return json.loads(self.params_json or "{}")
+
+    @property
+    def result(self) -> dict:
+        return json.loads(self.result_json or "{}")
 
 
 class GatewayStore:
@@ -67,7 +91,7 @@ class GatewayStore:
                     action_id TEXT PRIMARY KEY,
                     action TEXT NOT NULL,
                     target TEXT NOT NULL,
-                    role TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT '',
                     params_json TEXT NOT NULL,
                     summary TEXT NOT NULL,
                     created_at TEXT NOT NULL,
@@ -81,59 +105,70 @@ class GatewayStore:
                     detail TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
-                CREATE TABLE IF NOT EXISTS watch_snapshots (
-                    role TEXT PRIMARY KEY,
-                    snapshot TEXT NOT NULL,
-                    ts TEXT NOT NULL,
-                    alert INTEGER NOT NULL,
-                    summary TEXT NOT NULL,
-                    updated_at TEXT NOT NULL
-                );
                 """
             )
-            columns = {
-                row["name"]
-                for row in conn.execute("PRAGMA table_info(actions)").fetchall()
-            }
-            if "role" not in columns:
-                conn.execute(
-                    "ALTER TABLE actions ADD COLUMN role TEXT NOT NULL DEFAULT ''"
-                )
-            if "executing_at" not in columns:
-                conn.execute("ALTER TABLE actions ADD COLUMN executing_at TEXT")
+            have = {row["name"] for row in conn.execute("PRAGMA table_info(actions)")}
+            for name, decl in _ACTION_COLUMNS.items():
+                if name not in have:
+                    conn.execute(f"ALTER TABLE actions ADD COLUMN {name} {decl}")
+            audit_cols = {row["name"] for row in conn.execute("PRAGMA table_info(audit)")}
+            if "actor" not in audit_cols:
+                conn.execute("ALTER TABLE audit ADD COLUMN actor TEXT NOT NULL DEFAULT ''")
+            conn.execute("UPDATE actions SET status = 'succeeded' WHERE status = 'executed'")
             self._recover_stale_executing(conn)
 
-    def _recover_stale_executing(self, conn: sqlite3.Connection) -> None:
-        cutoff = _iso_z(
-            _utc_now() - timedelta(seconds=self.action_ttl_seconds)
+    def _audit(self, conn, action_id: str, event: str, detail: str, actor: str = "") -> None:
+        conn.execute(
+            "INSERT INTO audit (action_id, event, detail, created_at, actor) VALUES (?, ?, ?, ?, ?)",
+            (action_id, event, normalize_audit_detail(detail), _iso_z(_utc_now()), actor),
         )
-        now = _iso_z(_utc_now())
+
+    def _recover_stale_executing(self, conn: sqlite3.Connection) -> None:
+        cutoff = _iso_z(_utc_now() - timedelta(seconds=self.action_ttl_seconds))
         rows = conn.execute(
-            """
-            SELECT action_id
-            FROM actions
-            WHERE status = 'executing'
-              AND COALESCE(executing_at, created_at) <= ?
-            """,
+            "SELECT action_id FROM actions WHERE status = 'executing' "
+            "AND COALESCE(executing_at, created_at) <= ?",
             (cutoff,),
         ).fetchall()
         for row in rows:
             cur = conn.execute(
-                """
-                UPDATE actions
-                SET status = 'failed'
-                WHERE action_id = ? AND status = 'executing'
-                """,
+                "UPDATE actions SET status = 'failed', detail = 'failed:adapter_unavailable' "
+                "WHERE action_id = ? AND status = 'executing'",
                 (row["action_id"],),
             )
             if cur.rowcount:
-                conn.execute(
-                    """
-                    INSERT INTO audit (action_id, event, detail, created_at)
-                    VALUES (?, 'failed', 'failed:adapter_unavailable', ?)
-                    """,
-                    (row["action_id"], now),
-                )
+                self._audit(conn, row["action_id"], "failed", "failed:adapter_unavailable")
+
+    def _expire_due(self, conn: sqlite3.Connection) -> None:
+        now = _iso_z(_utc_now())
+        rows = conn.execute(
+            "SELECT action_id FROM actions WHERE status = 'pending' AND expires_at < ?", (now,)
+        ).fetchall()
+        for row in rows:
+            cur = conn.execute(
+                "UPDATE actions SET status = 'expired' WHERE action_id = ? AND status = 'pending'",
+                (row["action_id"],),
+            )
+            if cur.rowcount:
+                self._audit(conn, row["action_id"], "expired", "failed:expired")
+
+    @staticmethod
+    def _row(row: sqlite3.Row) -> PendingAction:
+        return PendingAction(
+            action_id=row["action_id"],
+            action=row["action"],
+            target=row["target"],
+            role=row["role"],
+            params_json=row["params_json"],
+            summary=row["summary"],
+            created_at=row["created_at"],
+            expires_at=row["expires_at"],
+            status=row["status"],
+            approver=row["approver"],
+            decided_at=row["decided_at"],
+            detail=row["detail"],
+            result_json=row["result_json"],
+        )
 
     def propose(
         self,
@@ -145,237 +180,101 @@ class GatewayStore:
     ) -> PendingAction:
         action_id = str(uuid.uuid4())
         created = _utc_now()
-        expires = created + timedelta(seconds=self.action_ttl_seconds)
-        params_json = json.dumps(params or {})
-        created_at = _iso_z(created)
-        expires_at = _iso_z(expires)
-        status = "pending"
-
         with self._connect() as conn:
             conn.execute(
-                """
-                INSERT INTO actions (
-                    action_id, action, target, role, params_json, summary,
-                    created_at, expires_at, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
+                "INSERT INTO actions (action_id, action, target, role, params_json, summary, "
+                "created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')",
                 (
                     action_id,
                     action,
                     target,
                     role,
-                    params_json,
+                    json.dumps(params or {}),
                     summary,
-                    created_at,
-                    expires_at,
-                    status,
+                    _iso_z(created),
+                    _iso_z(created + timedelta(seconds=self.action_ttl_seconds)),
                 ),
             )
-            conn.execute(
-                """
-                INSERT INTO audit (action_id, event, detail, created_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                (action_id, "proposed", "ok", created_at),
-            )
-
-        return PendingAction(
-            action_id=action_id,
-            action=action,
-            target=target,
-            role=role,
-            params_json=params_json,
-            summary=summary,
-            created_at=created_at,
-            expires_at=expires_at,
-            status=status,
-        )
+            self._audit(conn, action_id, "proposed", "ok", role)
+        found = self.get_action(action_id)
+        assert found is not None
+        return found
 
     def get_action(self, action_id: str) -> PendingAction | None:
         with self._connect() as conn:
-            row = conn.execute(
-                "SELECT * FROM actions WHERE action_id = ?", (action_id,)
-            ).fetchone()
-        if row is None:
-            return None
-        return PendingAction(
-            action_id=row["action_id"],
-            action=row["action"],
-            target=row["target"],
-            role=row["role"],
-            params_json=row["params_json"],
-            summary=row["summary"],
-            created_at=row["created_at"],
-            expires_at=row["expires_at"],
-            status=row["status"],
-        )
+            self._expire_due(conn)
+            row = conn.execute("SELECT * FROM actions WHERE action_id = ?", (action_id,)).fetchone()
+        return self._row(row) if row else None
 
-    def _is_expired(self, action: PendingAction) -> bool:
-        expires = datetime.fromisoformat(action.expires_at.replace("Z", "+00:00"))
-        return _utc_now() > expires
+    def list_actions(
+        self, statuses: tuple[str, ...] | None = None, limit: int = 50
+    ) -> list[PendingAction]:
+        limit = max(1, min(int(limit), 200))
+        with self._connect() as conn:
+            self._expire_due(conn)
+            if statuses:
+                marks = ",".join("?" for _ in statuses)
+                rows = conn.execute(
+                    f"SELECT * FROM actions WHERE status IN ({marks}) "
+                    "ORDER BY created_at DESC, rowid DESC LIMIT ?",
+                    (*statuses, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM actions ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
+                ).fetchall()
+        return [self._row(row) for row in rows]
 
-    def mark_expired_if_needed(self, action: PendingAction) -> PendingAction:
-        if action.status != "pending" or not self._is_expired(action):
-            return action
+    def claim_pending(self, action_id: str, approver: str) -> PendingAction | None:
         now = _iso_z(_utc_now())
         with self._connect() as conn:
-            conn.execute(
-                "UPDATE actions SET status = ? WHERE action_id = ? AND status = 'pending'",
-                ("expired", action.action_id),
-            )
-            conn.execute(
-                """
-                INSERT INTO audit (action_id, event, detail, created_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                (action.action_id, "expired", "failed:expired", now),
-            )
-        return PendingAction(
-            action_id=action.action_id,
-            action=action.action,
-            target=action.target,
-            role=action.role,
-            params_json=action.params_json,
-            summary=action.summary,
-            created_at=action.created_at,
-            expires_at=action.expires_at,
-            status="expired",
-        )
-
-    def _row_to_pending(self, row: sqlite3.Row) -> PendingAction:
-        return PendingAction(
-            action_id=row["action_id"],
-            action=row["action"],
-            target=row["target"],
-            role=row["role"],
-            params_json=row["params_json"],
-            summary=row["summary"],
-            created_at=row["created_at"],
-            expires_at=row["expires_at"],
-            status=row["status"],
-        )
-
-    def claim_pending(self, action_id: str) -> PendingAction | None:
-        now = _iso_z(_utc_now())
-        with self._connect() as conn:
+            self._expire_due(conn)
             cur = conn.execute(
-                """
-                UPDATE actions SET status = 'executing', executing_at = ?
-                WHERE action_id = ? AND status = 'pending' AND expires_at >= ?
-                """,
-                (now, action_id, now),
+                "UPDATE actions SET status = 'executing', executing_at = ?, approver = ?, "
+                "decided_at = ? WHERE action_id = ? AND status = 'pending' AND expires_at >= ?",
+                (now, approver, now, action_id, now),
             )
             if cur.rowcount == 0:
                 return None
-            row = conn.execute(
-                "SELECT * FROM actions WHERE action_id = ?", (action_id,)
-            ).fetchone()
-        if row is None:
-            return None
-        return self._row_to_pending(row)
+            self._audit(conn, action_id, "approved", "ok", approver)
+        return self.get_action(action_id)
 
-    def mark_executed(self, action_id: str, ok: bool, detail: str) -> PendingAction | None:
-        action = self.get_action(action_id)
-        if action is None:
-            return None
-        status = "executed" if ok else "failed"
-        safe_detail = normalize_audit_detail(detail)
+    def reject(self, action_id: str, approver: str) -> PendingAction | None:
         now = _iso_z(_utc_now())
         with self._connect() as conn:
+            self._expire_due(conn)
             cur = conn.execute(
-                """
-                UPDATE actions SET status = ?
-                WHERE action_id = ? AND status = 'executing'
-                """,
-                (status, action_id),
+                "UPDATE actions SET status = 'rejected', approver = ?, decided_at = ? "
+                "WHERE action_id = ? AND status = 'pending'",
+                (approver, now, action_id),
             )
             if cur.rowcount == 0:
                 return None
-            conn.execute(
-                """
-                INSERT INTO audit (action_id, event, detail, created_at)
-                VALUES (?, ?, ?, ?)
-                """,
-                (action_id, "executed" if ok else "failed", safe_detail, now),
-            )
-        return PendingAction(
-            action_id=action.action_id,
-            action=action.action,
-            target=action.target,
-            role=action.role,
-            params_json=action.params_json,
-            summary=action.summary,
-            created_at=action.created_at,
-            expires_at=action.expires_at,
-            status=status,
-        )
+            self._audit(conn, action_id, "rejected", "rejected", approver)
+        return self.get_action(action_id)
 
-    def upsert_watch(
-        self,
-        role: str,
-        snapshot: str,
-        ts: str,
-        alert: bool,
-        summary: str,
-    ) -> None:
-        updated_at = _iso_z(_utc_now())
+    def mark_executed(
+        self, action_id: str, ok: bool, detail: str, result: dict | None = None
+    ) -> PendingAction | None:
+        status = "succeeded" if ok else "failed"
+        safe = normalize_audit_detail(detail)
         with self._connect() as conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO watch_snapshots (
-                    role, snapshot, ts, alert, summary, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (role, snapshot, ts, int(alert), summary, updated_at),
+            cur = conn.execute(
+                "UPDATE actions SET status = ?, detail = ?, result_json = ? "
+                "WHERE action_id = ? AND status = 'executing'",
+                (status, safe, json.dumps(result or {}), action_id),
             )
-
-    def list_watch_summary(self, now: datetime) -> dict:
-        with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT role, ts, alert, summary FROM watch_snapshots"
-            ).fetchall()
-        by_role = {row["role"]: row for row in rows}
-        roles_out: list[dict] = []
-        for role in sorted(WATCH_SPECIALIST_ROLES):
-            row = by_role.get(role)
-            if row is None:
-                roles_out.append(
-                    {
-                        "role": role,
-                        "alert": False,
-                        "summary": "",
-                        "ts": None,
-                        "age_seconds": None,
-                        "stale": True,
-                    }
-                )
-                continue
-            ts_str = row["ts"]
-            ts_dt = datetime.fromisoformat(ts_str)
-            age_seconds = int((now - ts_dt).total_seconds())
-            stale = age_seconds > WATCH_STALE_SECONDS
-            roles_out.append(
-                {
-                    "role": role,
-                    "alert": bool(row["alert"]),
-                    "summary": row["summary"],
-                    "ts": ts_str,
-                    "age_seconds": age_seconds,
-                    "stale": stale,
-                }
-            )
-        return {"roles": roles_out}
+            if cur.rowcount == 0:
+                return None
+            self._audit(conn, action_id, status, safe)
+        return self.get_action(action_id)
 
     def list_audit(self, limit: int = 50) -> list[dict]:
         with self._connect() as conn:
             rows = conn.execute(
-                """
-                SELECT id, action_id, event, detail, created_at
-                FROM audit
-                ORDER BY id DESC
-                LIMIT ?
-                """,
-                (limit,),
+                "SELECT id, action_id, event, detail, created_at, actor FROM audit "
+                "ORDER BY id DESC LIMIT ?",
+                (max(1, min(int(limit), 500)),),
             ).fetchall()
         return [
             {
@@ -383,6 +282,7 @@ class GatewayStore:
                 "action_id": row["action_id"],
                 "event": row["event"],
                 "detail": normalize_audit_detail(row["detail"]),
+                "actor": row["actor"],
                 "created_at": row["created_at"],
             }
             for row in rows
