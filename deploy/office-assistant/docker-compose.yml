@@ -1,6 +1,40 @@
 name: office
 
-x-hermes-bot-dashboard: &hermes-bot-dashboard
+networks:
+  office:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.80.0/24
+
+volumes:
+  office_gateway_data:
+  hermes_supervisor_v2:
+  hermes_lab_host_v2:
+  hermes_ingress_v2:
+  hermes_llm_v2:
+  hermes_cluster_gpu_v2:
+  hermes_vector_v2:
+  hermes_obs_v2:
+
+# Lab has no internet. Public DNS waits ~5 minutes on TCP SYN retries
+# during Dashboard "forging session" / tool check_fn. Loopback refuses immediately.
+x-hermes-airgap-hosts: &hermes-airgap-hosts
+  - "models.dev:127.0.0.1"
+  - "api.github.com:127.0.0.1"
+  - "github.com:127.0.0.1"
+  - "raw.githubusercontent.com:127.0.0.1"
+  - "registry.npmjs.org:127.0.0.1"
+  - "portal.nousresearch.com:127.0.0.1"
+  - "openrouter.ai:127.0.0.1"
+  - "pypi.org:127.0.0.1"
+  - "files.pythonhosted.org:127.0.0.1"
+
+# Any other outbound call hits a dead proxy and fails at once. httpx ignores CIDR
+# entries in NO_PROXY, so the Lab servers are listed by IP.
+x-hermes-env: &hermes-env
+  HERMES_HOME: /opt/data
+  TZ: Asia/Jakarta
   HERMES_DASHBOARD: "1"
   HERMES_DASHBOARD_HOST: "0.0.0.0"
   HERMES_DASHBOARD_PORT: "9119"
@@ -16,37 +50,22 @@ x-hermes-bot-dashboard: &hermes-bot-dashboard
   API_SERVER_ENABLED: "true"
   API_SERVER_HOST: "0.0.0.0"
   API_SERVER_PORT: "8642"
+  HTTPS_PROXY: http://127.0.0.1:9
+  HTTP_PROXY: http://127.0.0.1:9
+  https_proxy: http://127.0.0.1:9
+  http_proxy: http://127.0.0.1:9
+  NO_PROXY: &no-proxy localhost,127.0.0.1,10.216.4.80,10.216.221.100,10.216.203.132,10.216.78.129,10.216.78.130,office-gateway,hermes-agent,hermes-lab-host,hermes-ingress,hermes-llm,hermes-cluster-gpu,hermes-vector,hermes-obs
+  no_proxy: *no-proxy
 
-networks:
-  office:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.30.80.0/24
-
-volumes:
-  office_gateway_data:
-  hermes_supervisor_data:
-  kanban_data:
-  hermes_lab_host_data:
-  hermes_vector_data:
-  hermes_cluster_gpu_data:
-  hermes_llm_edge_data:
-  hermes_obs_data:
-  hermes_edge_data:
-
-# Lab has no internet. Public DNS waits ~5 minutes on TCP SYN retries
-# during Dashboard "forging session" / tool check_fn. Loopback refuses immediately.
-x-hermes-airgap-hosts: &hermes-airgap-hosts
-  - "models.dev:127.0.0.1"
-  - "api.github.com:127.0.0.1"
-  - "github.com:127.0.0.1"
-  - "raw.githubusercontent.com:127.0.0.1"
-  - "registry.npmjs.org:127.0.0.1"
-  - "portal.nousresearch.com:127.0.0.1"
-  - "openrouter.ai:127.0.0.1"
-  - "pypi.org:127.0.0.1"
-  - "files.pythonhosted.org:127.0.0.1"
+x-hermes-agent: &hermes-agent
+  image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.9.21}
+  restart: unless-stopped
+  networks:
+    - office
+  depends_on:
+    - office-gateway
+  extra_hosts: *hermes-airgap-hosts
+  command: ["gateway", "run"]
 
 services:
   office-gateway-init:
@@ -85,11 +104,11 @@ services:
       - "8080"
     volumes:
       - office_gateway_data:/var/lib/hermes-office-gateway
-      # Live Python package so OFFICE_DEPLOY_SKIP_IMAGES still picks up
-      # gateway code (k8s_ops, roles, …) without rebuilding office-gw:local.
-      # Lab .env: OFFICE_GATEWAY_CONTEXT=.  Laptop local-up: ../..
+      # Live Python package so a code-only ship needs no image rebuild.
+      # Lab .env: OFFICE_GATEWAY_CONTEXT=.  Laptop: ../..
       - ${OFFICE_GATEWAY_CONTEXT:-../..}/office_gateway:/app/office_gateway:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${OFFICE_DBUS_SOCKET:-/run/dbus/system_bus_socket}:/run/dbus/system_bus_socket:ro
       - ./edge:/edge:rw
       - ./certs:/certs:ro
     environment:
@@ -100,326 +119,143 @@ services:
       OFFICE_EDGE_ROUTES_PATH: /edge/edge-routes
       OFFICE_EDGE_DYNAMIC_PATH: /edge/traefik-dynamic/routes.yml
       OFFICE_EDGE_LOCATIONS_PATH: /edge/traefik-dynamic/routes.yml
+      OFFICE_EDGE_BACKUP_DIR: /edge/backups
       OFFICE_EDGE_TLS_CERT_PATH: /certs/tls.crt
+      OFFICE_CONSOLE_URL: https://${HERMES_CONSOLE_TLS_HOST:-10.216.4.80}
 
   hermes-agent:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
+    <<: *hermes-agent
     depends_on:
       - office-gateway
       - hermes-lab-host
-      - hermes-vector
+      - hermes-ingress
+      - hermes-llm
       - hermes-cluster-gpu
-      - hermes-llm-edge
+      - hermes-vector
       - hermes-obs
-      - hermes-edge
     ports:
       - "${HERMES_DASHBOARD_PUBLISH:-10.216.4.80:9119}:9119"
     env_file:
       - ./models.env
       - ./hermes/supervisor/.env
-    extra_hosts: *hermes-airgap-hosts
     environment:
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_HERMES_STAMP_CONFIG: "0"
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
-      TZ: Asia/Jakarta
-      HERMES_DASHBOARD: "1"
-      HERMES_DASHBOARD_HOST: "0.0.0.0"
-      HERMES_DASHBOARD_PORT: "9119"
-      # v0.21.0 auth gate (env names). config.yaml basic_auth still interpolates
-      # HERMES_DASHBOARD_USERNAME / PASSWORD from supervisor .env.
-      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_USERNAME:-}
-      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_PASSWORD:-}
-      HERMES_DASHBOARD_BASIC_AUTH_SECRET: ${HERMES_DASHBOARD_BASIC_AUTH_SECRET:-}
-      HERMES_DASHBOARD_SESSION_TOKEN: ${HERMES_DASHBOARD_SESSION_TOKEN:-}
+      <<: *hermes-env
       # Desktop Test hits public /api/status then /api/ws. WS Origin must match
       # this published URL (bind is 0.0.0.0). Do not reuse specialist /bots/ URLs.
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_DASHBOARD_PUBLISH:-10.216.4.80:9119}
-      HERMES_DASHBOARD_TUI: "1"
     volumes:
-      - hermes_supervisor_data:/opt/data
-      - kanban_data:/opt/data/kanban
+      - hermes_supervisor_v2:/opt/data
       - ./hermes/supervisor/config.yaml:/opt/data/config.yaml:ro
-      - ./skills/supervisor:/opt/data/skills/supervisor:ro
-      - ./hermes/supervisor/cron.fleet-check.prompt.txt:/opt/office/cron.fleet-check.prompt.txt:ro
-      - ./hermes/supervisor/cron.hourly-fleet.prompt.txt:/opt/office/cron.hourly-fleet.prompt.txt:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
+      - ./skills/supervisor:/opt/data/skills/office-supervisor:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-airgap-provider-cont-init.sh:/etc/cont-init.d/09-office-airgap-provider:ro
-      - ./scripts/hermes-supervisor-cron-init.sh:/etc/cont-init.d/20-office-cron:ro
-      - ./scripts/office-watch-summary.sh:/opt/office/office-watch-summary.sh:ro
-      - ./scripts/office-watch-sync.sh:/opt/office/office-watch-sync.sh:ro
-      - ./scripts/office-watch-kanban.py:/opt/office/office-watch-kanban.py:ro
-      - ./scripts/s6-office-watch-sync-run:/etc/services.d/office-watch-sync/run:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
   hermes-lab-host:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
-    depends_on:
-      - office-gateway
+    <<: *hermes-agent
     ports:
       - "${HERMES_BOT_BIND:-10.216.4.80}:9121:9119"
     env_file:
       - ./models.env
       - ./hermes/lab-host/.env
-    extra_hosts: *hermes-airgap-hosts
     environment:
-      <<: *hermes-bot-dashboard
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_FAST_ROLE: lab-host
+      <<: *hermes-env
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9121
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
     volumes:
-      - hermes_lab_host_data:/opt/data
-      - ./hermes/lab-host/config.yaml:/opt/hermes-config.template.yaml:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/office-gw-get.sh:/opt/office/office-gw-get.sh:ro
-      - ./scripts/office-gw-fast.sh:/opt/office/office-gw-fast.sh:ro
-      - ./scripts/office-gw-propose.sh:/opt/office/office-gw-propose.sh:ro
-      - ./scripts/office-gw-watch.sh:/opt/office/office-gw-watch.sh:ro
-      - ./scripts/office-watch-eval.py:/opt/office/office-watch-eval.py:ro
-      - ./scripts/s6-office-watch-run:/etc/services.d/office-watch/run:ro
+      - hermes_lab_host_v2:/opt/data
+      - ./hermes/lab-host/config.yaml:/opt/data/config.yaml:ro
+      - ./skills/lab-host:/opt/data/skills/office-lab-host:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-office-llm-cont-init.sh:/etc/cont-init.d/10-office-llm:ro
-      - ./skills/lab-host:/opt/data/skills/lab-host:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
   hermes-vector:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
-    depends_on:
-      - office-gateway
+    <<: *hermes-agent
     ports:
       - "${HERMES_BOT_BIND:-10.216.4.80}:9122:9119"
     env_file:
       - ./models.env
       - ./hermes/vector/.env
-    extra_hosts: *hermes-airgap-hosts
     environment:
-      <<: *hermes-bot-dashboard
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_FAST_ROLE: vector
+      <<: *hermes-env
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9122
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
     volumes:
-      - hermes_vector_data:/opt/data
-      - ./hermes/vector/config.yaml:/opt/hermes-config.template.yaml:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/office-gw-get.sh:/opt/office/office-gw-get.sh:ro
-      - ./scripts/office-gw-fast.sh:/opt/office/office-gw-fast.sh:ro
-      - ./scripts/office-gw-propose.sh:/opt/office/office-gw-propose.sh:ro
-      - ./scripts/office-gw-watch.sh:/opt/office/office-gw-watch.sh:ro
-      - ./scripts/office-watch-eval.py:/opt/office/office-watch-eval.py:ro
-      - ./scripts/s6-office-watch-run:/etc/services.d/office-watch/run:ro
+      - hermes_vector_v2:/opt/data
+      - ./hermes/vector/config.yaml:/opt/data/config.yaml:ro
+      - ./skills/vector:/opt/data/skills/office-vector:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-office-llm-cont-init.sh:/etc/cont-init.d/10-office-llm:ro
-      - ./skills/vector:/opt/data/skills/vector:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
   hermes-cluster-gpu:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
-    depends_on:
-      - office-gateway
+    <<: *hermes-agent
     ports:
       - "${HERMES_BOT_BIND:-10.216.4.80}:9123:9119"
     env_file:
       - ./models.env
       - ./hermes/cluster-gpu/.env
-    extra_hosts: *hermes-airgap-hosts
     environment:
-      <<: *hermes-bot-dashboard
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_FAST_ROLE: cluster-gpu
+      <<: *hermes-env
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9123
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
     volumes:
-      - hermes_cluster_gpu_data:/opt/data
-      - ./hermes/cluster-gpu/config.yaml:/opt/hermes-config.template.yaml:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/office-gw-get.sh:/opt/office/office-gw-get.sh:ro
-      - ./scripts/office-gw-fast.sh:/opt/office/office-gw-fast.sh:ro
-      - ./scripts/office-gw-propose.sh:/opt/office/office-gw-propose.sh:ro
-      - ./scripts/office-gw-watch.sh:/opt/office/office-gw-watch.sh:ro
-      - ./scripts/office-watch-eval.py:/opt/office/office-watch-eval.py:ro
-      - ./scripts/s6-office-watch-run:/etc/services.d/office-watch/run:ro
+      - hermes_cluster_gpu_v2:/opt/data
+      - ./hermes/cluster-gpu/config.yaml:/opt/data/config.yaml:ro
+      - ./skills/cluster-gpu:/opt/data/skills/office-cluster-gpu:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-office-llm-cont-init.sh:/etc/cont-init.d/10-office-llm:ro
-      - ./skills/cluster-gpu:/opt/data/skills/cluster-gpu:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
-  hermes-llm-edge:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
-    depends_on:
-      - office-gateway
+  hermes-llm:
+    <<: *hermes-agent
     ports:
       - "${HERMES_BOT_BIND:-10.216.4.80}:9124:9119"
     env_file:
       - ./models.env
-      - ./hermes/llm-edge/.env
-    extra_hosts: *hermes-airgap-hosts
+      - ./hermes/llm/.env
     environment:
-      <<: *hermes-bot-dashboard
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_FAST_ROLE: llm-edge
+      <<: *hermes-env
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9124
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
     volumes:
-      - hermes_llm_edge_data:/opt/data
-      - ./hermes/llm-edge/config.yaml:/opt/hermes-config.template.yaml:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/office-gw-get.sh:/opt/office/office-gw-get.sh:ro
-      - ./scripts/office-gw-fast.sh:/opt/office/office-gw-fast.sh:ro
-      - ./scripts/office-gw-propose.sh:/opt/office/office-gw-propose.sh:ro
-      - ./scripts/office-gw-watch.sh:/opt/office/office-gw-watch.sh:ro
-      - ./scripts/office-watch-eval.py:/opt/office/office-watch-eval.py:ro
-      - ./scripts/s6-office-watch-run:/etc/services.d/office-watch/run:ro
+      - hermes_llm_v2:/opt/data
+      - ./hermes/llm/config.yaml:/opt/data/config.yaml:ro
+      - ./skills/llm:/opt/data/skills/office-llm:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-office-llm-cont-init.sh:/etc/cont-init.d/10-office-llm:ro
-      - ./skills/llm-edge:/opt/data/skills/llm-edge:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
   hermes-obs:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
-    depends_on:
-      - office-gateway
+    <<: *hermes-agent
     ports:
       - "${HERMES_BOT_BIND:-10.216.4.80}:9125:9119"
     env_file:
       - ./models.env
       - ./hermes/obs/.env
-    extra_hosts: *hermes-airgap-hosts
     environment:
-      <<: *hermes-bot-dashboard
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_FAST_ROLE: obs
+      <<: *hermes-env
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9125
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
     volumes:
-      - hermes_obs_data:/opt/data
-      - ./hermes/obs/config.yaml:/opt/hermes-config.template.yaml:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/office-gw-get.sh:/opt/office/office-gw-get.sh:ro
-      - ./scripts/office-gw-fast.sh:/opt/office/office-gw-fast.sh:ro
-      - ./scripts/office-gw-propose.sh:/opt/office/office-gw-propose.sh:ro
-      - ./scripts/office-gw-watch.sh:/opt/office/office-gw-watch.sh:ro
-      - ./scripts/office-watch-eval.py:/opt/office/office-watch-eval.py:ro
-      - ./scripts/s6-office-watch-run:/etc/services.d/office-watch/run:ro
+      - hermes_obs_v2:/opt/data
+      - ./hermes/obs/config.yaml:/opt/data/config.yaml:ro
+      - ./skills/obs:/opt/data/skills/office-obs:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-office-llm-cont-init.sh:/etc/cont-init.d/10-office-llm:ro
-      - ./skills/obs:/opt/data/skills/obs:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
-  hermes-edge:
-    image: ${HERMES_IMAGE:-nousresearch/hermes-agent:v2026.8.31}
-    restart: unless-stopped
-    networks:
-      - office
-    depends_on:
-      - office-gateway
+  hermes-ingress:
+    <<: *hermes-agent
     ports:
       - "${HERMES_BOT_BIND:-10.216.4.80}:9126:9119"
     env_file:
       - ./models.env
-      - ./hermes/edge/.env
-    extra_hosts: *hermes-airgap-hosts
+      - ./hermes/ingress/.env
     environment:
-      <<: *hermes-bot-dashboard
-      HERMES_HOME: /opt/data
-      OFFICE_GATEWAY_URL: http://office-gateway:8080
-      HERMES_API_TIMEOUT: "60"
-      A2A_REPLY_TIMEOUT: "90"
-      OFFICE_FAST_ROLE: edge
+      <<: *hermes-env
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9126
-      HERMES_OFFLINE: "1"
-      NPM_CONFIG_OFFLINE: "true"
-      NPM_CONFIG_FETCH_TIMEOUT: "5000"
-      NPM_CONFIG_FETCH_RETRIES: "0"
-      UV_OFFLINE: "1"
     volumes:
-      - hermes_edge_data:/opt/data
-      - ./hermes/edge/config.yaml:/opt/hermes-config.template.yaml:ro
-      - ./scripts/apply-office-llm-config.py:/opt/office/apply-office-llm-config.py:ro
-      - ./scripts/patch-hermes-airgap-provider.py:/opt/office/patch-hermes-airgap-provider.py:ro
-      - ./scripts/office-gw-get.sh:/opt/office/office-gw-get.sh:ro
-      - ./scripts/office-gw-fast.sh:/opt/office/office-gw-fast.sh:ro
-      - ./scripts/office-gw-propose.sh:/opt/office/office-gw-propose.sh:ro
-      - ./scripts/office-gw-watch.sh:/opt/office/office-gw-watch.sh:ro
-      - ./scripts/office-watch-eval.py:/opt/office/office-watch-eval.py:ro
-      - ./scripts/s6-office-watch-run:/etc/services.d/office-watch/run:ro
+      - hermes_ingress_v2:/opt/data
+      - ./hermes/ingress/config.yaml:/opt/data/config.yaml:ro
+      - ./skills/ingress:/opt/data/skills/office-ingress:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./scripts/hermes-office-llm-cont-init.sh:/etc/cont-init.d/10-office-llm:ro
-      - ./skills/edge:/opt/data/skills/edge:ro
-    command: ["gateway", "run"]
+      - ./scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
 
   office-www:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    # Internal only — browsers reach Athena via office-edge (Traefik).
+    # Internal only - browsers reach Athena via office-edge (Traefik).
     expose:
       - "80"
     volumes:
@@ -436,11 +272,11 @@ services:
       - office-gateway
       - hermes-agent
       - hermes-lab-host
-      - hermes-vector
+      - hermes-ingress
+      - hermes-llm
       - hermes-cluster-gpu
-      - hermes-llm-edge
+      - hermes-vector
       - hermes-obs
-      - hermes-edge
       - office-www
     ports:
       - "${HERMES_CONSOLE_PUBLISH:-10.216.4.80:80}:80"
@@ -450,6 +286,7 @@ services:
     volumes:
       - ./edge/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./edge/traefik-dynamic:/etc/traefik/dynamic:ro
+      - ./edge/approvers.htpasswd:/etc/traefik/approvers.htpasswd:ro
       - ./certs:/certs:ro
     command:
       - "--configFile=/etc/traefik/traefik.yml"
