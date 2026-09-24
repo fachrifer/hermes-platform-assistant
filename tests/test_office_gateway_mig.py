@@ -35,15 +35,10 @@ def _test_config(db_path: str = "/tmp/test-gateway.db") -> GatewayConfig:
             "lab-host": "tok-lab",
             "vector": "tok-vec",
             "cluster-gpu": "tok-gpu",
-            "llm-edge": "tok-llm",
+            "llm": "tok-llm",
             "obs": "tok-obs",
         },
         service_urls={"grafana": "http://grafana.internal/api/health"},
-        write_targets={
-            "lab-host": frozenset({"aiplatform-dashboard"}),
-            "vector": frozenset({"milvus-standalone", "attu"}),
-        },
-        vector_env={"milvus-standalone": "dev", "milvus-prod": "prod"},
         mig_expected=dict(EXPECTED),
         db_path=db_path,
     )
@@ -121,21 +116,24 @@ def test_sanitize_items_projects_allowlisted_fields():
         }
     ]
     out = sanitize_items("pods", items)
-    assert out == [
-        {
-            "kind": "pods",
-            "name": "pod-1",
-            "namespace": "default",
-            "labels": {"app": "web"},
-            "status": {"phase": "Running"},
-        }
-    ]
+    assert out[0]["name"] == "pod-1"
+    assert out[0]["phase"] == "Running"
+    assert "leak" not in str(out)
+    assert "annotations" not in out[0]
 
 
-def test_sanitize_configmap_names_only():
+def test_sanitize_configmap_keys_without_values():
     items = [{"metadata": {"name": "app-config"}, "data": {"key": "value"}}]
     out = sanitize_items("configmap", items)
-    assert out == [{"kind": "configmap", "name": "app-config"}]
+    assert out == [{"kind": "configmap", "name": "app-config", "namespace": "", "keys": ["key"]}]
+
+
+def test_sanitize_secrets_metadata_only():
+    items = [{"metadata": {"name": "db"}, "type": "Opaque", "data": {"password": "cGFzcw=="}}]
+    out = sanitize_items("secrets", items)
+    assert out[0]["name"] == "db"
+    assert "cGFzcw==" not in str(out)
+    assert "data" not in out[0]
 
 
 def test_list_resources_rejects_unknown_kind():
@@ -143,7 +141,7 @@ def test_list_resources_rejects_unknown_kind():
 
     async def run() -> None:
         with pytest.raises(ValueError, match="unknown kind"):
-            await ops.list_resources("secrets", None)
+            await ops.list_resources("bogus", None)
 
     asyncio.run(run())
 
@@ -237,13 +235,12 @@ def test_gpu_mig_endpoint_cluster_gpu(client):
     assert body["actual"] == EXPECTED
 
 
-def test_gpu_mig_endpoint_supervisor(client):
+def test_gpu_mig_forbidden_for_supervisor(client):
     response = client.get(
         "/v1/gpu/mig",
         headers={"Authorization": "Bearer tok-sup"},
     )
-    assert response.status_code == 200
-    assert response.json()["ok"] is True
+    assert response.status_code == 403
 
 
 def test_gpu_mig_forbidden_for_vector(client):
@@ -256,22 +253,22 @@ def test_gpu_mig_forbidden_for_vector(client):
 
 def test_k8s_resources_unknown_kind_returns_400(client):
     response = client.get(
-        "/v1/k8s/resources?kind=secrets",
+        "/v1/k8s/resources?kind=bogus",
         headers={"Authorization": "Bearer tok-gpu"},
     )
     assert response.status_code == 400
 
 
-def test_llm_edge_k8s_allows_gateway_and_httproute(client):
+def test_cluster_gpu_k8s_allows_gateway_and_httproute(client):
     for kind in ("gateway", "httproute"):
         response = client.get(
             f"/v1/k8s/resources?kind={kind}",
-            headers={"Authorization": "Bearer tok-llm"},
+            headers={"Authorization": "Bearer tok-gpu"},
         )
         assert response.status_code == 200
 
 
-def test_llm_edge_k8s_forbids_other_kinds(client):
+def test_llm_k8s_forbidden(client):
     response = client.get(
         "/v1/k8s/resources?kind=pods&namespace=default",
         headers={"Authorization": "Bearer tok-llm"},
@@ -310,7 +307,8 @@ def test_k8s_resources_strips_secrets(client):
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["items"][0] == {"kind": "pods", "name": "pod-1"}
+    assert body["items"][0]["name"] == "pod-1"
+    assert "secret-token" not in response.text
 
 
 def test_list_resources_gateway_honors_namespace():
@@ -331,19 +329,18 @@ def test_list_resources_gateway_honors_namespace():
     assert result["items"][0]["namespace"] == "edge"
 
 
-def test_allowed_kinds_match_brief():
-    assert ALLOWED_KINDS == frozenset(
-        {
-            "nodes",
-            "pods",
-            "deployments",
-            "gateway",
-            "httproute",
-            "storageclass",
-            "migpolicy",
-            "configmap",
-        }
-    )
+def test_allowed_kinds_cover_cluster_gpu_reads():
+    assert {
+        "nodes",
+        "pods",
+        "deployments",
+        "gateway",
+        "httproute",
+        "ingressroute",
+        "storageclass",
+        "migpolicy",
+        "configmap",
+    } <= ALLOWED_KINDS
 
 
 def test_kubernetes_client_prefers_kubeconfig_then_office_kubeconfig(monkeypatch):

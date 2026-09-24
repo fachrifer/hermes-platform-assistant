@@ -8,7 +8,7 @@ FLEET_AGENTS = (
         "role": "orchestrator",
         "purpose": "Orchestrator",
         "avatar": "/avatars/athena-ruler.png",
-        "ready_service": "gateway",
+        "ready_service": "hermes-agent",
         "service_names": ("gateway",),
     },
     {
@@ -42,13 +42,13 @@ FLEET_AGENTS = (
         "service_names": ("rancher",),
     },
     {
-        "id": "llm-edge",
+        "id": "llm",
         "name": "Iris",
         "fate_class": "Rider",
-        "role": "llm-edge",
-        "purpose": "LLM edge",
+        "role": "llm",
+        "purpose": "LLM API",
         "avatar": "/avatars/iris-rider.png",
-        "ready_service": "hermes-llm-edge",
+        "ready_service": "hermes-llm",
         "service_names": ("litellm",),
     },
     {
@@ -62,14 +62,14 @@ FLEET_AGENTS = (
         "service_names": ("grafana", "victoria", "prometheus"),
     },
     {
-        "id": "edge",
+        "id": "ingress",
         "name": "Janus",
         "fate_class": "Gatekeeper",
-        "role": "edge",
-        "purpose": "HTTPS edge + TLS",
+        "role": "ingress",
+        "purpose": "Ingress + TLS",
         "avatar": "/avatars/janus-gatekeeper.png",
-        "ready_service": "hermes-edge",
-        "service_names": ("office-edge", "office-console"),
+        "ready_service": "hermes-ingress",
+        "service_names": ("office-edge",),
     },
 )
 

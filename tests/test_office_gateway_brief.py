@@ -15,7 +15,7 @@ def _config(db_path: str) -> GatewayConfig:
             "lab-host": "tok-lab",
             "vector": "tok-vec",
             "cluster-gpu": "tok-gpu",
-            "llm-edge": "tok-llm",
+            "llm": "tok-llm",
             "obs": "tok-obs",
         },
         service_urls={"gateway": "http://gateway.internal/health"},
@@ -32,13 +32,13 @@ def test_fleet_agents_are_gplusf_identities():
     assert names["lab-host"] == ("Hephaestus", "Archer")
     assert names["vector"] == ("Mnemosyne", "Caster")
     assert names["cluster-gpu"] == ("Surtr", "Berserker")
-    assert names["llm-edge"] == ("Iris", "Rider")
+    assert names["llm"] == ("Iris", "Rider")
     assert names["obs"] == ("Argus", "Watcher")
 
 
 def test_build_brief_maps_services_and_identities():
     payload = build_brief(
-        services=[{"name": "gateway", "status": "ok", "latency_ms": 4}],
+        services=[{"name": "hermes-agent", "status": "ok", "latency_ms": 4}],
         mig={"ok": True, "actual": {"1g.18gb": 7}, "expected": {"1g.18gb": 7}, "missing": {}},
         grafana_links=[{"name": "gpu", "url": "http://grafana.internal/d/migdash?viewPanel=2"}],
     )
@@ -46,7 +46,7 @@ def test_build_brief_maps_services_and_identities():
     assert by_id["lab-host"]["purpose"] == "Lab host"
     assert by_id["vector"]["purpose"] == "Vector store"
     assert by_id["cluster-gpu"]["purpose"] == "GPU cluster"
-    assert by_id["llm-edge"]["purpose"] == "LLM edge"
+    assert by_id["llm"]["purpose"] == "LLM API"
     assert by_id["obs"]["purpose"] == "Observability"
     assert by_id["supervisor"]["status"] == "ok"
     assert by_id["lab-host"]["status"] == "unknown"
@@ -59,11 +59,12 @@ def test_build_brief_maps_services_and_identities():
 def test_brief_status_is_green_when_agent_a2a_is_ready():
     payload = build_brief(
         services=[
-            {"name": "gateway", "status": "ok"},
+            {"name": "hermes-agent", "status": "ok"},
             {"name": "hermes-lab-host", "status": "ok"},
             {"name": "hermes-vector", "status": "ok"},
             {"name": "hermes-cluster-gpu", "status": "ok"},
-            {"name": "hermes-llm-edge", "status": "ok"},
+            {"name": "hermes-llm", "status": "ok"},
+            {"name": "hermes-ingress", "status": "ok"},
             {"name": "hermes-obs", "status": "ok"},
         ]
     )
@@ -73,7 +74,8 @@ def test_brief_status_is_green_when_agent_a2a_is_ready():
         "lab-host": "ok",
         "vector": "ok",
         "cluster-gpu": "ok",
-        "llm-edge": "ok",
+        "llm": "ok",
+        "ingress": "ok",
         "obs": "ok",
     }
 
@@ -91,7 +93,7 @@ def test_brief_status_does_not_use_substring_hermes_match():
 def test_activity_asks_specialist_when_service_is_unhealthy():
     payload = build_brief(
         services=[
-            {"name": "gateway", "status": "ok"},
+            {"name": "hermes-agent", "status": "ok"},
             {"name": "hermes-cluster-gpu", "status": "warn"},
             {"name": "hermes-vector", "status": "critical"},
         ]
@@ -106,7 +108,7 @@ def test_activity_asks_specialist_when_service_is_unhealthy():
 def test_supervisor_can_read_fleet_brief(tmp_path):
     collector = MagicMock()
     collector.collect = AsyncMock(
-        return_value=[{"name": "gateway", "status": "ok", "latency_ms": 3}]
+        return_value=[{"name": "hermes-agent", "status": "ok", "latency_ms": 3}]
     )
     k8s = MagicMock()
     k8s.get_mig_actual = AsyncMock(return_value={"actual": {"1g.18gb": 7}})
@@ -123,7 +125,7 @@ def test_supervisor_can_read_fleet_brief(tmp_path):
     )
     assert response.status_code == 200
     body = response.json()
-    assert len(body["agents"]) == 6
+    assert len(body["agents"]) == 7
     assert body["agents"][0]["name"] == "Athena"
 
 

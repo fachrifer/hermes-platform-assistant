@@ -16,7 +16,7 @@ def _config(db_path: str) -> GatewayConfig:
             "lab-host": "tok-lab",
             "vector": "tok-vec",
             "cluster-gpu": "tok-gpu",
-            "llm-edge": "tok-llm",
+            "llm": "tok-llm",
             "obs": "tok-obs",
         },
         service_urls={"gateway": "http://gateway.internal/health"},
@@ -87,7 +87,7 @@ def test_a2a_orchestrate_result_asks_specialists():
         now=2_011,
     )
     assert bubble["kind"] == "ask"
-    assert "specialist" in bubble["text"].lower()
+    assert "everyone" in bubble["text"].lower()
 
 
 def test_a2a_tool_call_asks_named_specialist():
