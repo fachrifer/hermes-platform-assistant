@@ -192,7 +192,7 @@ Per-role entries: 9 existing, 10 change, 20 new (a tool shared by several roles 
 - `tools/list` is filtered by role; `tools/call` enforces role again (defence in depth).
 - Every upstream call has a 10 s timeout; the gateway never retries upstream calls inside a tool call.
 - REST endpoints stay for the console and for debugging with curl.
-- `GET /static/models-dev.json` serves a minimal models.dev-shaped registry containing only the fleet model, so Hermes never reaches for the internet registry (§10).
+- No models.dev mirror: spike S4 showed a clean startup without it (`models.dev` is already loopback-mapped by `extra_hosts`, and `model_overrides` carries the model metadata). Dropped to avoid serving a registry whose schema Hermes may change.
 
 ### 6.3 Route change safety (ingress)
 
@@ -321,8 +321,6 @@ Config applied to every agent:
 ```yaml
 model_catalog:
   enabled: false
-models_dev:
-  url: http://office-gateway:8080/static/models-dev.json   # minimal registry served by the gateway
 model_overrides:
   custom:office-litellm:
     qwen3.8-fast: {context_window: CONTEXT_WINDOW, supports_tools: true, supports_reasoning: false}
@@ -462,7 +460,7 @@ Each phase gets its own implementation plan.
 
 | Phase | Scope | Exit |
 |---|---|---|
-| 1 — Anti-loop core | Spikes, Hermes upgrade, gateway MCP + role catalog (all tools marked existing/change, plus `host_resources`, `list_host_services`, `action_status`), named query registry seeded with the queries skills use today, static models-dev registry, approvals + console Approvals page, route backup/rollback (`propose_route_rollback`), removal of terminal/A2A/AUTOHEAL/cron/Kanban/office-watch, agent configs + skills, startup hardening | §13.1 (Phase 1 tools, approvals, rollback), §13.2, §13.4, §13.5 pass |
+| 1 — Anti-loop core | Spikes, Hermes upgrade, gateway MCP + role catalog (all tools marked existing/change, plus `host_resources`, `list_host_services`, `action_status`), named query registry seeded with the queries skills use today, approvals + console Approvals page, route backup/rollback (`propose_route_rollback`), removal of terminal/A2A/AUTOHEAL/cron/Kanban/office-watch, agent configs + skills, startup hardening | §13.1 (Phase 1 tools, approvals, rollback), §13.2, §13.4, §13.5 pass |
 | 2 — Reporting and monitoring | Extend named queries, `server_health`, `bucket_usage`, `active_alerts`, `availability_report`, `usage_report`, LLM spend/budget/deployment tools, vector collection tools, `pod_logs_tail`, report pipeline (data packs, specialist analysis, supervisor compile) + console Reports page, `propose_dashboard`, thinking comparison | §13.1 (remaining tools, dashboards, reports), §13.3 |
 | 3 — Metric coverage | Offline exporter rollout (§11.5) | Daily report shows no coverage gaps for §11.4 targets |
 
