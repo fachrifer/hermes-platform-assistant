@@ -1,62 +1,50 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+import httpx
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-import httpx
-
-from office_gateway.actions import ActionError, ActionService
-from office_gateway.autoheal import compact_listing
+from office_gateway.actions import ActionError, ActionService, action_view
 from office_gateway.brief import build_brief
 from office_gateway.chat import fetch_chat_bubble
 from office_gateway.collectors import HttpServiceCollector
 from office_gateway.config import GatewayConfig
-from office_gateway.docker_ops import DockerOps
+from office_gateway.docker_ops import DockerOps, compact_listing
 from office_gateway.edge_ops import AdapterNotConfigured as EdgeAdapterNotConfigured
 from office_gateway.edge_ops import EdgeRoute, EdgeRoutesOps
-from office_gateway.tls_ops import tls_cert_status
 from office_gateway.grafana_links import build_links
 from office_gateway.k8s_ops import AdapterNotConfigured, K8sOps
-from office_gateway.llm_ops import (
-    LiteLLMNotConfigured,
-    fetch_litellm_status,
-    proxy_litellm_get,
-)
+from office_gateway.llm_ops import fetch_litellm_status
 from office_gateway.metrics import instant_query
 from office_gateway.mig import compare_mig
-from office_gateway.roles import can_post_watch, can_read, can_write, role_for_token
+from office_gateway.redact import redact_text
+from office_gateway.roles import APPROVER_ROLE, can_read, can_write, role_for_token
 from office_gateway.store import GatewayStore
+from office_gateway.tls_ops import tls_cert_status
 
 _bearer = HTTPBearer(auto_error=False)
+
+_HTTP_FOR_CATEGORY = {
+    "forbidden": 403,
+    "invalid_argument": 400,
+    "not_configured": 503,
+    "not_found": 404,
+    "conflict": 409,
+}
 
 
 class ProposeRequest(BaseModel):
     action: str
     target: str
     params: Optional[dict] = None
-    auto_execute: bool = False
-
-
-class ExecuteRequest(BaseModel):
-    action_id: str
 
 
 class EdgeValidateRequest(BaseModel):
     content: str
-
-
-class WatchSnapshotRequest(BaseModel):
-    snapshot: str
-    ts: str
-    alert: bool
-    summary: str
-    role: Optional[str] = None
 
 
 def _edge_route_dict(route: EdgeRoute) -> dict:
@@ -71,11 +59,19 @@ def _edge_route_dict(route: EdgeRoute) -> dict:
 def _edge_status(ops: DockerOps) -> dict | None:
     try:
         for item in ops.list_containers().get("containers", []):
-            if item.get("compose_service") in ("office-edge", "office-console"):
+            if item.get("compose_service") == "office-edge":
                 return {"name": item["name"], "status": item["status"]}
     except Exception:
         return None
     return None
+
+
+def _action_http_error(exc: ActionError) -> HTTPException:
+    status = _HTTP_FOR_CATEGORY.get(exc.category, 400)
+    detail: dict = {"error": str(exc)}
+    if exc.valid:
+        detail["valid"] = exc.valid[:40]
+    return HTTPException(status_code=status, detail=detail)
 
 
 def create_app(
@@ -84,6 +80,8 @@ def create_app(
     k8s_ops: K8sOps | None = None,
     edge_ops: EdgeRoutesOps | None = None,
     collector: HttpServiceCollector | None = None,
+    proc_ops=None,
+    systemd_ops=None,
 ) -> FastAPI:
     store = GatewayStore(config.db_path, config.action_ttl_seconds)
     ops = docker_ops or DockerOps()
@@ -91,6 +89,7 @@ def create_app(
     edge = edge_ops or EdgeRoutesOps(
         config.edge_routes_path or None,
         config.edge_locations_path or None,
+        backup_dir=config.edge_backup_dir or None,
     )
     actions = ActionService(config, store, docker_ops=ops, edge_ops=edge)
     collector = collector or HttpServiceCollector(config.service_urls)
@@ -109,6 +108,18 @@ def create_app(
     def _require_read(role: str, route_prefix: str) -> None:
         if not can_read(role, route_prefix):
             raise HTTPException(status_code=403, detail="forbidden")
+
+    def _require_approver(role: str) -> None:
+        if role != APPROVER_ROLE:
+            raise HTTPException(status_code=403, detail="forbidden")
+
+    def _edge_container_names() -> set[str]:
+        listing = ops.list_containers()
+        return {
+            str(c.get("name"))
+            for c in listing.get("containers", [])
+            if c.get("compose_service") == "office-edge"
+        }
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -170,20 +181,14 @@ def create_app(
         all: bool = True,
         compact: bool = False,
     ) -> dict:
-        """List Lab Docker containers (lab-host). Prefer this over per-name inspect."""
         _require_read(role, "/v1/docker")
         try:
             listing = ops.list_containers(all=all)
-            if compact:
-                return compact_listing(
-                    listing.get("containers") or [],
-                    config.autoheal_deny,
-                )
-            return listing
         except Exception as exc:
-            raise HTTPException(
-                status_code=503, detail="adapter not configured"
-            ) from exc
+            raise HTTPException(status_code=503, detail="adapter not configured") from exc
+        if compact:
+            return compact_listing(listing.get("containers") or [])
+        return listing
 
     @app.get("/v1/docker/inspect/{container}")
     async def docker_inspect(
@@ -202,15 +207,16 @@ def create_app(
         role: str = Depends(_role_from_request),
         tail: int = 80,
     ) -> dict:
-        _require_read(role, "/v1/docker")
-        allowed = config.log_targets.get(role, frozenset())
-        if container not in allowed:
+        _require_read(role, "/v1/docker/logs")
+        if role == "ingress" and container not in _edge_container_names():
             raise HTTPException(status_code=403, detail="forbidden")
         tail = max(1, min(int(tail), 200))
         try:
-            return ops.logs(container, tail=tail)
+            result = ops.logs(container, tail=tail)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="container not found") from exc
+        result["lines"] = [redact_text(line) for line in result.get("lines", [])]
+        return result
 
     @app.get("/v1/docker/networks")
     async def docker_networks(role: str = Depends(_role_from_request)) -> dict:
@@ -218,9 +224,7 @@ def create_app(
         try:
             return ops.list_networks()
         except Exception as exc:
-            raise HTTPException(
-                status_code=503, detail="adapter not configured"
-            ) from exc
+            raise HTTPException(status_code=503, detail="adapter not configured") from exc
 
     @app.get("/v1/grafana/links")
     async def grafana_links(role: str = Depends(_role_from_request)) -> dict:
@@ -261,11 +265,8 @@ def create_app(
         _require_read(role, "/v1/k8s/resources")
         if not kind.strip():
             raise HTTPException(status_code=400, detail="kind required")
-        normalized = kind.strip().lower()
-        if role == "llm-edge" and normalized not in {"httproute", "gateway"}:
-            raise HTTPException(status_code=403, detail="forbidden")
         try:
-            return await k8s.list_resources(normalized, namespace)
+            return await k8s.list_resources(kind.strip().lower(), namespace)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except AdapterNotConfigured as exc:
@@ -274,45 +275,16 @@ def create_app(
     @app.get("/v1/llm/status")
     async def llm_status(role: str = Depends(_role_from_request)) -> dict:
         _require_read(role, "/v1/llm")
-        return await fetch_litellm_status(
-            config.litellm_url, config.litellm_master_key
-        )
-
-    @app.get("/v1/litellm/{path:path}")
-    async def litellm_proxy(
-        path: str,
-        request: Request,
-        role: str = Depends(_role_from_request),
-    ) -> JSONResponse:
-        _require_read(role, "/v1/litellm")
-        try:
-            status, payload = await proxy_litellm_get(
-                config.litellm_url,
-                config.litellm_master_key,
-                path,
-                params=dict(request.query_params),
-            )
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        except LiteLLMNotConfigured as exc:
-            raise HTTPException(
-                status_code=503, detail="litellm not configured"
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise HTTPException(
-                status_code=502, detail="litellm upstream error"
-            ) from exc
-        return JSONResponse(status_code=status, content=payload)
+        return await fetch_litellm_status(config.litellm_url, config.litellm_master_key)
 
     @app.get("/v1/edge/routes")
     async def edge_routes(role: str = Depends(_role_from_request)) -> dict:
         _require_read(role, "/v1/edge")
         try:
-            text = edge.read_text()
             routes = edge.list_routes()
         except EdgeAdapterNotConfigured as exc:
             raise HTTPException(status_code=503, detail="adapter not configured") from exc
-        return {"text": text, "routes": [_edge_route_dict(r) for r in routes]}
+        return {"routes": [_edge_route_dict(r) for r in routes], "backups": edge.list_backups()}
 
     @app.get("/v1/edge/status")
     async def edge_status(role: str = Depends(_role_from_request)) -> dict:
@@ -320,17 +292,13 @@ def create_app(
         if not edge.configured():
             raise HTTPException(status_code=503, detail="adapter not configured")
         return {
-            "routes_path": config.edge_routes_path,
-            "locations_path": config.edge_locations_path,
             "configured": True,
             "edge": _edge_status(ops),
-            "console": _edge_status(ops),  # alias during nginx→Traefik transition
             "tls": tls_cert_status(config.edge_tls_cert_path),
         }
 
     @app.get("/v1/edge/tls")
     async def edge_tls(role: str = Depends(_role_from_request)) -> dict:
-        """Read-only leaf certificate metadata (expiry / subject). No private key."""
         _require_read(role, "/v1/edge")
         return tls_cert_status(config.edge_tls_cert_path)
 
@@ -367,82 +335,59 @@ def create_app(
             elif msg == "OFFICE_METRICS_URL tidak diisi":
                 detail = "metrics not configured"
             else:
-                raise HTTPException(
-                    status_code=502, detail="metrics upstream error"
-                ) from exc
+                raise HTTPException(status_code=502, detail="metrics upstream error") from exc
             raise HTTPException(status_code=400, detail=detail) from exc
         except httpx.HTTPError:
             raise HTTPException(status_code=502, detail="metrics upstream error")
 
-    @app.post("/v1/watch/snapshot")
-    async def watch_snapshot(
-        body: WatchSnapshotRequest,
-        role: str = Depends(_role_from_request),
-    ) -> dict[str, str]:
-        if not can_post_watch(role):
-            raise HTTPException(status_code=403, detail="forbidden")
-        store.upsert_watch(
-            role,
-            body.snapshot,
-            body.ts,
-            body.alert,
-            body.summary,
-        )
-        return {"status": "ok"}
-
-    @app.get("/v1/watch/summary")
-    async def watch_summary(role: str = Depends(_role_from_request)) -> dict:
-        _require_read(role, "/v1/watch")
-        return store.list_watch_summary(datetime.now(timezone.utc))
-
     @app.post("/v1/actions/propose")
-    async def propose_action(
-        body: ProposeRequest,
-        role: str = Depends(_role_from_request),
-    ) -> dict:
+    async def propose_action(body: ProposeRequest, role: str = Depends(_role_from_request)) -> dict:
         if not can_write(role):
             raise HTTPException(status_code=403, detail="forbidden")
         try:
-            pending = actions.propose(
-                role,
-                body.action,
-                body.target,
-                body.params,
-                body.auto_execute,
-            )
+            pending = actions.propose(role, body.action, body.target, body.params)
         except ActionError as exc:
-            raise HTTPException(status_code=403, detail=str(exc)) from exc
-        return {
-            "action_id": pending.action_id,
-            "action": pending.action,
-            "target": pending.target,
-            "summary": pending.summary,
-            "created_at": pending.created_at,
-            "expires_at": pending.expires_at,
-            "status": pending.status,
-        }
+            raise _action_http_error(exc) from exc
+        return action_view(pending)
 
-    @app.post("/v1/actions/execute")
-    async def execute_action(
-        body: ExecuteRequest,
-        role: str = Depends(_role_from_request),
-    ) -> dict:
-        if not can_write(role):
-            raise HTTPException(status_code=403, detail="forbidden")
+    @app.get("/v1/actions/{action_id}")
+    async def action_status(action_id: str, role: str = Depends(_role_from_request)) -> dict:
+        _require_read(role, "/v1/actions")
         try:
-            result = actions.execute(role, body.action_id)
+            return action_view(actions.status(role, action_id))
         except ActionError as exc:
-            msg = str(exc)
-            if msg == "action not found":
-                raise HTTPException(status_code=404, detail=msg) from exc
-            raise HTTPException(status_code=403, detail=msg) from exc
-        if result is None:
-            raise HTTPException(status_code=404, detail="action not found")
-        return {
-            "action_id": result.action_id,
-            "status": result.status,
-            "target": result.target,
-            "summary": result.summary,
-        }
+            raise HTTPException(status_code=404, detail="action not found") from exc
+
+    @app.get("/v1/approvals")
+    async def list_approvals(
+        role: str = Depends(_role_from_request), status: str = "pending", limit: int = 50
+    ) -> dict:
+        _require_approver(role)
+        statuses = ("pending",) if status == "pending" else None
+        return {"actions": [action_view(a) for a in store.list_actions(statuses, limit)]}
+
+    @app.post("/v1/approvals/{action_id}/approve")
+    async def approve_action(
+        action_id: str,
+        role: str = Depends(_role_from_request),
+        x_approver: str = Header(default=""),
+    ) -> dict:
+        _require_approver(role)
+        try:
+            return action_view(actions.approve(action_id, x_approver.strip()))
+        except ActionError as exc:
+            raise _action_http_error(exc) from exc
+
+    @app.post("/v1/approvals/{action_id}/reject")
+    async def reject_action(
+        action_id: str,
+        role: str = Depends(_role_from_request),
+        x_approver: str = Header(default=""),
+    ) -> dict:
+        _require_approver(role)
+        try:
+            return action_view(actions.reject(action_id, x_approver.strip()))
+        except ActionError as exc:
+            raise _action_http_error(exc) from exc
 
     return app

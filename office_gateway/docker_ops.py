@@ -2,6 +2,9 @@ from __future__ import annotations
 
 _COMPOSE_SERVICE = "com.docker.compose.service"
 _LOG_LINE_MAX = 500
+LIST_CAP = 500
+_NOT_RUNNING_CAP = 20
+_NAMES_CAP = 80
 
 
 def normalize_container_status(display: str) -> tuple[str, str | None]:
@@ -141,6 +144,11 @@ def strip_inspect(raw: dict) -> dict:
         "compose_service": str(labels.get(_COMPOSE_SERVICE) or ""),
         "ports": strip_ports(raw),
         "networks": strip_networks(raw),
+        "env_names": sorted(
+            {str(item).split("=", 1)[0] for item in ((raw.get("Config") or {}).get("Env") or [])}
+        )[:60],
+        "restart_count": int(raw.get("RestartCount") or 0),
+        "started_at": str(state.get("StartedAt") or ""),
     }
 
 
@@ -258,9 +266,9 @@ class DockerOps:
         else:
             items = client.api.containers(all=all)
         containers = [strip_container(item) for item in items]
-        truncated = len(containers) > 500
+        truncated = len(containers) > LIST_CAP
         if truncated:
-            containers = containers[:500]
+            containers = containers[:LIST_CAP]
         running = sum(
             1 for c in containers if str(c.get("status", "")).lower() == "running"
         )
@@ -278,7 +286,36 @@ class DockerOps:
         else:
             items = client.api.networks()
         networks = [strip_network(item) for item in items]
-        truncated = len(networks) > 500
+        truncated = len(networks) > LIST_CAP
         if truncated:
-            networks = networks[:500]
+            networks = networks[:LIST_CAP]
         return {"networks": networks, "truncated": truncated}
+
+
+def compact_listing(containers: list[dict]) -> dict:
+    running = 0
+    exited = 0
+    unhealthy: list[str] = []
+    not_running: list[str] = []
+    for row in containers:
+        name = str(row.get("name") or "")
+        status, parsed_health = normalize_container_status(str(row.get("status") or ""))
+        health = row.get("health") or parsed_health
+        if status == "running":
+            running += 1
+        else:
+            not_running.append(f"{name} ({status})")
+        if status in {"exited", "dead"}:
+            exited += 1
+        if "unhealthy" in str(health or "").lower():
+            unhealthy.append(name)
+    names = sorted(str(row.get("name") or "") for row in containers)
+    return {
+        "running": running,
+        "total": len(containers),
+        "exited": exited,
+        "unhealthy": unhealthy[:_NOT_RUNNING_CAP],
+        "not_running": not_running[:_NOT_RUNNING_CAP],
+        "names": names[:_NAMES_CAP],
+        "names_truncated": len(names) > _NAMES_CAP,
+    }

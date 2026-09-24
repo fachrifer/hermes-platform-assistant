@@ -1,117 +1,57 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 
 import httpx
 
-from office_gateway.autoheal import is_autoheal_denied, is_faulted
 from office_gateway.docker_ops import DockerOps
-from office_gateway.edge_ops import EdgeRoutesOps
-from office_gateway.roles import can_write
+from office_gateway.edge_ops import EdgeRoutesOps, RouteApplyError, route_diff
+from office_gateway.roles import can_propose
+from office_gateway.store import PendingAction
 
 _SERVICE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
-_OFFICE_GATEWAY_TARGET_RE = re.compile(
-    r"(?:^|[-_.])office-gateway(?:[-_.]\d+)?$"
-)
-_EDGE_SERVICE = "office-edge"
-# Transition alias: older skills/docs said office-console (nginx).
-_EDGE_SERVICE_ALIASES = frozenset({_EDGE_SERVICE, "office-console"})
+_OFFICE_GATEWAY_TARGET_RE = re.compile(r"(?:^|[-_.])office-gateway(?:[-_.]\d+)?$")
+_APPROVER_RE = re.compile(r"^[A-Za-z0-9._@-]{1,64}$")
+_REASON_MAX = 200
+_EDGE_TARGET = "edge-routes"
 
 
 class ActionError(Exception):
-    pass
+    def __init__(self, message: str, category: str = "forbidden", valid=None) -> None:
+        super().__init__(message)
+        self.category = category
+        self.valid = list(valid or [])
 
 
-def _resolve_container(docker_ops: DockerOps, target: str) -> dict:
-    try:
-        return docker_ops.inspect(target)
-    except ValueError:
-        listing = docker_ops.list_containers()
-        for item in listing.get("containers", []):
-            if item.get("name") == target:
-                return {
-                    "name": target,
-                    "status": item.get("status", ""),
-                    "health": item.get("health"),
-                    "compose_service": item.get("compose_service", ""),
-                }
-        raise ActionError("unknown target") from None
-
-
-def validate_propose(
-    config,
-    role: str,
-    action: str,
-    target: str,
-    *,
-    auto_execute: bool = False,
-    docker_ops: DockerOps | None = None,
-) -> None:
-    if not can_write(role):
-        raise ActionError("role cannot write")
-    if auto_execute:
-        if role != "lab-host" or action != "restart_service":
-            raise ActionError("action not allowlisted")
-        if docker_ops is None:
-            raise ActionError("unknown target")
-        info = _resolve_container(docker_ops, target)
-        if is_autoheal_denied(
-            str(info.get("name") or target),
-            str(info.get("compose_service") or ""),
-            extra_deny=config.autoheal_deny,
-        ):
-            raise ActionError("autoheal denied")
-        if not is_faulted(
-            str(info.get("status") or ""),
-            info.get("health") if isinstance(info.get("health"), str) else None,
-        ):
-            raise ActionError("target not faulted")
-        return
-    if config.vector_env.get(target) == "prod":
-        raise ActionError("writes disabled for prod")
-    if role == "edge" and action == "restart_service":
-        return
-    allowed = config.write_targets.get(role, frozenset())
-    if target not in allowed:
-        raise ActionError("unknown target")
-
-
-def validate_execute(
-    config,
-    role: str,
-    proposed_role: str,
-    action: str,
-    target: str,
-    *,
-    auto_execute: bool = False,
-    docker_ops: DockerOps | None = None,
-) -> None:
-    if role != proposed_role:
-        raise ActionError("forbidden")
-    validate_propose(
-        config,
-        role,
-        action,
-        target,
-        auto_execute=auto_execute,
-        docker_ops=docker_ops,
-    )
+def action_view(action: PendingAction) -> dict:
+    params = action.params
+    view = {
+        "action_id": action.action_id,
+        "action": action.action,
+        "target": action.target,
+        "role": action.role,
+        "summary": action.summary,
+        "reason": params.get("reason", ""),
+        "status": action.status,
+        "created_at": action.created_at,
+        "expires_at": action.expires_at,
+        "approver": action.approver,
+        "detail": action.detail,
+        "result": action.result,
+    }
+    if action.action in ("apply_edge_routes", "rollback_edge_routes"):
+        view["diff"] = params.get("diff", [])
+    return view
 
 
 def _adapter_endpoints() -> dict[str, str]:
     raw = os.getenv("OFFICE_ADAPTER_ENDPOINTS", "").strip()
-    if not raw:
-        return {}
     endpoints: dict[str, str] = {}
     for item in (part.strip() for part in raw.split(",") if part.strip()):
         name, separator, url = item.partition("=")
-        if not separator or not _SERVICE_NAME_RE.fullmatch(name) or not url.startswith(
-            ("http://", "https://")
-        ):
-            continue
-        endpoints[name] = url
+        if separator and _SERVICE_NAME_RE.fullmatch(name) and url.startswith(("http://", "https://")):
+            endpoints[name] = url
     return endpoints
 
 
@@ -119,17 +59,9 @@ def _is_office_gateway_target(target: str) -> bool:
     return bool(_OFFICE_GATEWAY_TARGET_RE.search(target))
 
 
-def _is_office_edge_container(info: dict) -> bool:
-    return info.get("compose_service") in _EDGE_SERVICE_ALIASES
-
-
-def _edge_container_names(docker_ops: DockerOps) -> list[str]:
-    listing = docker_ops.list_containers()
-    names: list[str] = []
-    for item in listing.get("containers", []):
-        if _is_office_edge_container(item):
-            names.append(str(item["name"]))
-    return names
+def _check_approver(approver: str) -> None:
+    if not _APPROVER_RE.fullmatch(approver or ""):
+        raise ActionError("X-Approver header required", "invalid_argument")
 
 
 class ActionService:
@@ -145,194 +77,144 @@ class ActionService:
         self.docker_ops = docker_ops or DockerOps()
         self.edge_ops = edge_ops or EdgeRoutesOps(None, None)
 
-    def propose(
-        self,
-        role: str,
-        action: str,
-        target: str,
-        params: dict | None = None,
-        auto_execute: bool = False,
-    ):
-        if role == "edge":
-            if auto_execute:
-                raise ActionError("action not allowlisted")
-            return self._propose_edge(role, action, target, params)
-        if action != "restart_service":
-            raise ActionError("action not allowlisted")
-        validate_propose(
-            self.config,
-            role,
-            action,
-            target,
-            auto_execute=auto_execute,
-            docker_ops=self.docker_ops,
-        )
-        summary = f"restart {target}"
-        pending = self.store.propose(
-            action=action,
+    def container_names(self) -> list[str]:
+        listing = self.docker_ops.list_containers()
+        return sorted(str(c.get("name") or "") for c in listing.get("containers", []))
+
+    def propose(self, role: str, action: str, target: str, params: dict | None = None) -> PendingAction:
+        if not can_propose(role, action):
+            raise ActionError("action not allowed for role", "forbidden")
+        params = dict(params or {})
+        reason = str(params.get("reason") or "").strip()[:_REASON_MAX]
+        if action == "restart_service":
+            return self._propose_restart(role, target, reason)
+        if action == "apply_edge_routes":
+            return self._propose_apply(role, target, params.get("content"), reason)
+        if action == "rollback_edge_routes":
+            return self._propose_rollback(role, target, params.get("backup"), reason)
+        raise ActionError("unknown action", "invalid_argument")
+
+    def _propose_restart(self, role: str, target: str, reason: str) -> PendingAction:
+        names = self.container_names()
+        if target not in names:
+            raise ActionError("unknown container", "invalid_argument", names)
+        return self.store.propose(
+            action="restart_service",
             target=target,
             role=role,
-            params=params,
-            summary=summary,
+            params={"reason": reason},
+            summary=f"restart {target}",
         )
-        if auto_execute:
-            return self.execute(role, pending.action_id, auto_execute=True)
-        return pending
 
-    def _propose_edge(
-        self, role: str, action: str, target: str, params: dict | None = None
-    ):
-        if action == "apply_edge_routes":
-            if target != "edge-routes":
-                raise ActionError("unknown target")
-            if not self.edge_ops.configured():
-                raise ActionError("action not allowlisted")
-            content = (params or {}).get("content")
-            if not isinstance(content, str):
-                raise ActionError("action not allowlisted")
-            try:
-                self.edge_ops.validate(content)
-            except ValueError as exc:
-                raise ActionError(str(exc)) from exc
-            validate_propose(self.config, role, action, target)
-            summary = "apply edge-routes"
-            return self.store.propose(
-                action=action,
-                target=target,
-                role=role,
-                params=params,
-                summary=summary,
-            )
-        if action == "restart_service":
-            if not self._is_office_edge_target(target):
-                raise ActionError("unknown target")
-            validate_propose(self.config, role, action, target)
-            summary = f"restart {target}"
-            return self.store.propose(
-                action=action,
-                target=target,
-                role=role,
-                params=params,
-                summary=summary,
-            )
-        raise ActionError("action not allowlisted")
+    def _require_edge(self, target: str) -> None:
+        if target != _EDGE_TARGET:
+            raise ActionError("unknown target", "invalid_argument", [_EDGE_TARGET])
+        if not self.edge_ops.configured():
+            raise ActionError("edge adapter not configured", "not_configured")
 
-    def execute(self, role: str, action_id: str, *, auto_execute: bool = False):
-        if not can_write(role):
-            raise ActionError("role cannot write")
+    def _propose_apply(self, role: str, target: str, content, reason: str) -> PendingAction:
+        self._require_edge(target)
+        if not isinstance(content, str) or not content.strip():
+            raise ActionError("content required", "invalid_argument")
+        try:
+            routes = self.edge_ops.validate(content)
+        except ValueError as exc:
+            raise ActionError(str(exc), "invalid_argument") from exc
+        diff = route_diff(self.edge_ops.read_text_or_empty(), content)
+        if not diff:
+            raise ActionError("no change", "invalid_argument")
+        return self.store.propose(
+            action="apply_edge_routes",
+            target=target,
+            role=role,
+            params={"content": content, "diff": diff, "reason": reason},
+            summary=f"apply edge-routes ({len(routes)} routes)",
+        )
+
+    def _propose_rollback(self, role: str, target: str, backup, reason: str) -> PendingAction:
+        self._require_edge(target)
+        backups = self.edge_ops.list_backups()
+        if not backups:
+            raise ActionError("no backups", "invalid_argument")
+        chosen = str(backup or backups[0])
+        if chosen not in backups:
+            raise ActionError("unknown backup", "invalid_argument", backups)
+        diff = route_diff(self.edge_ops.read_text_or_empty(), self.edge_ops.read_backup(chosen))
+        return self.store.propose(
+            action="rollback_edge_routes",
+            target=target,
+            role=role,
+            params={"backup": chosen, "diff": diff, "reason": reason},
+            summary=f"rollback edge-routes to {chosen}",
+        )
+
+    def status(self, role: str, action_id: str) -> PendingAction:
+        action = self.store.get_action(action_id)
+        if action is None or action.role != role:
+            raise ActionError("action not found", "invalid_argument")
+        return action
+
+    def _not_open_reason(self, action_id: str) -> ActionError:
         action = self.store.get_action(action_id)
         if action is None:
-            raise ActionError("action not found")
-        validate_execute(
-            self.config,
-            role,
-            action.role,
-            action.action,
-            action.target,
-            auto_execute=auto_execute,
-            docker_ops=self.docker_ops,
-        )
-        claimed = self.store.claim_pending(action_id)
+            return ActionError("action not found", "not_found")
+        return ActionError(f"action already {action.status}", "conflict")
+
+    def reject(self, action_id: str, approver: str) -> PendingAction:
+        _check_approver(approver)
+        action = self.store.reject(action_id, approver)
+        if action is None:
+            raise self._not_open_reason(action_id)
+        return action
+
+    def approve(self, action_id: str, approver: str) -> PendingAction:
+        _check_approver(approver)
+        claimed = self.store.claim_pending(action_id, approver)
         if claimed is None:
-            action = self.store.get_action(action_id)
-            if action is None:
-                raise ActionError("action not found")
-            if action.status == "expired" or (
-                action.status == "pending" and self.store._is_expired(action)
-            ):
-                self.store.mark_expired_if_needed(action)
-                raise ActionError("action expired")
-            raise ActionError("action not pending")
+            raise self._not_open_reason(action_id)
+        if claimed.action == "restart_service":
+            return self._execute_restart(claimed)
         if claimed.action == "apply_edge_routes":
-            return self._execute_apply_edge_routes(action_id, claimed)
-        if claimed.action == "restart_service" and claimed.role == "edge":
-            return self._execute_restart_console(action_id, claimed)
+            return self._execute_edge(claimed, lambda: self.edge_ops.apply(claimed.params.get("content", "")))
+        if claimed.action == "rollback_edge_routes":
+            return self._execute_edge(claimed, lambda: self.edge_ops.restore(claimed.params.get("backup")))
+        return self._finish(claimed, False, "failed:invalid")
+
+    def _finish(self, claimed: PendingAction, ok: bool, detail: str, result: dict | None = None) -> PendingAction:
+        done = self.store.mark_executed(claimed.action_id, ok=ok, detail=detail, result=result)
+        if done is None:
+            raise ActionError("action not executing", "conflict")
+        return done
+
+    def _execute_restart(self, claimed: PendingAction) -> PendingAction:
         if _is_office_gateway_target(claimed.target):
-            result = self.store.mark_executed(action_id, ok=True, detail="ok")
-            if result is None:
-                raise ActionError("action not pending")
+            done = self._finish(claimed, True, "ok", {"note": "gateway restarts itself"})
             self._restart_target(claimed.target)
-            return result
-        ok = False
-        detail = "failed:adapter_unavailable"
+            return done
         try:
             self._restart_target(claimed.target)
-            ok = True
-            detail = "ok"
         except ValueError:
-            detail = "failed:not_found"
+            return self._finish(claimed, False, "failed:not_found")
         except Exception:
-            detail = "failed:adapter_unavailable"
-        result = self.store.mark_executed(action_id, ok=ok, detail=detail)
-        if result is None:
-            raise ActionError("action not pending")
-        return result
+            return self._finish(claimed, False, "failed:adapter_unavailable")
+        return self._finish(claimed, True, "ok")
 
-    def _execute_apply_edge_routes(self, action_id: str, claimed) -> object:
-        params = json.loads(claimed.params_json or "{}")
-        content = params.get("content", "")
-        ok = False
-        detail = "failed:adapter_unavailable"
+    def _execute_edge(self, claimed: PendingAction, run) -> PendingAction:
         try:
-            self.edge_ops.apply(content)
-            ok = True
-            detail = "ok"
+            result = run()
+        except RouteApplyError as exc:
+            detail = "failed:rolled_back" if exc.rolled_back else "failed:invalid"
+            return self._finish(claimed, False, detail, {"rolled_back": exc.rolled_back})
         except ValueError:
-            detail = "failed:invalid"
+            return self._finish(claimed, False, "failed:invalid", {"rolled_back": False})
         except Exception:
-            detail = "failed:adapter_unavailable"
-        result = self.store.mark_executed(action_id, ok=ok, detail=detail)
-        if result is None:
-            raise ActionError("action not pending")
-        return result
-
-    def _execute_restart_console(self, action_id: str, claimed) -> object:
-        ok = False
-        detail = "failed:adapter_unavailable"
-        try:
-            for name in self._resolve_edge_restart_targets(claimed.target):
-                self.docker_ops.restart(name)
-            ok = True
-            detail = "ok"
-        except ValueError:
-            detail = "failed:not_found"
-        except Exception:
-            detail = "failed:adapter_unavailable"
-        result = self.store.mark_executed(action_id, ok=ok, detail=detail)
-        if result is None:
-            raise ActionError("action not pending")
-        return result
-
-    def _find_edge_containers(self) -> list[str]:
-        return _edge_container_names(self.docker_ops)
-
-    def _resolve_edge_restart_targets(self, target: str) -> list[str]:
-        if target in _EDGE_SERVICE_ALIASES:
-            names = self._find_edge_containers()
-            if not names:
-                raise ValueError(f"container not found: {target}")
-            return names
-        try:
-            info = self.docker_ops.inspect(target)
-        except ValueError as exc:
-            raise ValueError(f"container not found: {target}") from exc
-        if not _is_office_edge_container(info):
-            raise ValueError(f"container not allowed: {target}")
-        return [target]
-
-    def _is_office_edge_target(self, target: str) -> bool:
-        if target in _EDGE_SERVICE_ALIASES:
-            return bool(self._find_edge_containers())
-        try:
-            info = self.docker_ops.inspect(target)
-        except ValueError:
-            return False
-        return _is_office_edge_container(info)
+            return self._finish(claimed, False, "failed:adapter_unavailable", {"rolled_back": False})
+        return self._finish(claimed, True, "ok", result)
 
     def _restart_target(self, target: str) -> None:
         endpoints = _adapter_endpoints()
         if target in endpoints:
-            response = httpx.post(endpoints[target], timeout=30.0)
+            response = httpx.post(endpoints[target], timeout=10.0)
             if response.status_code == 404:
                 raise ValueError(f"container not found: {target}")
             response.raise_for_status()
