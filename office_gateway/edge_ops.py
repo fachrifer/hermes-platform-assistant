@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import difflib
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable, Optional
 
 RESERVED_PREFIXES = (
     "/dash/",
@@ -15,7 +18,30 @@ RESERVED_PREFIXES = (
     "/dashboard-plugins/",
     "/login",
     "/bots/",
+    "/approvals",
 )
+
+BACKUP_KEEP = 10
+_BACKUP_PREFIX = "edge-routes."
+
+
+class RouteApplyError(Exception):
+    def __init__(self, message: str, rolled_back: bool) -> None:
+        super().__init__(message)
+        self.rolled_back = rolled_back
+
+
+def route_diff(old: str, new: str, limit: int = 60) -> list[str]:
+    lines = [
+        line
+        for line in difflib.unified_diff(
+            old.splitlines(), new.splitlines(), "current", "proposed", n=0, lineterm=""
+        )
+        if not line.startswith("@@")
+    ]
+    if len(lines) > limit:
+        return lines[:limit] + [f"... {len(lines) - limit} more lines"]
+    return lines
 
 
 class AdapterNotConfigured(Exception):
@@ -102,7 +128,7 @@ def render_traefik_dynamic(
 ) -> str:
     """Render Traefik v3 file-provider YAML for edge-routes (HTTP path proxies)."""
     chunks = [
-        "# Generated from edge-routes — do not edit by hand.",
+        "# Generated from edge-routes â€” do not edit by hand.",
         "http:",
         "  routers:",
     ]
@@ -147,7 +173,7 @@ def render_traefik_dynamic(
     return "\n".join(chunks)
 
 
-# Back-compat name used by older tests/scripts — Traefik dynamic YAML.
+# Back-compat name used by older tests/scripts â€” Traefik dynamic YAML.
 def render_locations(
     routes: list[EdgeRoute],
     *,
@@ -177,10 +203,19 @@ class EdgeRoutesOps:
         routes_path: str | None,
         locations_path: str | None,
         host_alias: str = "host.docker.internal",
+        backup_dir: str | None = None,
+        clock: Optional[Callable[[], datetime]] = None,
     ):
         self._routes_path = Path(routes_path) if routes_path else None
         self._locations_path = Path(locations_path) if locations_path else None
         self._host_alias = host_alias
+        if backup_dir:
+            self._backup_dir: Path | None = Path(backup_dir)
+        elif self._routes_path is not None:
+            self._backup_dir = self._routes_path.parent / "backups"
+        else:
+            self._backup_dir = None
+        self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     def configured(self) -> bool:
         return self._routes_path is not None and self._locations_path is not None
@@ -196,16 +231,76 @@ class EdgeRoutesOps:
         routes_path, _ = self._require_configured()
         return routes_path.read_text(encoding="utf-8")
 
+    def read_text_or_empty(self) -> str:
+        routes_path, _ = self._require_configured()
+        return routes_path.read_text(encoding="utf-8") if routes_path.exists() else ""
+
     def list_routes(self) -> list[EdgeRoute]:
         return parse_edge_routes(self.read_text())
 
     def validate(self, content: str) -> list[EdgeRoute]:
         return parse_edge_routes(content)
 
-    def apply(self, content: str) -> list[EdgeRoute]:
-        routes = self.validate(content)
-        rendered = render_locations(routes, host_alias=self._host_alias)
+    def list_backups(self) -> list[str]:
+        if self._backup_dir is None or not self._backup_dir.is_dir():
+            return []
+        return sorted(
+            (p.name for p in self._backup_dir.iterdir() if p.name.startswith(_BACKUP_PREFIX)),
+            reverse=True,
+        )
+
+    def read_backup(self, name: str) -> str:
+        if name not in self.list_backups():
+            raise ValueError("unknown backup")
+        assert self._backup_dir is not None
+        return (self._backup_dir / name).read_text(encoding="utf-8")
+
+    def _backup_current(self) -> str | None:
+        routes_path, _ = self._require_configured()
+        if not routes_path.exists() or self._backup_dir is None:
+            return None
+        self._backup_dir.mkdir(parents=True, exist_ok=True)
+        name = _BACKUP_PREFIX + self._clock().strftime("%Y%m%dT%H%M%S%fZ")
+        (self._backup_dir / name).write_text(routes_path.read_text(encoding="utf-8"), encoding="utf-8")
+        for old in self.list_backups()[BACKUP_KEEP:]:
+            (self._backup_dir / old).unlink(missing_ok=True)
+        return name
+
+    def _write_pair(self, content: str) -> list[EdgeRoute]:
         routes_path, locations_path = self._require_configured()
+        routes = parse_edge_routes(content)
         _atomic_write(routes_path, content)
+        rendered = render_locations(routes, host_alias=self._host_alias)
         _atomic_write(locations_path, rendered)
+        if parse_edge_routes(routes_path.read_text(encoding="utf-8")) != routes:
+            raise ValueError("routes file verification failed")
+        if locations_path.read_text(encoding="utf-8") != rendered:
+            raise ValueError("dynamic config verification failed")
         return routes
+
+    def apply(self, content: str) -> dict:
+        self.validate(content)
+        previous = self.read_text_or_empty()
+        backup = self._backup_current()
+        try:
+            routes = self._write_pair(content)
+        except Exception as exc:
+            rolled_back = False
+            if previous:
+                try:
+                    self._write_pair(previous)
+                    rolled_back = True
+                except Exception:
+                    rolled_back = False
+            raise RouteApplyError(str(exc), rolled_back=rolled_back) from exc
+        return {"routes": len(routes), "backup": backup}
+
+    def restore(self, name: str | None = None) -> dict:
+        backups = self.list_backups()
+        if not backups:
+            raise ValueError("no backups")
+        chosen = name or backups[0]
+        content = self.read_backup(chosen)
+        return {"restored": chosen, **self.apply(content)}
+
+
