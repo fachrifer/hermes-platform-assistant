@@ -64,7 +64,7 @@ services:
       - spike_lab_host_data:/opt/data
       - ./${LAB_HOST_CONFIG:-lab-host.config.yaml}:/opt/data/config.yaml:ro
       - ../scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
+      - ../scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
     command: ["gateway", "run"]
 
   spike-supervisor:
@@ -83,5 +83,5 @@ services:
       - spike_supervisor_data:/opt/data
       - ./supervisor.config.yaml:/opt/data/config.yaml:ro
       - ../scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
-      - ./bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
+      - ../scripts/hermes-bot-mode-marker-cont-init.sh:/etc/cont-init.d/30-bot-mode-marker:ro
     command: ["gateway", "run"]
