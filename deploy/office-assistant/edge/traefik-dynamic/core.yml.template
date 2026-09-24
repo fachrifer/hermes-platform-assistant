@@ -1,5 +1,5 @@
 # Template for Traefik core routers (Athena, Dashboard, fleet).
-# Render with: scripts/render-traefik-core.sh (injects OFFICE_GATEWAY_TOKEN_SUPERVISOR).
+# Render with: scripts/render-traefik-core.sh (injects the supervisor and approver gateway tokens).
 # Do not put real tokens in git — core.yml is generated on the host.
 
 http:
@@ -30,6 +30,20 @@ http:
       redirectScheme:
         scheme: https
         permanent: false
+    approver-auth:
+      basicAuth:
+        usersFile: /etc/traefik/approvers.htpasswd
+        headerField: X-Approver
+        removeHeader: true
+        realm: "Hermes approvals"
+    approver-token:
+      headers:
+        customRequestHeaders:
+          Authorization: "Bearer __OFFICE_GATEWAY_TOKEN_APPROVER__"
+    approvals-api-rewrite:
+      replacePathRegex:
+        regex: "^/approvals/api(.*)"
+        replacement: "/v1/approvals$1"
 __BOT_MIDDLEWARES__
 
   routers:
@@ -40,6 +54,24 @@ __BOT_MIDDLEWARES__
       priority: 100
       middlewares: [fleet-auth, fleet-rewrite]
       service: office-gateway
+
+    # Approvals: HTTPS only, basic auth; Traefik sets X-Approver to the login
+    # name and injects the approver bearer (never held by any agent).
+    approvals-api:
+      rule: "PathPrefix(`/approvals/api`)"
+      entryPoints: [websecure]
+      tls: {}
+      priority: 120
+      middlewares: [approver-auth, approver-token, approvals-api-rewrite]
+      service: office-gateway
+
+    approvals-page:
+      rule: "PathPrefix(`/approvals`)"
+      entryPoints: [websecure]
+      tls: {}
+      priority: 115
+      middlewares: [approver-auth]
+      service: office-www
 
     api:
       rule: "PathPrefix(`/api/`)"

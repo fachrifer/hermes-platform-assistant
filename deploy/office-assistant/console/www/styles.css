@@ -60,6 +60,21 @@ h1 { color: var(--text); }
   cursor: pointer;
 }
 .guide-open:hover { background: #d4b56a; }
+.approvals-link {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--gold);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.approvals-link:hover { background: rgba(199, 164, 90, 0.12); }
+.approvals-link + .guide-open { margin-left: 0; }
 .top-rule {
   color: var(--gold);
   opacity: 0.65;

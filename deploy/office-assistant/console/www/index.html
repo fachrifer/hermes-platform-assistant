@@ -10,13 +10,14 @@
       window.location.replace("/dash/");
     }
   </script>
-  <link rel="stylesheet" href="/styles.css?v=29" />
+  <link rel="stylesheet" href="/styles.css?v=30" />
 </head>
 <body>
   <header class="top">
     <p class="eyebrow">Agent Specialist Fleet</p>
     <span class="top-rule" aria-hidden="true">|</span>
     <h1>Athena - Orchestrator</h1>
+    <a class="approvals-link" href="/approvals/" target="_top">Approvals</a>
     <button type="button" class="guide-open" id="guide-open" aria-haspopup="dialog">How to use</button>
   </header>
 
@@ -68,15 +69,15 @@
     <div class="guide-card" role="dialog" aria-labelledby="guide-title" aria-modal="true">
       <h2 id="guide-title">How to use Athena</h2>
       <p>Sign in on the right, then type in <strong>Ops chat</strong>. You talk only to Athena. She asks specialists for you. The left rail is the village map. A green pin means that agent is up.</p>
-      <p>Athena may ask you to confirm with <strong>YES</strong>, <strong>OK</strong>, <strong>ya</strong>, <strong>lanjut</strong>, or <strong>go</strong> before she runs a live inspect, deep read, or other multi-step action. Simple status questions like <strong>Lab Docker status</strong> or <strong>ada yang rusak?</strong> use cached snapshots and work <strong>without YES</strong>. Fleet reports show <strong>what each agent can do</strong> and <strong>which endpoints are up</strong>.</p>
+      <p>Agents only read and propose. Anything that changes the lab (a restart, a route change) shows up on the <a href="/approvals/" target="_top">Approvals</a> page, and runs only after a person approves it there.</p>
       <ul class="guide-cast">
-        <li><strong>Athena</strong> — orchestrator. Routes questions. Does not restart machines herself.</li>
-        <li><strong>Hephaestus</strong> — Lab Docker inspect. Restarts only after you approve.</li>
-        <li><strong>Mnemosyne</strong> — vector store (Milvus / Attu). Prod is read-only.</li>
-        <li><strong>Surtr</strong> — GPU cluster / MIG. Read-only.</li>
-        <li><strong>Iris</strong> — LiteLLM and HTTP routes. Read-only.</li>
+        <li><strong>Athena</strong> — orchestrator. Answers fleet status and asks the right specialist. Cannot change anything.</li>
+        <li><strong>Hephaestus</strong> — Lab Docker and host services. Proposes restarts; they run only after approval.</li>
+        <li><strong>Mnemosyne</strong> — vector store (Milvus / Attu) health. Read-only.</li>
+        <li><strong>Surtr</strong> — GPU cluster, MIG layout and GPU usage. Read-only.</li>
+        <li><strong>Iris</strong> — LiteLLM health and model list. Read-only.</li>
         <li><strong>Argus</strong> — metrics and Grafana links. Read-only.</li>
-        <li><strong>Janus</strong> — Lab HTTPS path routes (Traefik / office-edge) + TLS leaf status/expiry. He applies routes through the gateway after you approve — not by writing files, and not via Hephaestus. Restarts office-edge only after you approve.</li>
+        <li><strong>Janus</strong> — Lab HTTPS routes (Traefik / office-edge) and TLS expiry. Validates and proposes route changes; they apply only after approval.</li>
       </ul>
       <p>Copy a starter, paste it into Ops chat, then send:</p>
       <div class="guide-prompts">
@@ -87,12 +88,12 @@
         <button type="button" data-prompt="Add HTTPS path /foo/ to host port 9999. Validate first; warn me before any restart.">Add HTTPS path</button>
         <button type="button" data-prompt="List each specialist and what I should ask them. Do not call them yet.">Who does what</button>
       </div>
-      <p class="guide-note">Restarts and other writes still need <code>APPROVE &lt;id&gt;</code> — paste that phrase back exactly. The hourly autoheal scheduler is <strong>off</strong>. Do not ask anyone to restart unless you mean it.</p>
+      <p class="guide-note">Typing "approve" in chat does nothing. Open <a href="/approvals/" target="_top">Approvals</a>, sign in, and click Approve or Reject. Requests expire if nobody decides.</p>
       <button type="button" class="guide-close" id="guide-close">Got it</button>
     </div>
   </div>
 
-  <script src="/ops-map.js?v=29"></script>
-  <script src="/app.js?v=29"></script>
+  <script src="/ops-map.js?v=30"></script>
+  <script src="/app.js?v=30"></script>
 </body>
 </html>

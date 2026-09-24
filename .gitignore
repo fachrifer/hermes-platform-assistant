@@ -21,3 +21,10 @@ graphify-out/
 
 deploy/office-assistant/spike/.env.spike
 deploy/office-assistant/spike/capture/
+
+deploy/office-assistant/edge/traefik-dynamic/core.yml
+deploy/office-assistant/edge/approvers.htpasswd
+deploy/office-assistant/edge/backups/
+deploy/office-assistant/images/
+deploy/office-assistant/.smoke/
+deploy/office-assistant/**/*.pre-phase1b-*

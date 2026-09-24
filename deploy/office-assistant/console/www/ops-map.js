@@ -18,12 +18,12 @@
   };
   const LINES = {
     athena: "Talk to me in Ops chat. I route the specialists.",
-    hephaestus: "Hephaestus — Lab Docker. Restarts only after you approve.",
-    janus: "Janus — HTTPS edge and TLS. Restarts office-edge only after you approve.",
-    iris: "Iris — LiteLLM and HTTP routes. Read-only.",
+    hephaestus: "Hephaestus — Lab Docker. Restarts run only after approval.",
+    janus: "Janus — HTTPS routes and TLS. Route changes apply only after approval.",
+    iris: "Iris — LiteLLM health and models. Read-only.",
     surtr: "Surtr — GPU cluster / MIG. Read-only.",
     argus: "Argus — metrics and Grafana. Read-only.",
-    mnemosyne: "Mnemosyne — vector store. Prod is read-only.",
+    mnemosyne: "Mnemosyne — vector store. Read-only.",
   };
   const IDLE_LINE = "Village is quiet. Click a specialist.";
   const FX = [

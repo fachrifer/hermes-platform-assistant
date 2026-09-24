@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render Traefik core.yml from template + operator .env token.
+# Render Traefik core.yml from template + operator .env tokens.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -8,13 +8,18 @@ TEMPLATE="${OFFICE_TRAEFIK_CORE_TEMPLATE:-$DEPLOY_DIR/edge/traefik-dynamic/core.
 OUT="${OFFICE_TRAEFIK_CORE_OUT:-$DEPLOY_DIR/edge/traefik-dynamic/core.yml}"
 ENV_FILE="${1:-$DEPLOY_DIR/.env}"
 
-export OFFICE_GATEWAY_TOKEN_SUPERVISOR="${OFFICE_GATEWAY_TOKEN_SUPERVISOR:-}"
-if [[ -z "${OFFICE_GATEWAY_TOKEN_SUPERVISOR}" && -f "$ENV_FILE" ]]; then
-  OFFICE_GATEWAY_TOKEN_SUPERVISOR="$(
-    grep -E '^OFFICE_GATEWAY_TOKEN_SUPERVISOR=' "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
-  )"
-  export OFFICE_GATEWAY_TOKEN_SUPERVISOR
-fi
+env_value() {
+  local name="$1"
+  if [[ -n "${!name:-}" ]]; then
+    printf '%s' "${!name}"
+  elif [[ -f "$ENV_FILE" ]]; then
+    grep -E "^${name}=" "$ENV_FILE" | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true
+  fi
+}
+
+OFFICE_GATEWAY_TOKEN_SUPERVISOR="$(env_value OFFICE_GATEWAY_TOKEN_SUPERVISOR)"
+OFFICE_GATEWAY_TOKEN_APPROVER="$(env_value OFFICE_GATEWAY_TOKEN_APPROVER)"
+export OFFICE_GATEWAY_TOKEN_SUPERVISOR OFFICE_GATEWAY_TOKEN_APPROVER
 
 python3 - <<'PY' "$TEMPLATE" "$OUT"
 import os, sys
@@ -23,15 +28,18 @@ from pathlib import Path
 template, out = Path(sys.argv[1]), Path(sys.argv[2])
 token = os.environ.get("OFFICE_GATEWAY_TOKEN_SUPERVISOR") or "MISSING_SUPERVISOR_TOKEN"
 if token == "MISSING_SUPERVISOR_TOKEN":
-    print("warning: OFFICE_GATEWAY_TOKEN_SUPERVISOR empty — /api/fleet/ will 401 until set", file=sys.stderr)
+    print("warning: OFFICE_GATEWAY_TOKEN_SUPERVISOR empty - /api/fleet/ will 401 until set", file=sys.stderr)
+approver = os.environ.get("OFFICE_GATEWAY_TOKEN_APPROVER") or "MISSING_APPROVER_TOKEN"
+if approver == "MISSING_APPROVER_TOKEN":
+    print("warning: OFFICE_GATEWAY_TOKEN_APPROVER empty - /approvals/api will 401 until set", file=sys.stderr)
 
 BOT_ROLES = (
     ("lab-host", "hermes-lab-host"),
     ("vector", "hermes-vector"),
     ("cluster-gpu", "hermes-cluster-gpu"),
-    ("llm-edge", "hermes-llm-edge"),
+    ("llm", "hermes-llm"),
     ("obs", "hermes-obs"),
-    ("edge", "hermes-edge"),
+    ("ingress", "hermes-ingress"),
 )
 
 def bot_routers(role: str, svc: str, *, http: bool) -> str:
@@ -124,6 +132,7 @@ for role, svc in BOT_ROLES:
 
 text = template.read_text(encoding="utf-8")
 text = text.replace("__OFFICE_GATEWAY_TOKEN_SUPERVISOR__", token)
+text = text.replace("__OFFICE_GATEWAY_TOKEN_APPROVER__", approver)
 text = text.replace("__BOT_MIDDLEWARES__", "\n".join(middlewares).rstrip())
 text = text.replace("__BOT_ROUTERS__", "\n".join(routers).rstrip())
 text = text.replace("__BOT_SERVICES__", "\n".join(services).rstrip())

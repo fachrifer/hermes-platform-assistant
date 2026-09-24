@@ -1,0 +1,102 @@
+:root {
+  --bg: #081018;
+  --panel: #101820;
+  --gold: #c7a45a;
+  --text: #e6edf3;
+  --muted: #8b9aaa;
+  --ok: #3dba86;
+  --warn: #d4a017;
+  --critical: #d4544a;
+  --line: #1e2a36;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  font-size: 14px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow {
+  margin: 0;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-size: 10px;
+}
+.top h1 { margin: 0; font-size: 16px; font-weight: 600; }
+.back { margin-left: auto; color: var(--gold); text-decoration: none; }
+.back:hover { text-decoration: underline; }
+
+main { max-width: 980px; margin: 0 auto; padding: 16px 20px 40px; }
+.note { color: var(--muted); margin: 0 0 8px; }
+.status { min-height: 1.4em; color: var(--muted); margin: 0 0 16px; }
+.status.error { color: var(--critical); }
+.status.ok { color: var(--ok); }
+
+h2 { font-size: 15px; margin: 24px 0 10px; color: var(--gold); font-weight: 600; }
+.count { color: var(--text); }
+.empty { color: var(--muted); }
+
+.cards { display: grid; gap: 12px; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--warn);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+.card h3 { margin: 0 0 6px; font-size: 15px; }
+.card .summary { margin: 0 0 8px; }
+.card dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0 0 10px; }
+.card dt { color: var(--muted); }
+.card dd { margin: 0; overflow-wrap: anywhere; }
+
+.diff {
+  background: #050b10;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 8px;
+  max-height: 320px;
+  overflow: auto;
+  font: 12px/1.45 Consolas, "Courier New", monospace;
+  margin: 0 0 10px;
+}
+.diff .add { color: var(--ok); }
+.diff .del { color: var(--critical); }
+
+.buttons { display: flex; gap: 8px; }
+button {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 16px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--bg);
+}
+button.approve { background: var(--ok); }
+button.reject { background: var(--critical); color: var(--text); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+.recent { width: 100%; border-collapse: collapse; }
+.recent th, .recent td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.recent th { color: var(--muted); font-weight: 500; }
+.st-succeeded { color: var(--ok); }
+.st-rejected, .st-expired { color: var(--muted); }
+.st-failed { color: var(--critical); }
+.st-executing { color: var(--warn); }
