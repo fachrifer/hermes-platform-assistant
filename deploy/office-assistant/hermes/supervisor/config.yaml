@@ -1,4 +1,5 @@
 # Supervisor (Athena). Tools: MCP fleet_status + skills; delegates with message_agent.
+_config_version: 45
 agent:
   name: supervisor
   build_wait_timeout: 30
@@ -42,12 +43,26 @@ platform_toolsets:
 
 skills:
   auto_load: [office-supervisor]
+  creation_nudge_interval: 0
+  write_approval: true
+  project_discovery: false
 
 tool_loop_guardrails:
   warnings_enabled: true
   hard_stop_enabled: true
   warn_after: {exact_failure: 1, same_tool_failure: 1, idempotent_no_progress: 1}
   hard_stop_after: {exact_failure: 2, same_tool_failure: 2, idempotent_no_progress: 2}
+
+tools:
+  tool_search:
+    enabled: "off"
+  connectors:
+    enabled: false
+curator:
+  enabled: false
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
 
 model_catalog:
   enabled: false
@@ -56,6 +71,8 @@ model_overrides:
     qwen3.8-fast: {context_window: 131072, supports_tools: true, supports_reasoning: false}
   custom:office-litellm: *office-models
 auxiliary:
+  background_review:
+    enabled: false
   title_generation:
     model_upgrade_enabled: false
 network:

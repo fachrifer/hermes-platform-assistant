@@ -92,6 +92,13 @@ def test_retired_scripts_are_gone(name):
     assert not _script(name).exists()
 
 
+def test_bot_mode_cont_init_hands_skills_dir_to_hermes():
+    script = _read("hermes-bot-mode-marker-cont-init.sh")
+    assert _run(["sh", "-n", str(_script("hermes-bot-mode-marker-cont-init.sh"))]).returncode == 0
+    assert 'chown "$owner" "$HOME_DIR/skills"' in script
+    assert "chown -R" not in script
+
+
 def test_lib_lists_current_roles_and_image():
     lib = _read("lib.sh")
     assert 'HERMES_ROLES="supervisor lab-host ingress llm cluster-gpu vector obs"' in lib

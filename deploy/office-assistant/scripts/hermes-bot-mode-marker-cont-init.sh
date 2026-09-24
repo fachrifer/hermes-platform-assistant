@@ -13,3 +13,7 @@ if [ ! -f "$HOME_DIR/.no-bundled-skills" ]; then
 fi
 owner="$(stat -c %u:%g "$HOME_DIR")"
 chown "$owner" "$MARKER" "$HOME_DIR/.no-bundled-skills"
+# Docker creates skills/ as root for the nested read-only skill mount; Hermes needs it writable.
+if [ -d "$HOME_DIR/skills" ]; then
+  chown "$owner" "$HOME_DIR/skills"
+fi

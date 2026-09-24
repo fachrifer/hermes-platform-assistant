@@ -49,6 +49,21 @@ def test_mcp_only_tools_on_every_surface(role):
         assert cfg["platform_toolsets"][surface] == ["mcp-office", "skills"]
     assert cfg["skills"]["auto_load"] == [f"office-{role}"]
     assert cfg["mcp"]["discovery_concurrency"] == 1
+    assert cfg["tools"]["tool_search"]["enabled"] == "off"
+    assert cfg["tools"]["connectors"]["enabled"] is False
+
+
+@pytest.mark.parametrize("role", ROLES)
+def test_no_self_improvement(role):
+    cfg = _cfg(role)
+    assert cfg["_config_version"] == 45
+    skills = cfg["skills"]
+    assert skills["creation_nudge_interval"] == 0
+    assert skills["write_approval"] is True
+    assert skills["project_discovery"] is False
+    assert cfg["curator"]["enabled"] is False
+    assert cfg["auxiliary"]["background_review"]["enabled"] is False
+    assert cfg["memory"] == {"memory_enabled": False, "user_profile_enabled": False}
 
 
 @pytest.mark.parametrize("role", ROLES)
