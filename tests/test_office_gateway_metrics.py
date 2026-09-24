@@ -50,7 +50,7 @@ def test_metrics_query_malformed_upstream_json_returns_502(tmp_path):
     with patch("office_gateway.metrics.httpx.AsyncClient", return_value=mock_client):
         response = client.get(
             "/v1/metrics/query",
-            params={"query": "up"},
+            params={"name": "targets_up"},
             headers={"Authorization": "Bearer tok-obs"},
         )
 
@@ -96,7 +96,7 @@ def test_metrics_query_redacts_sensitive_labels_and_caps_series(tmp_path):
     with patch("office_gateway.metrics.httpx.AsyncClient", return_value=mock_client):
         response = client.get(
             "/v1/metrics/query",
-            params={"query": "up"},
+            params={"name": "targets_up"},
             headers={"Authorization": "Bearer tok-obs"},
         )
 
@@ -149,10 +149,20 @@ def test_metrics_query_caps_matrix_samples_per_series(tmp_path):
     with patch("office_gateway.metrics.httpx.AsyncClient", return_value=mock_client):
         response = client.get(
             "/v1/metrics/query",
-            params={"query": "up"},
+            params={"name": "targets_up"},
             headers={"Authorization": "Bearer tok-obs"},
         )
 
     assert response.status_code == 200
     series = response.json()["data"]["result"][0]
     assert len(series["values"]) == 50
+
+
+def test_metrics_query_rejects_unknown_name(tmp_path):
+    client = TestClient(create_app(_metrics_config(str(tmp_path / "gateway.db"))))
+    response = client.get(
+        "/v1/metrics/query",
+        params={"name": "bogus"},
+        headers={"Authorization": "Bearer tok-obs"},
+    )
+    assert response.status_code == 400

@@ -22,6 +22,7 @@ from office_gateway.llm_ops import fetch_litellm_status
 from office_gateway.metrics import instant_query
 from office_gateway.mig import compare_mig
 from office_gateway.redact import redact_text
+from office_gateway.reports import queries
 from office_gateway.roles import APPROVER_ROLE, can_read, can_write, role_for_token
 from office_gateway.store import GatewayStore
 from office_gateway.tls_ops import tls_cert_status
@@ -318,12 +319,18 @@ def create_app(
 
     @app.get("/v1/metrics/query")
     async def metrics_query(
-        query: str = "",
+        name: str = "",
+        instance: str = "",
+        window: str = "",
         role: str = Depends(_role_from_request),
     ) -> dict:
         _require_read(role, "/v1/metrics/query")
         try:
-            return await instant_query(config.metrics_url, query)
+            promql = queries.render(name, instance or None, window or None)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        try:
+            return await instant_query(config.metrics_url, promql)
         except json.JSONDecodeError as exc:
             raise HTTPException(status_code=502, detail="metrics upstream error") from exc
         except ValueError as exc:

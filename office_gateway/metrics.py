@@ -81,7 +81,7 @@ async def instant_query(metrics_url: str, query: str) -> dict:
         if banned in lowered:
             raise ValueError("query not allowlisted")
     url = f"{metrics_url.rstrip('/')}/api/v1/query"
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(url, params={"query": q})
     response.raise_for_status()
     payload = response.json()
