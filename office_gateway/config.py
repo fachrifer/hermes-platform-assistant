@@ -4,17 +4,16 @@ import os
 import re
 from dataclasses import dataclass, field
 
-from office_gateway.roles import ROLES
-
 _SERVICE_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _TOKEN_ENV = {
     "supervisor": "OFFICE_GATEWAY_TOKEN_SUPERVISOR",
     "lab-host": "OFFICE_GATEWAY_TOKEN_LAB_HOST",
-    "vector": "OFFICE_GATEWAY_TOKEN_VECTOR",
+    "ingress": "OFFICE_GATEWAY_TOKEN_INGRESS",
+    "llm": "OFFICE_GATEWAY_TOKEN_LLM",
     "cluster-gpu": "OFFICE_GATEWAY_TOKEN_CLUSTER",
-    "llm-edge": "OFFICE_GATEWAY_TOKEN_LLM",
+    "vector": "OFFICE_GATEWAY_TOKEN_VECTOR",
     "obs": "OFFICE_GATEWAY_TOKEN_OBS",
-    "edge": "OFFICE_GATEWAY_TOKEN_EDGE",
+    "approver": "OFFICE_GATEWAY_TOKEN_APPROVER",
 }
 
 
@@ -25,14 +24,25 @@ def _required(name: str) -> str:
     return value
 
 
-_DEFAULT_SERVICE_URLS = (
-    "gateway=http://office-gateway:8080/health,"
-    "hermes-lab-host=http://hermes-lab-host:9900/.well-known/agent.json,"
-    "hermes-vector=http://hermes-vector:9900/.well-known/agent.json,"
-    "hermes-cluster-gpu=http://hermes-cluster-gpu:9900/.well-known/agent.json,"
-    "hermes-llm-edge=http://hermes-llm-edge:9900/.well-known/agent.json,"
-    "hermes-obs=http://hermes-obs:9900/.well-known/agent.json,"
-    "hermes-edge=http://hermes-edge:9900/.well-known/agent.json"
+_AGENT_SERVICES = (
+    "hermes-agent",
+    "hermes-lab-host",
+    "hermes-ingress",
+    "hermes-llm",
+    "hermes-cluster-gpu",
+    "hermes-vector",
+    "hermes-obs",
+)
+
+_DEFAULT_SERVICE_URLS = ",".join(
+    ["gateway=http://office-gateway:8080/health"]
+    + [f"{name}=http://{name}:8642/health" for name in _AGENT_SERVICES]
+)
+
+_DEFAULT_VECTOR_INSTANCES = (
+    "milvus-dev=http://host.docker.internal:9091/healthz,"
+    "milvus-prod=http://10.216.203.132:9091/healthz,"
+    "qdrant-dev=http://host.docker.internal:6333/readyz"
 )
 
 
@@ -55,21 +65,9 @@ def _service_urls(value: str) -> dict[str, str]:
     return endpoints
 
 
-def _csv_set(value: str) -> frozenset[str]:
-    return frozenset(part.strip() for part in value.split(",") if part.strip())
-
-
-def _vector_env(value: str) -> dict[str, str]:
-    """Parse `name:dev|name:prod`."""
-    if not value.strip():
-        return {}
-    out: dict[str, str] = {}
-    for item in (part.strip() for part in value.split(",") if part.strip()):
-        name, sep, env = item.partition(":")
-        if not sep or env not in {"dev", "prod"} or not _SERVICE_NAME_RE.fullmatch(name):
-            raise ValueError("OFFICE_VECTOR_ENV format name:dev|prod tidak valid")
-        out[name] = env
-    return out
+def _vector_instances(value: str) -> dict[str, str]:
+    """Parse `name=url,...` health endpoints for vector instances."""
+    return _parse_service_urls(value) if value.strip() else {}
 
 
 def _grafana_dashboards(value: str) -> dict[str, str]:
@@ -108,9 +106,7 @@ def _mig_expected(value: str) -> dict[str, int]:
 class GatewayConfig:
     tokens: dict[str, str]
     service_urls: dict[str, str]
-    write_targets: dict[str, frozenset[str]] = field(default_factory=dict)
-    log_targets: dict[str, frozenset[str]] = field(default_factory=dict)
-    vector_env: dict[str, str] = field(default_factory=dict)
+    vector_instances: dict[str, str] = field(default_factory=dict)
     grafana_base_url: str = ""
     grafana_dashboards: dict[str, str] = field(default_factory=dict)
     grafana_panel_ids: dict[str, int] = field(default_factory=dict)
@@ -125,14 +121,17 @@ class GatewayConfig:
     hermes_dashboard_password: str = ""
     edge_routes_path: str = ""
     edge_locations_path: str = ""
+    edge_backup_dir: str = ""
     edge_tls_cert_path: str = ""
-    autoheal_deny: frozenset[str] = field(default_factory=frozenset)
     litellm_url: str = ""
     litellm_master_key: str = ""
+    console_url: str = ""
 
     @classmethod
     def from_env(cls) -> "GatewayConfig":
         tokens = {role: _required(env) for role, env in _TOKEN_ENV.items()}
+        if len(set(tokens.values())) != len(tokens):
+            raise ValueError("OFFICE_GATEWAY_TOKEN_* values must be distinct")
         extra = os.getenv("OFFICE_GRAFANA_PANELS", "")
         panels: dict[str, int] = {}
         for item in (part.strip() for part in extra.split(",") if part.strip()):
@@ -143,19 +142,8 @@ class GatewayConfig:
         return cls(
             tokens=tokens,
             service_urls=_service_urls(os.getenv("OFFICE_SERVICE_URLS", "").strip()),
-            write_targets={
-                "lab-host": _csv_set(os.getenv("OFFICE_WRITE_LAB_HOST", "")),
-                "vector": _csv_set(os.getenv("OFFICE_WRITE_VECTOR", "milvus-standalone,attu")),
-                "edge": _csv_set(os.getenv("OFFICE_WRITE_EDGE", "edge-routes")),
-            },
-            log_targets={
-                "lab-host": _csv_set(os.getenv("OFFICE_READ_LOGS_LAB_HOST", "")),
-            },
-            vector_env=_vector_env(
-                os.getenv(
-                    "OFFICE_VECTOR_ENV",
-                    "milvus-standalone:dev,attu:dev,milvus-prod:prod",
-                )
+            vector_instances=_vector_instances(
+                os.getenv("OFFICE_VECTOR_INSTANCES", "").strip() or _DEFAULT_VECTOR_INSTANCES
             ),
             grafana_base_url=os.getenv("OFFICE_GRAFANA_BASE_URL", "").rstrip("/"),
             grafana_dashboards=_grafana_dashboards(os.getenv("OFFICE_GRAFANA_DASHBOARDS", "")),
@@ -176,10 +164,8 @@ class GatewayConfig:
                 os.getenv("OFFICE_EDGE_DYNAMIC_PATH", "").strip()
                 or os.getenv("OFFICE_EDGE_LOCATIONS_PATH", "").strip()
             ),
-            edge_tls_cert_path=os.getenv(
-                "OFFICE_EDGE_TLS_CERT_PATH", "/certs/tls.crt"
-            ).strip(),
-            autoheal_deny=_csv_set(os.getenv("OFFICE_AUTOHEAL_DENY", "")),
+            edge_backup_dir=os.getenv("OFFICE_EDGE_BACKUP_DIR", "").strip(),
+            edge_tls_cert_path=os.getenv("OFFICE_EDGE_TLS_CERT_PATH", "/certs/tls.crt").strip(),
             litellm_url=(
                 os.getenv("OFFICE_LITELLM_URL", "").strip()
                 or os.getenv("LITELLM_URL", "").strip()
@@ -188,4 +174,5 @@ class GatewayConfig:
                 os.getenv("OFFICE_LITELLM_MASTER_KEY", "").strip()
                 or os.getenv("LITELLM_MASTER_KEY", "").strip()
             ),
+            console_url=os.getenv("OFFICE_CONSOLE_URL", "").strip().rstrip("/"),
         )

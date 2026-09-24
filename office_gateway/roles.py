@@ -1,51 +1,41 @@
 from __future__ import annotations
 
-ROLES = frozenset(
-    {"supervisor", "lab-host", "vector", "cluster-gpu", "llm-edge", "obs", "edge"}
+import hmac
+
+AGENT_ROLES = frozenset(
+    {"supervisor", "lab-host", "ingress", "llm", "cluster-gpu", "vector", "obs"}
 )
+APPROVER_ROLE = "approver"
+ROLES = AGENT_ROLES | {APPROVER_ROLE}
+SPECIALIST_ROLES = AGENT_ROLES - {"supervisor"}
 
-WATCH_SPECIALIST_ROLES = frozenset(
-    {"lab-host", "vector", "cluster-gpu", "llm-edge", "obs", "edge"}
-)
+_COMMON = frozenset({"/v1/status", "/v1/services"})
 
-WATCH_STALE_SECONDS = 180
-
-READ_ROUTES = {
-    "supervisor": frozenset(
-        {
-            "/v1/status",
-            "/v1/services",
-            "/v1/audit",
-            "/v1/metrics/query",
-            "/v1/grafana/links",
-            "/v1/gpu/mig",
-            "/v1/host/gpu",
-            "/v1/fleet",
-            "/v1/watch",
-            "/v1/llm",
-            "/v1/litellm",
-        }
-    ),
-    "lab-host": frozenset({"/v1/status", "/v1/services", "/v1/docker"}),
-    "vector": frozenset({"/v1/status", "/v1/services"}),
-    "cluster-gpu": frozenset(
-        {"/v1/status", "/v1/services", "/v1/k8s/resources", "/v1/gpu/mig", "/v1/host/gpu"}
-    ),
-    "llm-edge": frozenset(
-        {"/v1/status", "/v1/services", "/v1/k8s/resources", "/v1/llm", "/v1/litellm"}
-    ),
-    "obs": frozenset(
-        {"/v1/status", "/v1/services", "/v1/metrics/query", "/v1/grafana/links"}
-    ),
-    "edge": frozenset({"/v1/status", "/v1/services", "/v1/edge"}),
+READ_ROUTES: dict[str, frozenset[str]] = {
+    "supervisor": _COMMON | {"/v1/fleet"},
+    "lab-host": _COMMON | {"/v1/docker", "/v1/actions"},
+    "ingress": _COMMON | {"/v1/edge", "/v1/docker/logs", "/v1/actions"},
+    "llm": _COMMON | {"/v1/llm"},
+    "cluster-gpu": _COMMON | {"/v1/k8s/resources", "/v1/gpu/mig", "/v1/host/gpu"},
+    "vector": _COMMON,
+    "obs": _COMMON | {"/v1/metrics/query", "/v1/grafana/links", "/v1/actions"},
+    APPROVER_ROLE: frozenset({"/v1/status", "/v1/approvals", "/v1/audit"}),
 }
 
-WRITE_ROLES = frozenset({"lab-host", "vector", "edge"})
+WRITE_ACTIONS: dict[str, frozenset[str]] = {
+    "lab-host": frozenset({"restart_service"}),
+    "ingress": frozenset({"apply_edge_routes", "rollback_edge_routes"}),
+    "obs": frozenset(),
+}
+
+WRITE_ROLES = frozenset(role for role, actions in WRITE_ACTIONS.items() if actions)
 
 
 def role_for_token(config, token: str) -> str | None:
+    if not token:
+        return None
     for role, expected in config.tokens.items():
-        if expected and token == expected:
+        if expected and hmac.compare_digest(token.encode(), expected.encode()):
             return role
     return None
 
@@ -59,5 +49,5 @@ def can_write(role: str) -> bool:
     return role in WRITE_ROLES
 
 
-def can_post_watch(role: str) -> bool:
-    return role in WATCH_SPECIALIST_ROLES
+def can_propose(role: str, action: str) -> bool:
+    return action in WRITE_ACTIONS.get(role, frozenset())
