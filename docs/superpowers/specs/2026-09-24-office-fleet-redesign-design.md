@@ -97,6 +97,21 @@ Success criteria (checked in §13):
      VictoriaMetrics · Grafana API
 ```
 
+### 4.1 How the user reaches the fleet
+
+| Where | Chat | Approvals and reports |
+|---|---|---|
+| Office | Hermes Desktop connected to all seven agents' api_servers (`:8642`): supervisor for normal use, specialists directly for debugging | Console in a browser |
+| Outside the office (VPN) | Hermes web Dashboard, resuming the supervisor's canonical "Bot Chat" session | Console over VPN |
+
+Consequences built into this design:
+
+- The supervisor must be able to delegate from both surfaces, so its conversation always happens in the canonical "Bot Chat" session (Desktop opens it automatically; on the web Dashboard it is resumed from the session list). Verified in §14.
+- Desktop connected to every gateway propagates a relay roster ("teammates on other connected machines") into the supervisor's Bot Chat, next to the `bot_peers` roster. That is a second route to the same specialist, and it only works while a Desktop is open. The supervisor must always use the `bot_peers` targets (§9); verified in §14.
+- A specialist whose Bot Chat is busy with the user in Desktop queues a supervisor message for up to `bot_mode.turn_wait_seconds` (120 s), then returns `target_busy`.
+
+### 4.2 Units
+
 Units and their single purpose:
 
 | Unit | Purpose | Depends on |
@@ -214,6 +229,7 @@ proposed ──approve──▶ approved ──▶ executing ──▶ succeeded
 
 - Specialist proposes → gets `action_id` → replies to supervisor with `PROPOSED <action_id>` and a one-line summary. The supervisor tells the user to open Approvals. No agent can execute.
 - Console Approvals page (`/approvals`) lists pending actions with role, target, summary, and a diff (routes, dashboard panel list). Approve/Reject buttons call `POST /v1/approvals/{id}/approve|reject` through nginx, which enforces basic auth and injects the approver token and `X-Approver: $remote_user`.
+- `/approvals` and the approver API are served only over the console's HTTPS listener (`:443`); plain HTTP redirects. This matters because approvals are also clicked from outside the office over VPN.
 - The gateway executes immediately on approve and records approver, timestamps, and result in the audit log. Expired or already-decided actions reject further clicks.
 - Agents observe outcomes only through `action_status`.
 
@@ -258,7 +274,9 @@ Default off. For the §13.3 comparison, specialists get
 
 ## 9. Communication protocol
 
-- Channel: `message_agent(target="<role>", message=...)` from the supervisor's canonical "Bot Chat" over `bot_peers` (`http://hermes-<role>:8642`, `HERMES_PEER_<NAME>_KEY`). This route is gateway-to-gateway and does not need Hermes Desktop running.
+- Channel: `message_agent(target="<peer>", message=...)` from the supervisor's canonical "Bot Chat" over `bot_peers` (`http://hermes-<role>:8642`, `HERMES_PEER_<NAME>_KEY`). This route is gateway-to-gateway and does not need Hermes Desktop running.
+- Targets are exactly the `bot_peers` names listed in the supervisor skill (`lab-host`, `ingress`, `llm`, `cluster-gpu`, `vector`, `obs`). Relay-roster entries injected by a connected Desktop (`@name@<connection>` forms) are never used.
+- `target_busy` (user is mid-conversation with that specialist) is reported like any other failure: domain `unknown`, no resend.
 - The supervisor never waits: after dispatching it tells the user which specialist is checking, then ends the turn. The completion notification starts a new supervisor turn that relays the result.
 - Status-only questions are answered from `fleet_status` without messaging anyone.
 
@@ -384,7 +402,7 @@ Some exporters are missing. Tools return `no_metrics` naming the missing exporte
 
 ### 13.2 Loop scenarios on the Lab VM
 
-Prompts that looped before, a specialist forced to time out, an MCP tool forced to fail, LiteLLM cut off. Pass: no duplicate `message_agent`, turn counts ≤ §8.1, a final answer always produced, specialist runs ≤ 180 s.
+Prompts that looped before, a specialist forced to time out, an MCP tool forced to fail, LiteLLM cut off. Each run from both access paths: Desktop connected to all gateways, and web Dashboard with Desktop closed; plus one run while the user is chatting with the target specialist in Desktop (expect `target_busy` handling). Pass: no duplicate `message_agent`, turn counts ≤ §8.1, a final answer always produced, specialist runs ≤ 180 s.
 
 ### 13.3 Thinking comparison
 
@@ -406,6 +424,9 @@ Each is a go/no-go check with a fallback:
 |---|---|
 | `message_agent` works with the `terminal` toolset disabled (delivery spawns `hermes peer dm` as a background process via the terminal machinery) | Stop and re-open the communication decision with the user (A2A remains the alternative); do not re-enable `terminal` silently |
 | Headless Bot Mode markers (`ui_meta.hermes-bots` in a profile, canonical "Bot Chat") persist across container restarts | Create them in the container init script |
+| Supervisor "Bot Chat" resumed from the web Dashboard (outside the office) exposes `message_agent` | Stop and re-open the communication decision with the user: remote users could not delegate otherwise |
+| With Desktop connected to all seven gateways, `message_agent(target="<peer>")` resolves to the `bot_peers` route, not the Desktop relay; closing Desktop mid-request does not break delivery | Rename peers to `peer-<role>` so they never collide with relay handles, and re-test |
+| Specialists with `agent.bot_mode_protocol: false` still receive peer messages and still work normally when opened from Desktop | Keep protocol on for specialists but give them an empty `bot_peers` and a skill rule never to message; re-test |
 | `extra_body.chat_template_kwargs` reaches LiteLLM from Hermes custom provider | Skip §13.3; thinking stays off |
 | `key_env` without `OPENAI_API_KEY` | Port airgap patch (§13.5) |
 | Gateway can read Grafana alerting API and create in folder with the scoped service account | Alerts via VictoriaMetrics `ALERTS` series |
