@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from office_gateway.tools import common, ingress, lab_host
 from office_gateway.tools.core import Tool
 
-ALL_TOOLS: tuple[Tool, ...] = ()
+ALL_TOOLS: tuple[Tool, ...] = (*common.TOOLS, *lab_host.TOOLS, *ingress.TOOLS)
 
 REGISTRY: dict[str, Tool] = {tool.name: tool for tool in ALL_TOOLS}
+assert len(REGISTRY) == len(ALL_TOOLS), "duplicate tool names"
 
 
 def tools_for_role(role: str) -> list[Tool]:
