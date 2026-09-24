@@ -27,8 +27,8 @@ Spec: `2026-09-24-office-fleet-redesign-design.md` §14 · Hermes `v2026.9.21` �
 
 ## Observations for Phase 1b
 
-- S4: every session makes one extra auxiliary LLM call (`response_format`, no tools) after the first turn. Check whether title generation can be disabled or pointed at a cheap path; on a 35 tok/s model it adds latency and load per delegation.
-- S1: every agent process start (CLI one-shot and each api_server run) fires ~12 model metadata probes (`/v1/models`, `/v1/models/<id>`, `/api/show`, `/props`, `/version`, `/api/tags`) before the first chat call. Check whether `model_overrides` with `context_window` (spec §10) skips them.
+- S4: every session makes one extra auxiliary LLM call (`response_format`, no tools) for the title. Verified fix: `auxiliary.title_generation.model_upgrade_enabled: false` → no second call, title derived from the first message.
+- The office virtual key gets 403 on `/v1/model/info` and `/v1/models/qwen3.8-fast`; `CONTEXT_WINDOW` must be read on the VM with the LiteLLM admin key. The metadata probe burst persists with `model_overrides` set (it is server-type detection), ~1–8 s per agent process start against LiteLLM.
 - S1: the specialist's "Bot Chat" session keeps accumulating peer turns (lab-host request carried prior PONG turns). Compression threshold in spec §8 must cover long-lived specialist Bot Chats.
 - S1: the LiteLLM route caches identical requests (repeat calls returned in 0.2 s with identical output). Benchmarks and spike measurements must use a nonce in the prompt.
 - S4: ~5k input tokens for a trivial prompt with only the `skills` toolset. Bundled skills are seeded into every profile; Phase 1b should prune them to the office skills only.

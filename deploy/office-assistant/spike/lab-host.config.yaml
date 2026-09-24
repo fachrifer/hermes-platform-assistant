@@ -40,6 +40,12 @@ security:
 mcp_servers: {}
 model_catalog:
   enabled: false
+model_overrides:
+  custom:office-litellm:
+    qwen3.8-fast: {context_window: 131072, supports_tools: true, supports_reasoning: false}
+auxiliary:
+  title_generation:
+    model_upgrade_enabled: false
 network:
   force_ipv4: true
 updates:

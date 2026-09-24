@@ -31,7 +31,7 @@ The fleet (supervisor "Athena" + six specialists) sometimes loops: an agent keep
 | ~6k-token prompt | Prefill 0.7 s |
 | ~37k-token prompt + 25 tool schemas | TTFT 5.8 s, 11 s total |
 | 6 × 37k-token requests in parallel | TTFT 6–11 s, decode 25–34 tok/s, all done in 18.6 s |
-| Thinking | Off by default. `chat_template_kwargs.enable_thinking: true` adds ~540 reasoning tokens (~15 s) per turn, returned cleanly in `reasoning_content` |
+| Thinking | Off by default for small prompts. `chat_template_kwargs.enable_thinking: true` adds ~540 reasoning tokens (~15 s) per turn, returned cleanly in `reasoning_content`. Under Hermes' ~5k-token system prompt the model thinks unless `enable_thinking: false` is sent (975–2242 reasoning tokens, 35–78 s for a one-word answer; see §8.4) |
 | Aliases `qwen3.8-reasoning`, `qwen3.8-reasoning-xhigh` | Leak `<think>` text into `content` (no reasoning parser on those aliases) — **not usable** by the fleet |
 
 Conclusion: the model is not the bottleneck. Perceived slowness comes from turn count, context growth, verbose tool output, and concurrent cron sessions.
@@ -263,19 +263,34 @@ Rules enforced by skill text and verified by tests:
 
 `memory`, `session_search`, `todo`, `kanban`, `terminal`, `file`, `clarify`, `delegate`, `a2a`, browser, and web toolsets are disabled everywhere.
 
+Both mechanisms are set on every agent: `agent.disabled_toolsets` (global backstop) and `platform_toolsets` pinned to the enabled list for every chat surface — `cli`, `tui`, `api_server`, `gui`, `desktop`, `dashboard`, `web`. Unpinned surfaces fall back to Hermes composite defaults, and the web Dashboard / Desktop chat runs through `tui_gateway`.
+
 ### 8.3 Context growth
 
 Specialist canonical Bot Chats accumulate every supervisor message. Set `compression.threshold_tokens: 32000` on specialists (tuned in §13.2 tests) so compaction keeps turns small; supervisor keeps Hermes defaults.
 
 ### 8.4 Thinking
 
-Default off. For the §13.3 comparison, specialists get
-`providers.office-litellm.extra_body.chat_template_kwargs.enable_thinking: true`. If adopted, specialist `run_budget_seconds` becomes 270. The `qwen3.8-reasoning*` aliases are not used.
+Off, explicitly. Every agent sets:
+
+```yaml
+agent:
+  reasoning_effort: none
+providers:
+  office-litellm:
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+```
+
+Leaving `agent.reasoning_effort` unset makes Hermes send `reasoning_effort: "medium"`; `none` alone does not stop the model thinking under Hermes' system prompt. Only `enable_thinking: false` does (spike results: 78 s → 3.7 s for a one-word answer; supervisor → specialist round trip 111 s → 16 s).
+
+For the §13.3 comparison, specialists get `enable_thinking: true` instead (passthrough verified). If adopted, specialist `run_budget_seconds` becomes 270. The `qwen3.8-reasoning*` aliases are not used.
 
 ## 9. Communication protocol
 
 - Channel: `message_agent(target="<peer>", message=...)` from the supervisor's canonical "Bot Chat" over `bot_peers` (`http://hermes-<role>:8642`, `HERMES_PEER_<NAME>_KEY`). This route is gateway-to-gateway and does not need Hermes Desktop running.
-- Targets are exactly the `bot_peers` names listed in the supervisor skill (`lab-host`, `ingress`, `llm`, `cluster-gpu`, `vector`, `obs`). Relay-roster entries injected by a connected Desktop (`@name@<connection>` forms) are never used.
+- `bot_peers` keys are `peer-<role>` so they can never collide with a Desktop relay-roster handle named `<role>`. Targets are exactly those names, listed in the supervisor skill: `peer-lab-host`, `peer-ingress`, `peer-llm`, `peer-cluster-gpu`, `peer-vector`, `peer-obs`; env keys `HERMES_PEER_PEER_<ROLE>_KEY` (e.g. `HERMES_PEER_PEER_LAB_HOST_KEY`). Relay-roster entries injected by a connected Desktop (`@name@<connection>` forms) are never used.
 - `target_busy` (user is mid-conversation with that specialist) is reported like any other failure: domain `unknown`, no resend.
 - The supervisor never waits: after dispatching it tells the user which specialist is checking, then ends the turn. The completion notification starts a new supervisor turn that relays the result.
 - Status-only questions are answered from `fleet_status` without messaging anyone.
@@ -295,7 +310,11 @@ Supervisor → user (Indonesian): one headline sentence, then one line per invol
 
 ## 10. Startup and air-gap hardening
 
-Findings in `v2026.9.21` source: `agent.offline` (currently set on all agents) is not read anywhere and has no effect. Network touch points at startup/background are the remote model catalog, the models.dev registry, IPv6-first resolution, and the update check (already skipped on Docker installs).
+Findings in `v2026.9.21` source: `agent.offline` and the `HERMES_OFFLINE` env var (both set on today's fleet) are not read anywhere and have no effect. Network touch points at startup/background are the remote model catalog, the models.dev registry, IPv6-first resolution, and the update check (already skipped on Docker installs). The existing Compose `extra_hosts` map that points known internet hosts at `127.0.0.1` stays; the proxy safety net below covers hosts not on that list.
+
+Spike-confirmed (PC, 2026-09-24): with `key_env` and the settings below no startup log line waits on an outbound connection. Each agent process start still sends ~12 server-type detection probes to the LiteLLM base URL (`/v1/models`, `/api/show`, `/props`, `/api/tags`, …, ~1–8 s); `model_overrides` does not skip them, and they hit LiteLLM, not the internet. Title generation makes one extra LLM call per new session; `auxiliary.title_generation.model_upgrade_enabled: false` removes it (verified: titles are derived locally from the first message).
+
+The office virtual key gets 403 on `/model/info` and `/v1/models/<id>`, so `CONTEXT_WINDOW` is read on the VM with the gateway's LiteLLM admin key.
 
 Config applied to every agent:
 
@@ -306,7 +325,10 @@ models_dev:
   url: http://office-gateway:8080/static/models-dev.json   # minimal registry served by the gateway
 model_overrides:
   custom:office-litellm:
-    qwen3.8-fast: {context_window: CONTEXT_WINDOW, supports_tools: true}
+    qwen3.8-fast: {context_window: CONTEXT_WINDOW, supports_tools: true, supports_reasoning: false}
+auxiliary:
+  title_generation:
+    model_upgrade_enabled: false
 network:
   force_ipv4: true
 updates:
@@ -429,6 +451,8 @@ Each is a go/no-go check with a fallback. The three `message_agent` spikes (term
 | Specialists with `agent.bot_mode_protocol: false` still receive peer messages and still work normally when opened from Desktop | Keep protocol on for specialists but give them an empty `bot_peers` and a skill rule never to message; re-test |
 | `extra_body.chat_template_kwargs` reaches LiteLLM from Hermes custom provider | Skip §13.3; thinking stays off |
 | `key_env` without `OPENAI_API_KEY` | Port airgap patch (§13.5) |
+
+Outcome (2026-09-24, see `2026-09-24-office-fleet-redesign-spike-results.md`): terminal-disabled `message_agent`, marker/Bot Chat persistence, specialist protocol off, `extra_body` passthrough and `key_env` all PASS. The web Dashboard and Desktop-relay spikes were deferred by the operator to the Phase 1b VM rollout as acceptance checks; the peer rename fallback is applied up front (§9) and every chat surface is pinned (§8.2). If the web Dashboard check fails on the VM, stop and re-open the communication decision.
 | Gateway can read Grafana alerting API and create in folder with the scoped service account | Alerts via VictoriaMetrics `ALERTS` series |
 | `POST /v1/runs` on an agent api_server can run in a dedicated (non-Bot-Chat) session and honours the idempotency key (Phase 2 spike) | Runs land in the canonical Bot Chat and rely on §8.3 compression |
 
