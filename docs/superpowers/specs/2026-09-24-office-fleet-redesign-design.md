@@ -43,7 +43,7 @@ Goals:
 - No agent run can loop: every run is bounded by turn count, wall-clock, and guardrails, and failures end in an explicit answer.
 - Every change to infrastructure happens only after a human clicks Approve in the console.
 - Status questions answer in seconds without waking specialists.
-- Daily/weekly/monthly reports exist without any LLM involvement.
+- Daily/weekly/monthly reports always publish: numbers come from the gateway, analysis from each specialist, the executive summary from the supervisor; a missing analysis never blocks the report.
 - Startup works cleanly in the air-gapped Lab VM (no waiting on internet timeouts).
 
 Non-goals:
@@ -71,7 +71,7 @@ Success criteria (checked in §13):
 | Delegation channel | Bot Mode `message_agent` over `bot_peers` (api_server `:8642`), supervisor → specialist only. Async: supervisor answers immediately, specialist reply arrives as a completion notification |
 | Writes | `lab-host`: restart any Lab Docker container. `ingress`: Lab-VM Traefik route change and rollback. `obs`: create dashboard in the "Hermes Fleet" Grafana folder. Everything else read-only (`vector` loses write) |
 | Approval | Console Approvals page. Gateway executes only after a human clicks Approve. `auto_execute`, AUTOHEAL, and agent-side `execute` are removed |
-| Scheduled work | Gateway produces daily/weekly/monthly reports deterministically. Hourly LLM cron and Kanban dispatch are removed |
+| Scheduled work | Daily/weekly/monthly reports via a gateway-orchestrated pipeline: gateway collects numbers → specialists analyse their domain → supervisor compiles (§11.1). Hourly LLM cron and Kanban dispatch are removed |
 | Hermes version | Upgrade `v2026.8.31` → `v2026.9.21` |
 | Thinking | Off on all agents by default; evaluated for specialists during scenario tests (§13.3) |
 | Area boundaries | `ingress` = Lab-VM Traefik only. K8s Traefik is visible to `cluster-gpu` via `k8s_get`. LiteLLM prod runs as a pod in RKE2: runtime state via `cluster-gpu`, API-level (spend/budget/models) via `llm`. Vector dev = Lab VM, prod = `10.216.203.132` (read-only) |
@@ -91,6 +91,7 @@ Success criteria (checked in §13):
   ┌──────────┬────────┬─────┬───────────┬────────┬─────┐          │
   │ lab-host │ingress │ llm │cluster-gpu│ vector │ obs │──MCP─────┘
   └──────────┴────────┴─────┴───────────┴────────┴─────┘
+        ▲ report runs: gateway → POST /v1/runs (specialists, then supervisor)
                                           │ upstream reads/writes (≤10 s)
      Docker API · Traefik files · LiteLLM API · RKE2 API · Milvus/Qdrant REST ·
      VictoriaMetrics · Grafana API
@@ -103,7 +104,7 @@ Units and their single purpose:
 | `office_gateway/mcp_server.py` (new) | MCP transport at `/mcp`, role-filtered catalog, uniform result envelope | tool modules, `roles.py` |
 | `office_gateway/tools/<domain>.py` (new) | One module per domain; each tool = typed args + compact output, built on existing ops modules | existing `*_ops.py` |
 | `office_gateway/approvals.py` (new) | Approver endpoints, action state machine | `actions.py`, `store.py` |
-| `office_gateway/reports/` (new) | Scheduler + report builders + named queries | `metrics.py`, `llm_ops.py`, `store.py` |
+| `office_gateway/reports/` (new) | Scheduler, data-pack builders, named queries, report pipeline (calls agents' `POST /v1/runs`), HTML rendering | `metrics.py`, `llm_ops.py`, `store.py`, agents' api_server |
 | `console/www` | Adds Approvals and Reports pages | gateway approver + report endpoints via nginx |
 | Hermes agent configs + skills | Brakes, toolsets, one skill per role | gateway MCP |
 
@@ -186,7 +187,7 @@ Per-role entries: 9 existing, 10 change, 20 new (a tool shared by several roles 
 
 ### 6.4 Dashboard creation (obs)
 
-- `propose_dashboard(title, panels[])` where each panel is `{type: timeseries|stat|table|gauge, query: <named query>, params: {...}}`, max 12 panels.
+- `propose_dashboard(title, panels[])` where each panel is `{type: timeseries|stat|table|gauge, query: <named query>, params: {...}}`. No panel-count limit; every dashboard still passes through Approve.
 - Gateway renders full Grafana JSON from templates, dry-runs each query once (empty result → `invalid_argument`), stores the rendered JSON in the pending action.
 - On approval, gateway POSTs to Grafana with a service account that has Editor only on folder "Hermes Fleet". It never updates or deletes existing dashboards; name clash → suffix with date.
 
@@ -198,6 +199,7 @@ Per-role entries: 9 existing, 10 change, 20 new (a tool shared by several roles 
 | Milvus prod user | Read-only (describe/list/stats) |
 | Gateway kubeconfig | Add `get` on `pods/log` |
 | Approver console credential | nginx basic auth (htpasswd), separate from Dashboard login |
+| Agent api_server keys | Gateway holds each agent's `API_SERVER_KEY` to start report runs (`POST /v1/runs`); used only by the report pipeline |
 
 ## 7. Approval flow
 
@@ -307,16 +309,31 @@ Plus a fail-fast safety net: `HTTPS_PROXY=http://127.0.0.1:9` and `HTTP_PROXY` l
 
 ## 11. Reporting and monitoring
 
-### 11.1 Scheduled reports (gateway, no LLM)
+### 11.1 Scheduled reports (gateway-orchestrated, specialists analyse, supervisor compiles)
 
-| Report | Schedule | Content |
+| Report | Schedule | Data pack content (numbers from the gateway) |
 |---|---|---|
 | Daily | 07:00 | Per-domain status, incidents last 24 h, active Grafana alerts, certificates expiring < 30 days, servers/buckets over thresholds, monitoring coverage gaps, LiteLLM reachability |
 | Weekly | Monday 07:00 | Availability trend, top token/spend consumers, average GPU/MIG usage, capacity trend + projected full date for disks and buckets, actions proposed/approved/rejected |
 | Monthly | 1st, 07:00 | Availability % per service and per server, usage (tokens, spend, GPU), bucket growth, incident list |
 
-- Stored in gateway SQLite + rendered HTML under a gateway volume; shown on console `/reports` with HTML download (PDF via browser print).
-- Reports still generate when LiteLLM is down and say so explicitly.
+Pipeline (the same for all three; the orchestration is gateway code, never an LLM fan-out):
+
+1. **Collect.** The gateway builds one data pack per domain for the period. All numbers in the final report come from these packs.
+2. **Specialist analysis.** The gateway starts one run per specialist in parallel via the agent's api_server `POST /v1/runs` with idempotency key `<report>-<period>-<role>` (e.g. `daily-2026-09-25-vector`), so a restart of the scheduler never starts a second run. Each run gets its data pack and may use its read tools to investigate anomalies. Normal specialist brakes apply (6 turns, 180 s); the gateway polls `GET /v1/runs/{id}` and stops the run at 190 s. Output format:
+   ```
+   STATUS: ok | degraded | down | unknown
+   FINDINGS:
+   - <fact with number from the pack or a tool>      # max 5
+   RISKS: <what may break next and when | none>
+   RECOMMENDATIONS: <max 3 steps>
+   ```
+3. **Supervisor compile.** One supervisor run receives the six sections (plus "analysis unavailable" markers) and writes the executive summary: overall condition, top risks, cross-domain links (e.g. MinIO disk full explaining Milvus restarts), recommended actions. The supervisor gets no extra tools for this; deadline 120 s.
+4. **Publish.** Stored in gateway SQLite and rendered as HTML under a gateway volume: executive summary, then each specialist section, then the number tables. Shown on console `/reports` with HTML download (PDF via browser print).
+
+- When reports coincide (e.g. Monday the 1st), they run one after another: daily, weekly, monthly.
+- Report runs use a dedicated session per report (not the canonical Bot Chat), so they do not grow the chats used for interactive debugging.
+- Load: six specialist runs plus one supervisor run per report, instead of seven sessions every hour today.
 
 ### 11.2 Availability
 
@@ -351,7 +368,8 @@ Some exporters are missing. Tools return `no_metrics` naming the missing exporte
 - Specialist failure or `delivery_timeout`/`target_busy`/`runtime_offline` notification → supervisor reports that domain as `unknown` with the reason; no resend.
 - Wall-clock budget reached → Hermes wrap-up notice → specialist replies with partial findings and `STATUS: unknown`.
 - Action failures are audited; route apply failures auto-restore the backup (§6.3).
-- LiteLLM down → all agents unavailable; console status and scheduled reports continue and flag the outage.
+- LiteLLM down → all agents unavailable; console status continues and scheduled reports publish numbers-only with the outage flagged.
+- Report pipeline: a specialist run that fails or passes its deadline is stopped (`POST /v1/runs/{id}/stop`) and its section reads "analysis unavailable: <reason>"; a failed supervisor compile publishes the specialist sections without an executive summary. Nothing is retried within the same report.
 
 ## 13. Testing and acceptance
 
@@ -362,6 +380,7 @@ Some exporters are missing. Tools return `no_metrics` naming the missing exporte
 - Route backup/rollback and auto-restore on failed validation.
 - Dashboard rendering from spec; folder restriction; no update/delete calls.
 - Report builders against recorded metric fixtures, including `no_metrics` handling.
+- Report pipeline with fake agent api_servers: idempotency (same key never starts a second run), specialist timeout → stop + "analysis unavailable", supervisor failure → report without summary, all agents down → numbers-only report.
 
 ### 13.2 Loop scenarios on the Lab VM
 
@@ -369,7 +388,7 @@ Prompts that looped before, a specialist forced to time out, an MCP tool forced 
 
 ### 13.3 Thinking comparison
 
-Same scenario set with specialist thinking on vs off; compare answer quality (reviewed by the user) and time. Decision recorded in the plan; if on, apply §8.4.
+Same scenario set plus one daily report run, with specialist thinking on vs off; compare answer quality (reviewed by the user) and time. Decision recorded in the plan; if on, apply §8.4.
 
 ### 13.4 Offline startup
 
@@ -390,6 +409,7 @@ Each is a go/no-go check with a fallback:
 | `extra_body.chat_template_kwargs` reaches LiteLLM from Hermes custom provider | Skip §13.3; thinking stays off |
 | `key_env` without `OPENAI_API_KEY` | Port airgap patch (§13.5) |
 | Gateway can read Grafana alerting API and create in folder with the scoped service account | Alerts via VictoriaMetrics `ALERTS` series |
+| `POST /v1/runs` on an agent api_server can run in a dedicated (non-Bot-Chat) session and honours the idempotency key (Phase 2 spike) | Runs land in the canonical Bot Chat and rely on §8.3 compression |
 
 ## 15. Phasing
 
@@ -398,7 +418,7 @@ Each phase gets its own implementation plan.
 | Phase | Scope | Exit |
 |---|---|---|
 | 1 — Anti-loop core | Spikes, Hermes upgrade, gateway MCP + role catalog (all tools marked existing/change, plus `host_resources`, `list_host_services`, `action_status`), named query registry seeded with the queries skills use today, static models-dev registry, approvals + console Approvals page, route backup/rollback (`propose_route_rollback`), removal of terminal/A2A/AUTOHEAL/cron/Kanban/office-watch, agent configs + skills, startup hardening | §13.1 (Phase 1 tools, approvals, rollback), §13.2, §13.4, §13.5 pass |
-| 2 — Reporting and monitoring | Extend named queries, `server_health`, `bucket_usage`, `active_alerts`, `availability_report`, `usage_report`, LLM spend/budget/deployment tools, vector collection tools, `pod_logs_tail`, report engine + console Reports page, `propose_dashboard`, thinking comparison | §13.1 (remaining tools, dashboards, reports), §13.3 |
+| 2 — Reporting and monitoring | Extend named queries, `server_health`, `bucket_usage`, `active_alerts`, `availability_report`, `usage_report`, LLM spend/budget/deployment tools, vector collection tools, `pod_logs_tail`, report pipeline (data packs, specialist analysis, supervisor compile) + console Reports page, `propose_dashboard`, thinking comparison | §13.1 (remaining tools, dashboards, reports), §13.3 |
 | 3 — Metric coverage | Offline exporter rollout (§11.5) | Daily report shows no coverage gaps for §11.4 targets |
 
 ## 16. Security and housekeeping
