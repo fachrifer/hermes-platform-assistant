@@ -122,6 +122,65 @@ def test_sanitize_items_projects_allowlisted_fields():
     assert "annotations" not in out[0]
 
 
+def _gpu_node(snake: bool) -> dict:
+    labels = {f"feature.node.kubernetes.io/cpu-cpuid.F{i}": "true" for i in range(120)}
+    labels.update({
+        "node-role.kubernetes.io/control-plane": "true",
+        "node-role.kubernetes.io/worker": "true",
+        "nvidia.com/gpu.product": "NVIDIA-H200",
+        "nvidia.com/mig.config": "all-balanced",
+    })
+    info_key, kubelet_key = ("node_info", "kubelet_version") if snake else ("nodeInfo", "kubeletVersion")
+    return {
+        "metadata": {"name": "gpu-node-1", "labels": labels},
+        "spec": {"taints": [{"key": "nvidia.com/gpu", "effect": "NoSchedule"}]},
+        "status": {
+            "conditions": [
+                {"type": "Ready", "status": "True"},
+                {"type": "MemoryPressure", "status": "False"},
+                {"type": "DiskPressure", "status": "True"},
+            ],
+            "addresses": [{"type": "InternalIP", "address": "10.216.221.100"}, {"type": "Hostname", "address": "gpu-node-1"}],
+            info_key: {kubelet_key: "v1.31.4+rke2r1"},
+            "capacity": {"cpu": "192", "memory": "2113544216Ki", "pods": "110"},
+            "allocatable": {"cpu": "191", "memory": "2113441816Ki", "nvidia.com/mig-1g.18gb": "7", "nvidia.com/gpu": "0"},
+            "images": [{"names": [f"img-{i}"], "sizeBytes": 1} for i in range(200)],
+        },
+    }
+
+
+@pytest.mark.parametrize("snake", [False, True])
+def test_sanitize_nodes_is_compact(snake):
+    out = sanitize_items("nodes", [_gpu_node(snake)])[0]
+    assert out == {
+        "kind": "nodes",
+        "name": "gpu-node-1",
+        "roles": ["control-plane", "worker"],
+        "ready": "True",
+        "pressure": ["DiskPressure"],
+        "unschedulable": False,
+        "internalIP": "10.216.221.100",
+        "kubelet": "v1.31.4+rke2r1",
+        "cpu": "192",
+        "memory": "2113544216Ki",
+        "gpu": {"nvidia.com/mig-1g.18gb": "7", "nvidia.com/gpu": "0"},
+        "gpuProduct": "NVIDIA-H200",
+        "migConfig": "all-balanced",
+        "taints": ["nvidia.com/gpu:NoSchedule"],
+    }
+    assert len(str(out)) < 1000
+
+
+def test_sanitize_pods_reads_kubernetes_client_snake_case():
+    item = {
+        "metadata": {"name": "p", "namespace": "gpu-operator"},
+        "spec": {"node_name": "gpu-node-1", "containers": [{"name": "c", "image": "i"}]},
+        "status": {"phase": "Running", "pod_ip": "10.42.0.7", "container_statuses": [{"restart_count": 3}]},
+    }
+    out = sanitize_items("pods", [item])[0]
+    assert (out["node"], out["podIP"], out["restartCount"]) == ("gpu-node-1", "10.42.0.7", 3)
+
+
 def test_sanitize_configmap_keys_without_values():
     items = [{"metadata": {"name": "app-config"}, "data": {"key": "value"}}]
     out = sanitize_items("configmap", items)
@@ -161,7 +220,7 @@ def test_list_resources_uses_injected_list_fn():
     result = asyncio.run(run())
     assert seen == [("nodes", None)]
     assert result["kind"] == "nodes"
-    assert result["items"][0] == {"kind": "nodes", "name": "node-1"}
+    assert (result["items"][0]["kind"], result["items"][0]["name"]) == ("nodes", "node-1")
 
 
 def test_get_mig_actual_adapter_not_configured():

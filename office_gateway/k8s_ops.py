@@ -150,6 +150,43 @@ def _canonical_kind(kind: str) -> str:
     return _KIND_ALIASES.get(kind, kind)
 
 
+def _pick(data: dict[str, Any], camel: str, snake: str, default: Any = None) -> Any:
+    """Read a field from REST JSON (camelCase) or kubernetes-client to_dict() (snake_case)."""
+    value = data.get(camel)
+    if value is None:
+        value = data.get(snake)
+    return default if value is None else value
+
+
+def _node_summary(item: dict[str, Any]) -> dict[str, Any]:
+    meta = item.get("metadata") or {}
+    spec = item.get("spec") or {}
+    status = item.get("status") or {}
+    labels = meta.get("labels") or {}
+    conditions = {c.get("type"): c.get("status") for c in status.get("conditions") or []}
+    capacity = status.get("capacity") or {}
+    allocatable = status.get("allocatable") or {}
+    info = _pick(status, "nodeInfo", "node_info", {})
+    return {
+        "kind": "nodes",
+        "name": meta.get("name", ""),
+        "roles": sorted(k.split("/", 1)[1] for k in labels if k.startswith("node-role.kubernetes.io/")),
+        "ready": conditions.get("Ready", "Unknown"),
+        "pressure": sorted(t for t, s in conditions.items() if t.endswith("Pressure") and s == "True"),
+        "unschedulable": bool(spec.get("unschedulable")),
+        "internalIP": next(
+            (a.get("address") for a in status.get("addresses") or [] if a.get("type") == "InternalIP"), ""
+        ),
+        "kubelet": _pick(info, "kubeletVersion", "kubelet_version", ""),
+        "cpu": capacity.get("cpu", ""),
+        "memory": capacity.get("memory", ""),
+        "gpu": {k: v for k, v in allocatable.items() if k.startswith("nvidia.com/")},
+        "gpuProduct": labels.get("nvidia.com/gpu.product", ""),
+        "migConfig": labels.get("nvidia.com/mig.config", ""),
+        "taints": [f"{t.get('key')}:{t.get('effect')}" for t in spec.get("taints") or []],
+    }
+
+
 def _pod_summary(item: dict[str, Any]) -> dict[str, Any]:
     spec = item.get("spec") or {}
     status = item.get("status") or {}
@@ -177,13 +214,13 @@ def _pod_summary(item: dict[str, Any]) -> dict[str, Any]:
         "name": meta.get("name", ""),
         "namespace": meta.get("namespace", "default"),
         "phase": status.get("phase", "Unknown"),
-        "node": spec.get("nodeName", ""),
-        "podIP": status.get("podIP", ""),
+        "node": _pick(spec, "nodeName", "node_name", ""),
+        "podIP": _pick(status, "podIP", "pod_ip", ""),
         "pvcs": [name for name in volumes if name],
         "containers": containers,
         "restartCount": sum(
-            container.get("restartCount", 0)
-            for container in status.get("containerStatuses", [])
+            _pick(container, "restartCount", "restart_count", 0)
+            for container in _pick(status, "containerStatuses", "container_statuses", [])
         ),
     }
 
@@ -286,6 +323,8 @@ def project_item(kind: str, item: dict[str, Any]) -> dict[str, Any]:
     kind = _canonical_kind(kind)
     if kind == "pods":
         return _pod_summary(item)
+    if kind == "nodes":
+        return _node_summary(item)
     if kind == "secrets":
         return _secret_meta(item)
     if kind == "pvc":
