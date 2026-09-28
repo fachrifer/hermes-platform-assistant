@@ -71,11 +71,13 @@ Shipped with `ship-phase1b.ps1` (SHA-256 of tree, gateway and image archives mat
 | Broad prompt "cek semua sistem" (looped before) | 1 `fleet_status` call, 6.4 s |
 | Restart request to lab-host | 1 `propose_restart`, action `pending`, nothing restarted |
 | Approvals page | HTTP → HTTPS redirect; no auth 401; approver login 200 |
-| Operator checks: approve in the browser, web Dashboard Bot Chat (S2), Desktop connected (S3) | pending |
+| Operator approve in the browser | PASS: action `succeeded`, approver `timai`, `office-www` restarted, `docker exec` still works afterwards |
+| Operator web Dashboard Bot Chat (S2), Desktop connected (S3) | pending |
 
 Findings:
 
 - `context_window`: LiteLLM `/model/info` has no `max_input_tokens` for `qwen3.8-fast` and the vLLM upstream is a cluster-internal service. A 250,019-token prompt was accepted (47–103 s prefill), so the real limit is at least ~250k. The configs keep `131072`: below the proven limit, and earlier compression keeps turns fast.
 - vector-dev (Milvus, Qdrant on the Lab host) was unreachable: the gateway had no `host.docker.internal` mapping (also missing in the old compose). Fixed in compose; after recreating the gateway all three instances report up.
 - cluster-gpu cannot read GPU, MIG or k8s: `OFFICE_KUBECONFIG` points to the empty `kubeconfig.absent`, the gateway still holds an old kubeconfig copy in its data volume, and Rancher (`c-w86wr`) treats that token, and the one in `~/.kube/config`, as `system:unauthenticated`. Needs a fresh read-only Rancher token.
-- The supervisor summarised `fleet_status` as "all systems healthy"; `fleet_status` is agent health only, not domain health.
+- The supervisor summarised `fleet_status` as "all systems healthy"; `fleet_status` is agent health only, not domain health. The skill now says "agent ok".
+- The operator's first chat was a new session, not "Bot Chat"; Hermes only grants `message_agent` when the session title is exactly "Bot Chat" (`message_agent_authorized`, no config switch). The supervisor told the user to "enable Bot Mode" and run `docker ps`. The skill now answers from `fleet_status` and points to the "Bot Chat" session; re-tested: normal session → pointer, Bot Chat → 1 `message_agent`, 19.3 s.
