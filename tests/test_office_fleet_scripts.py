@@ -209,6 +209,55 @@ def test_ensure_approver_creates_login_once(tmp_path):
     assert env_map(deploy / ".local-login")["approver_password"] == password
 
 
+def _set_login(path: Path, **values: str) -> None:
+    rows = [line for line in path.read_text().splitlines() if line.split("=", 1)[0] not in values]
+    path.write_text("\n".join(rows + [f"{k}={v}" for k, v in values.items()]) + "\n")
+
+
+def _apr1_matches(hashed: str, password: str) -> bool:
+    salt = hashed.split("$")[2]
+    check = _run(["openssl", "passwd", "-apr1", "-salt", salt, "-stdin"], input=password + "\n")
+    return check.stdout.strip() == hashed
+
+
+def test_ensure_approver_applies_password_changed_in_local_login(tmp_path):
+    deploy = _deploy_copy(tmp_path)
+    script = deploy / "scripts" / "ensure-approver.sh"
+    assert _run(["bash", str(script)]).returncode == 0
+    htpasswd = deploy / "edge" / "approvers.htpasswd"
+    inode = htpasswd.stat().st_ino
+    new_password = "-New pass$with:odd chars"
+    _set_login(deploy / ".local-login", approver_password=new_password)
+
+    changed = _run(["bash", str(script)])
+    assert changed.returncode == 0, changed.stderr
+    assert "approver password updated" in changed.stdout and "restart office-edge" in changed.stdout
+    assert new_password not in changed.stdout + changed.stderr
+    user, hashed = htpasswd.read_text().strip().split(":", 1)
+    assert user == "timai" and _apr1_matches(hashed, new_password)
+    assert htpasswd.stat().st_ino == inode
+
+    again = _run(["bash", str(script)])
+    assert "approver login exists" in again.stdout
+    assert htpasswd.read_text().strip() == f"{user}:{hashed}"
+
+    _set_login(deploy / ".local-login", approver_user="ops.lead")
+    renamed = _run(["bash", str(script)])
+    assert renamed.returncode == 0 and "user ops.lead" in renamed.stdout
+    user, hashed = htpasswd.read_text().strip().split(":", 1)
+    assert user == "ops.lead" and _apr1_matches(hashed, new_password)
+
+
+def test_ensure_approver_keeps_hand_made_bcrypt_hash(tmp_path):
+    deploy = _deploy_copy(tmp_path)
+    htpasswd = deploy / "edge" / "approvers.htpasswd"
+    htpasswd.write_text("timai:$2y$05$abcdefghijklmnopqrstuO\n")
+    (deploy / ".local-login").write_text("approver_user=timai\napprover_password=whatever\n")
+    out = _run(["bash", str(deploy / "scripts" / "ensure-approver.sh")])
+    assert out.returncode == 0 and "approver login exists" in out.stdout
+    assert htpasswd.read_text() == "timai:$2y$05$abcdefghijklmnopqrstuO\n"
+
+
 def test_ensure_approver_rejects_bad_user(tmp_path):
     deploy = _deploy_copy(tmp_path)
     result = _run(

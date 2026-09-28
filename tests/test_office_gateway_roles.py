@@ -120,6 +120,10 @@ def test_vector_instances_default_and_override(monkeypatch, tmp_path):
     _env(monkeypatch, tmp_path, OFFICE_VECTOR_INSTANCES="milvus-dev=http://m:9091/healthz")
     cfg = GatewayConfig.from_env()
     assert cfg.vector_instances == {"milvus-dev": "http://m:9091/healthz"}
+    assert cfg.milvus_dev_url == "http://host.docker.internal:19530" and cfg.milvus_dev_token == ""
+    _env(monkeypatch, tmp_path, OFFICE_MILVUS_DEV_URL="http://milvus:19530/", OFFICE_MILVUS_DEV_TOKEN=" root:pw ")
+    cfg = GatewayConfig.from_env()
+    assert cfg.milvus_dev_url == "http://milvus:19530" and cfg.milvus_dev_token == "root:pw"
 
 
 def test_console_url_and_backup_dir(monkeypatch, tmp_path):

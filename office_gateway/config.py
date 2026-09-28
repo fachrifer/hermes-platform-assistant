@@ -107,6 +107,8 @@ class GatewayConfig:
     tokens: dict[str, str]
     service_urls: dict[str, str]
     vector_instances: dict[str, str] = field(default_factory=dict)
+    milvus_dev_url: str = "http://host.docker.internal:19530"
+    milvus_dev_token: str = ""
     grafana_base_url: str = ""
     grafana_dashboards: dict[str, str] = field(default_factory=dict)
     grafana_panel_ids: dict[str, int] = field(default_factory=dict)
@@ -145,6 +147,10 @@ class GatewayConfig:
             vector_instances=_vector_instances(
                 os.getenv("OFFICE_VECTOR_INSTANCES", "").strip() or _DEFAULT_VECTOR_INSTANCES
             ),
+            milvus_dev_url=(
+                os.getenv("OFFICE_MILVUS_DEV_URL", "").strip() or "http://host.docker.internal:19530"
+            ).rstrip("/"),
+            milvus_dev_token=os.getenv("OFFICE_MILVUS_DEV_TOKEN", "").strip(),
             grafana_base_url=os.getenv("OFFICE_GRAFANA_BASE_URL", "").rstrip("/"),
             grafana_dashboards=_grafana_dashboards(os.getenv("OFFICE_GRAFANA_DASHBOARDS", "")),
             grafana_panel_ids=panels,

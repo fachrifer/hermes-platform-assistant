@@ -47,7 +47,9 @@ def test_role_catalogs():
     assert {t.name for t in tools_for_role("supervisor")} == {"fleet_status"}
     assert {t.name for t in tools_for_role("llm")} == {"llm_status", "list_models"}
     assert {t.name for t in tools_for_role("cluster-gpu")} == {"k8s_get", "mig_map", "gpu_usage"}
-    assert {t.name for t in tools_for_role("vector")} == {"vector_status"}
+    assert {t.name for t in tools_for_role("vector")} == {
+        "vector_status", "milvus_databases", "milvus_collections", "milvus_collection", "milvus_users", "milvus_roles",
+    }
     assert {t.name for t in tools_for_role("obs")} == {"metrics_query", "grafana_links", "action_status"}
     assert tools_for_role("approver") == []
 
@@ -95,6 +97,107 @@ def test_vector_status_reports_per_instance(tmp_path, monkeypatch):
     assert rows["milvus-dev"]["status"] == "up" and rows["milvus-prod"]["status"] == "unreachable"
     one = _call(ctx, "vector", "vector_status", {"instance": "milvus-dev"})["data"]["instances"]
     assert [r["instance"] for r in one] == ["milvus-dev"]
+
+
+MILVUS_COLLECTION = {
+    "collectionName": "docs",
+    "consistencyLevel": "Bounded",
+    "enableDynamicField": True,
+    "fields": [
+        {"name": "id", "type": "VarChar", "primaryKey": True, "params": [{"key": "max_length", "value": "65535"}]},
+        {"name": "vector", "type": "FloatVector", "primaryKey": False, "params": [{"key": "dim", "value": "4096"}]},
+        {"name": "metadata", "type": "JSON", "primaryKey": False},
+    ],
+}
+MILVUS_GRANTS = {
+    "pandita_role": [
+        {"dbName": "pandita_ai", "grantor": "timai", "objectName": "*", "objectType": "Collection", "privilege": p}
+        for p in ("CreateIndex", "Insert", "Search")
+    ],
+    "admin": [],
+}
+
+
+def _milvus(monkeypatch, seen=None):
+    def handler(request):
+        path = request.url.path.removeprefix("/v2/vectordb/")
+        body = json.loads(request.content or b"{}")
+        if seen is not None:
+            seen.append((path, body, request.headers.get("authorization")))
+        replies = {
+            "databases/list": ["default", "pandita_ai"],
+            "users/list": ["root", "timai"],
+            "roles/list": list(MILVUS_GRANTS),
+            "collections/get_stats": {"rowCount": 8},
+            "collections/get_load_state": {"loadProgress": 100, "loadState": "LoadStateLoaded"},
+            "indexes/list": ["vector"],
+            "indexes/describe": [{
+                "fieldName": "vector", "indexName": "vector", "indexType": "HNSW", "metricType": "COSINE",
+                "indexState": "Finished", "indexedRows": 8, "totalRows": 8, "pendingRows": 0,
+            }],
+        }
+        if path == "collections/list":
+            data = [f"c{i}" for i in range(300)] if body.get("dbName") == "pandita_ai" else []
+        elif path == "collections/describe":
+            if body.get("collectionName") != "docs":
+                return httpx.Response(200, json={"code": 100, "message": "can't find collection[database=default][collection=x]"})
+            data = MILVUS_COLLECTION
+        elif path == "users/describe":
+            data = ["admin"] if body["userName"] == "timai" else []
+        elif path == "roles/describe":
+            data = MILVUS_GRANTS[body["roleName"]]
+        else:
+            data = replies[path]
+        return httpx.Response(200, json={"code": 0, "data": data})
+
+    transport = httpx.MockTransport(handler)
+    real = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=transport, **kw))
+
+
+def test_milvus_databases_and_collections(tmp_path, monkeypatch):
+    _milvus(monkeypatch)
+    ctx = _ctx(tmp_path)
+    dbs = _call(ctx, "vector", "milvus_databases")["data"]["databases"]
+    assert dbs == [{"db": "default", "collections": 0}, {"db": "pandita_ai", "collections": 300}]
+    data = _call(ctx, "vector", "milvus_collections", {"db": "pandita_ai"})["data"]
+    assert data["count"] == 300 and data["omitted"] > 0 and data["collections"][0] == "c0"
+
+
+def test_milvus_collection_detail(tmp_path, monkeypatch):
+    _milvus(monkeypatch)
+    ctx = _ctx(tmp_path)
+    data = _call(ctx, "vector", "milvus_collection", {"db": "pandita_ai", "collection": "docs"})["data"]
+    assert data["rows"] == 8 and data["load"] == "LoadStateLoaded"
+    assert {"name": "vector", "type": "FloatVector", "dim": 4096} in data["fields"]
+    assert data["fields"][0]["primary"] is True
+    assert data["indexes"] == [{"field": "vector", "type": "HNSW", "metric": "COSINE", "state": "Finished", "indexed": 8, "total": 8}]
+    missing = _call(ctx, "vector", "milvus_collection", {"collection": "nope"})
+    assert missing["error"]["category"] == "invalid_argument" and "can't find collection" in missing["error"]["detail"]
+    bad = _call(ctx, "vector", "milvus_collection", {"collection": "x\"; drop"})
+    assert bad["error"]["category"] == "invalid_argument"
+
+
+def test_milvus_users_and_roles(tmp_path, monkeypatch):
+    seen = []
+    _milvus(monkeypatch, seen)
+    ctx = _ctx(tmp_path, milvus_dev_token="root:secret")
+    users = _call(ctx, "vector", "milvus_users")["data"]["users"]
+    assert users == [{"user": "root", "roles": []}, {"user": "timai", "roles": ["admin"]}]
+    roles = _call(ctx, "vector", "milvus_roles")["data"]["roles"]
+    assert roles == [{"role": "pandita_role", "grants": 3}, {"role": "admin", "grants": 0}]
+    one = _call(ctx, "vector", "milvus_roles", {"role": "pandita_role"})["data"]
+    assert one["role"] == "pandita_role" and len(one["grants"]) == 3
+    assert one["grants"][0] == {"db": "pandita_ai", "object": "Collection", "name": "*", "privilege": "CreateIndex", "grantor": "timai"}
+    assert all(body.get("dbName") == "*" for path, body, _ in seen if path == "roles/describe")
+    assert {header for _, _, header in seen} == {"Bearer root:secret"}
+
+
+def test_milvus_tools_are_vector_only_and_need_url(tmp_path, monkeypatch):
+    _milvus(monkeypatch)
+    assert _call(_ctx(tmp_path), "lab-host", "milvus_users")["error"]["category"] == "forbidden"
+    off = _call(_ctx(tmp_path, milvus_dev_url=""), "vector", "milvus_users")
+    assert off["error"]["category"] == "not_configured"
 
 
 def test_named_query_render():
