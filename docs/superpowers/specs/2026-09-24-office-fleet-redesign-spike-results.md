@@ -56,3 +56,26 @@ Findings fixed during the smoke:
 - The bundled-skill opt-out marker takes effect from the second boot; only the builtin `hermes-agent` skill is listed next to the role skill.
 
 Local-only artifact: after an in-place `docker compose restart`, `docker exec` into some containers failed with "unable to find user" while the agent kept serving `/health`; recreating the container cleared it. Recheck `docker exec` after an approved restart on the VM.
+
+## Phase 1b Lab VM rollout (2026-09-28)
+
+Shipped with `ship-phase1b.ps1` (SHA-256 of tree, gateway and image archives matched on both ends), then on the VM: `docker compose down --remove-orphans`, `unpack-phase1b.sh` (backup `~/hermes-assistant-pre-phase1b-20260928-091038.tgz`), `migrate-env-phase1b.sh` (env backups `*.pre-phase1b-20260928-091530`; supervisor gateway token rotated; approver login created), `deploy-and-start.sh`. The previous gateway image is kept as `office-gw:pre-phase1b`; the old `office_hermes_*` volumes are untouched.
+
+| Check | Result |
+|---|---|
+| 10 containers up on `v2026.9.21`; no config-migration warning; `/opt/data/skills` owned by hermes; no errors | PASS |
+| Warm-up (LLM reachable) | 3.5–3.6 s on all 7 agents |
+| MCP contract per role with each agent's own token (tool list + one read tool) | PASS, all 7 |
+| Specialist turns on production LiteLLM | lab-host 4 tool calls / 16.2 s; ingress 2 / 8.7 s; llm 2 / 8.2 s; cluster-gpu 3 / 11.7 s (1 tool error, see below); vector 1 / 5.7 s; obs 2 / 9.0 s. Every run ended with a structured answer, no repeats |
+| Supervisor "Bot Chat" delegation | 1 `message_agent` to lab-host, reply folded into the final answer, 31.9 s; lab-host shows the peer session as `Bot Chat` |
+| Broad prompt "cek semua sistem" (looped before) | 1 `fleet_status` call, 6.4 s |
+| Restart request to lab-host | 1 `propose_restart`, action `pending`, nothing restarted |
+| Approvals page | HTTP → HTTPS redirect; no auth 401; approver login 200 |
+| Operator checks: approve in the browser, web Dashboard Bot Chat (S2), Desktop connected (S3) | pending |
+
+Findings:
+
+- `context_window`: LiteLLM `/model/info` has no `max_input_tokens` for `qwen3.8-fast` and the vLLM upstream is a cluster-internal service. A 250,019-token prompt was accepted (47–103 s prefill), so the real limit is at least ~250k. The configs keep `131072`: below the proven limit, and earlier compression keeps turns fast.
+- vector-dev (Milvus, Qdrant on the Lab host) was unreachable: the gateway had no `host.docker.internal` mapping (also missing in the old compose). Fixed in compose; after recreating the gateway all three instances report up.
+- cluster-gpu cannot read GPU, MIG or k8s: `OFFICE_KUBECONFIG` points to the empty `kubeconfig.absent`, the gateway still holds an old kubeconfig copy in its data volume, and Rancher (`c-w86wr`) treats that token, and the one in `~/.kube/config`, as `system:unauthenticated`. Needs a fresh read-only Rancher token.
+- The supervisor summarised `fleet_status` as "all systems healthy"; `fleet_status` is agent health only, not domain health.
