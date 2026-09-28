@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Optional
 
@@ -8,7 +9,8 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
-from office_gateway.actions import ActionError, ActionService, action_view
+from office_gateway.actions import ActionError, ActionService, _check_approver, action_view
+from office_gateway.bot_chat_lock import SessionLockError, release_bot_chat
 from office_gateway.brief import build_brief
 from office_gateway.chat import fetch_chat_bubble
 from office_gateway.collectors import HttpServiceCollector
@@ -381,6 +383,21 @@ def create_app(
             return action_view(actions.status(role, action_id))
         except ActionError as exc:
             raise HTTPException(status_code=404, detail="action not found") from exc
+
+    @app.post("/v1/approvals/bot-chat/release")
+    async def release_bot_chat_lock(
+        role: str = Depends(_role_from_request),
+        x_approver: str = Header(default=""),
+    ) -> dict:
+        _require_approver(role)
+        try:
+            _check_approver(x_approver.strip())
+        except ActionError as exc:
+            raise _action_http_error(exc) from exc
+        try:
+            return await asyncio.to_thread(release_bot_chat, ops)
+        except SessionLockError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     @app.get("/v1/approvals")
     async def list_approvals(

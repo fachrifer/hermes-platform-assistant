@@ -178,6 +178,41 @@
     }
   }
 
+  async function releaseBotChat() {
+    const release = document.getElementById("release-bot-chat");
+    if (
+      !window.confirm(
+        "Release the stuck TUI holding Athena's Bot Chat?\nThe chat and its history stay. Reopen Bot Chat in the dashboard afterwards."
+      )
+    ) {
+      return;
+    }
+    busy = true;
+    release.disabled = true;
+    setStatus("Releasing Bot Chat lock...", "");
+    try {
+      const result = await api("/bot-chat/release", { method: "POST" });
+      if (result && result.released) {
+        const count = Array.isArray(result.stopped) ? result.stopped.length : 0;
+        setStatus(
+          `Released Bot Chat. Stopped ${count} stuck TUI process${count === 1 ? "" : "es"}. Reopen Bot Chat in the dashboard.`,
+          "ok"
+        );
+      } else if (result && result.reason === "no_session") {
+        setStatus("There is no Bot Chat session. This button only releases a lock.", "error");
+      } else {
+        setStatus("Bot Chat is not held by a TUI.", "ok");
+      }
+    } catch (error) {
+      setStatus(`Release failed: ${error.message}`, "error");
+    } finally {
+      busy = false;
+      release.disabled = false;
+      refresh();
+    }
+  }
+
+  document.getElementById("release-bot-chat").addEventListener("click", releaseBotChat);
   refresh();
   window.setInterval(refresh, POLL_MS);
 })();

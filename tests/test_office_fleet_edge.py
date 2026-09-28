@@ -83,6 +83,9 @@ def test_approvals_middlewares(rendered):
         "/v1/approvals/abc/approve"
     )
     assert re.sub(rewrite["regex"], rewrite["replacement"].replace("$1", r"\1"), "/approvals/api") == "/v1/approvals"
+    assert re.sub(
+        rewrite["regex"], rewrite["replacement"].replace("$1", r"\1"), "/approvals/api/bot-chat/release"
+    ) == "/v1/approvals/bot-chat/release"
 
 
 def test_approvals_routers_are_https_only_and_authenticated(rendered):
@@ -138,10 +141,12 @@ def test_approvals_page_is_safe_and_same_origin():
     assert 'credentials: "same-origin"' in js
     assert "window.confirm(" in js
     assert 'const API = "/approvals/api"' in js
+    assert '"/bot-chat/release"' in js
     assert "Authorization" not in js
     html = (APPROVALS / "index.html").read_text(encoding="utf-8")
     assert "/approvals/approvals.js" in html
     assert "/approvals/approvals.css" in html
+    assert 'id="release-bot-chat"' in html
 
 
 def test_console_links_to_approvals():

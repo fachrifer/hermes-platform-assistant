@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 _COMPOSE_SERVICE = "com.docker.compose.service"
 _LOG_LINE_MAX = 500
 LIST_CAP = 500
@@ -247,6 +249,35 @@ class DockerOps:
                 line = line[:_LOG_LINE_MAX]
             lines.append(line)
         return {"name": name, "tail": len(lines), "lines": lines}
+
+    def exec_run(self, name: str, cmd: list[str], *, user: str = "") -> dict[str, Any]:
+        try:
+            client = self._client_or_docker()
+            container = client.containers.get(name)
+            kwargs: dict[str, Any] = {"demux": True}
+            if user:
+                kwargs["user"] = user
+            result = container.exec_run(cmd, **kwargs)
+        except Exception as exc:
+            message = str(exc).lower()
+            if "not found" in message or "no such" in message:
+                raise ValueError(f"container not found: {name}") from exc
+            raise RuntimeError(f"docker exec failed: {name}") from exc
+        code = getattr(result, "exit_code", None)
+        output = getattr(result, "output", None)
+        if code is None:
+            code, output = result[0], result[1]
+        if isinstance(output, tuple):
+            stdout, stderr = output[0] or b"", output[1] or b""
+        elif isinstance(output, (bytes, bytearray)):
+            stdout, stderr = bytes(output), b""
+        else:
+            stdout, stderr = str(output or "").encode(), b""
+        return {
+            "exit_code": int(code),
+            "stdout": stdout.decode("utf-8", "replace"),
+            "stderr": stderr.decode("utf-8", "replace"),
+        }
 
     def restart(self, name: str) -> None:
         try:

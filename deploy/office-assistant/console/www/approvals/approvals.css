@@ -85,6 +85,7 @@ button {
   color: var(--bg);
 }
 button.approve { background: var(--ok); }
+button.release { background: var(--gold); }
 button.reject { background: var(--critical); color: var(--text); }
 button:disabled { opacity: 0.5; cursor: default; }
 

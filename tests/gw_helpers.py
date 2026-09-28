@@ -59,6 +59,14 @@ class FakeDockerOps(DockerOps):
         self._logs = logs or {}
         self._fail_restart = fail_restart
         self.restarted: list[str] = []
+        self.execs: list[dict] = []
+        self.exec_handler = None
+
+    def exec_run(self, name: str, cmd: list[str], *, user: str = "") -> dict:
+        self.execs.append({"name": name, "cmd": list(cmd), "user": user})
+        if self.exec_handler is not None:
+            return self.exec_handler(name, cmd, user)
+        return {"exit_code": 0, "stdout": "", "stderr": ""}
 
     def list_containers(self, all: bool = True) -> dict:
         rows = [dict(c) for c in self._containers]

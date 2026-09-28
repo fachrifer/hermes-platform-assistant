@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Approvals - Agent Specialist Fleet</title>
-  <link rel="stylesheet" href="/approvals/approvals.css?v=1" />
+  <link rel="stylesheet" href="/approvals/approvals.css?v=2" />
 </head>
 <body>
   <header class="top">
@@ -19,6 +19,15 @@
       Requests expire if nobody decides in time.
     </p>
     <p class="status" id="status" role="status" aria-live="polite"></p>
+
+    <section aria-labelledby="bot-chat-title">
+      <h2 id="bot-chat-title">Athena session</h2>
+      <p class="note">
+        If Bot Chat says it is open in another window, this stops that stuck TUI.
+        The chat and its history stay.
+      </p>
+      <button class="release" id="release-bot-chat" type="button">Release Bot Chat lock</button>
+    </section>
 
     <section aria-labelledby="pending-title">
       <h2 id="pending-title">Waiting for you <span class="count" id="pending-count"></span></h2>
@@ -36,6 +45,6 @@
     </section>
   </main>
 
-  <script src="/approvals/approvals.js?v=1"></script>
+  <script src="/approvals/approvals.js?v=2"></script>
 </body>
 </html>
