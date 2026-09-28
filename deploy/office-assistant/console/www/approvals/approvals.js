@@ -12,6 +12,7 @@
     restart_service: "Restart service",
     apply_edge_routes: "Apply HTTPS routes",
     rollback_edge_routes: "Roll back HTTPS routes",
+    create_dashboard: "Create Grafana dashboard",
   };
 
   const els = {

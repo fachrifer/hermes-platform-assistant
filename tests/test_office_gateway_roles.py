@@ -45,7 +45,9 @@ def test_write_actions_per_role():
     for role in ("vector", "supervisor", "approver", "llm", "cluster-gpu"):
         assert not can_propose(role, "restart_service")
         assert not can_write(role)
-    assert WRITE_ACTIONS["obs"] == frozenset()
+    assert WRITE_ACTIONS["obs"] == frozenset({"create_dashboard"})
+    assert can_propose("obs", "create_dashboard")
+    assert not can_propose("lab-host", "create_dashboard")
 
 
 def test_supervisor_reads_only_status_and_fleet():

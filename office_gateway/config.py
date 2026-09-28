@@ -112,6 +112,9 @@ class GatewayConfig:
     grafana_base_url: str = ""
     grafana_dashboards: dict[str, str] = field(default_factory=dict)
     grafana_panel_ids: dict[str, int] = field(default_factory=dict)
+    grafana_token: str = ""
+    grafana_folder_uid: str = ""
+    grafana_datasource_uid: str = ""
     mig_expected: dict[str, int] = field(default_factory=dict)
     metrics_url: str = ""
     db_path: str = "/var/lib/hermes-office-gateway/gateway.db"
@@ -154,6 +157,9 @@ class GatewayConfig:
             grafana_base_url=os.getenv("OFFICE_GRAFANA_BASE_URL", "").rstrip("/"),
             grafana_dashboards=_grafana_dashboards(os.getenv("OFFICE_GRAFANA_DASHBOARDS", "")),
             grafana_panel_ids=panels,
+            grafana_token=os.getenv("OFFICE_GRAFANA_TOKEN", "").strip(),
+            grafana_folder_uid=os.getenv("OFFICE_GRAFANA_FOLDER_UID", "").strip(),
+            grafana_datasource_uid=os.getenv("OFFICE_GRAFANA_DATASOURCE_UID", "").strip(),
             mig_expected=_mig_expected(os.getenv("OFFICE_MIG_EXPECTED", "")),
             metrics_url=os.getenv("OFFICE_METRICS_URL", "").rstrip("/"),
             db_path=os.getenv(

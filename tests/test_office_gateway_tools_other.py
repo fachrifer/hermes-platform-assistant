@@ -50,7 +50,9 @@ def test_role_catalogs():
     assert {t.name for t in tools_for_role("vector")} == {
         "vector_status", "milvus_databases", "milvus_collections", "milvus_collection", "milvus_users", "milvus_roles",
     }
-    assert {t.name for t in tools_for_role("obs")} == {"metrics_query", "grafana_links", "action_status"}
+    assert {t.name for t in tools_for_role("obs")} == {
+        "metrics_query", "grafana_dashboards", "grafana_links", "propose_dashboard", "action_status",
+    }
     assert tools_for_role("approver") == []
 
 

@@ -32,7 +32,7 @@ Architecture and the rollout record live in
 | Mnemosyne | `hermes-vector` | `vector` | 9122 | none; can inspect milvus-dev (databases, collections, users, roles) |
 | Surtr | `hermes-cluster-gpu` | `cluster-gpu` | 9123 | none |
 | Iris | `hermes-llm` | `llm` | 9124 | none |
-| Argus | `hermes-obs` | `obs` | 9125 | none |
+| Argus | `hermes-obs` | `obs` | 9125 | propose a new Grafana dashboard (created only after approval) |
 | Janus | `hermes-ingress` | `ingress` | 9126 | apply or roll back HTTPS routes |
 
 Configs: `hermes/<role>/config.yaml` (mounted read-only). Skills: `skills/<role>/SKILL.md`

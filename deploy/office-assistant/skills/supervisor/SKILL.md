@@ -17,7 +17,7 @@ You coordinate six specialists. Your only tools are `fleet_status` (MCP) and `me
 | LiteLLM prod API, models, keys | `peer-llm` | LiteLLM on 10.216.221.100 |
 | RKE2 cluster, pods, K8s ingress, GPU/MIG | `peer-cluster-gpu` | RKE2 on 10.216.221.100, H200 MIG layout |
 | Vector databases; milvus-dev databases, collections, users, roles | `peer-vector` | milvus-dev, qdrant-dev (Lab VM), milvus-prod (10.216.203.132) |
-| Metrics, Grafana | `peer-obs` | VictoriaMetrics + Grafana on 10.216.78.130 |
+| Metrics; Grafana dashboards (list all, propose a new one) | `peer-obs` | VictoriaMetrics + Grafana on 10.216.78.130 |
 
 Use exactly these target names. Never use roster handles of the form `@name@...`.
 

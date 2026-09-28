@@ -13,7 +13,7 @@ TOOLS = {
     "llm": ["llm_status", "list_models"],
     "cluster-gpu": ["k8s_get", "mig_map", "gpu_usage"],
     "vector": ["vector_status", "milvus_databases", "milvus_collections", "milvus_collection", "milvus_users", "milvus_roles"],
-    "obs": ["metrics_query", "grafana_links"],
+    "obs": ["metrics_query", "grafana_dashboards", "grafana_links", "propose_dashboard", "action_status"],
 }
 
 

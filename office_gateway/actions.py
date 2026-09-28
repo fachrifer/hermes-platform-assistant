@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import os
 import re
+import time
 
 import httpx
 
+from office_gateway import grafana_api
 from office_gateway.docker_ops import DockerOps
 from office_gateway.edge_ops import EdgeRoutesOps, RouteApplyError, route_diff
+from office_gateway.grafana_api import GrafanaClientError
 from office_gateway.roles import can_propose
 from office_gateway.store import PendingAction
 
@@ -40,7 +43,7 @@ def action_view(action: PendingAction) -> dict:
         "detail": action.detail,
         "result": action.result,
     }
-    if action.action in ("apply_edge_routes", "rollback_edge_routes"):
+    if action.action in ("apply_edge_routes", "rollback_edge_routes", "create_dashboard"):
         view["diff"] = params.get("diff", [])
     return view
 
@@ -92,6 +95,8 @@ class ActionService:
             return self._propose_apply(role, target, params.get("content"), reason)
         if action == "rollback_edge_routes":
             return self._propose_rollback(role, target, params.get("backup"), reason)
+        if action == "create_dashboard":
+            return self._propose_dashboard(role, target, params, reason)
         raise ActionError("unknown action", "invalid_argument")
 
     def _propose_restart(self, role: str, target: str, reason: str) -> PendingAction:
@@ -178,6 +183,8 @@ class ActionService:
             return self._execute_edge(claimed, lambda: self.edge_ops.apply(claimed.params.get("content", "")))
         if claimed.action == "rollback_edge_routes":
             return self._execute_edge(claimed, lambda: self.edge_ops.restore(claimed.params.get("backup")))
+        if claimed.action == "create_dashboard":
+            return self._execute_dashboard(claimed)
         return self._finish(claimed, False, "failed:invalid")
 
     def _finish(self, claimed: PendingAction, ok: bool, detail: str, result: dict | None = None) -> PendingAction:
@@ -209,6 +216,48 @@ class ActionService:
             return self._finish(claimed, False, "failed:invalid", {"rolled_back": False})
         except Exception:
             return self._finish(claimed, False, "failed:adapter_unavailable", {"rolled_back": False})
+        return self._finish(claimed, True, "ok", result)
+
+    def _propose_dashboard(self, role: str, target: str, params: dict, reason: str) -> PendingAction:
+        try:
+            title = grafana_api.check_title(str(params.get("title") or target))
+            panels = grafana_api.parse_panels(params.get("panels"))
+            existing = grafana_api.search_dashboards(self.config.grafana_base_url, self.config.grafana_token)
+        except GrafanaClientError as exc:
+            raise ActionError(exc.detail, exc.category) from exc
+        except ValueError as exc:
+            raise ActionError(str(exc), "invalid_argument") from exc
+        taken = {row["title"].lower() for row in existing}
+        if title.lower() in taken:
+            titled = f"{title} {time.strftime('%Y-%m-%d')}"
+            title = grafana_api.check_title(titled[:80])
+            if title.lower() in taken:
+                raise ActionError("a dashboard with that title already exists", "invalid_argument")
+        diff = [f"+ title: {title}", "+ folder: Hermes Fleet, or General if that folder does not exist"]
+        diff.extend(f"+ {panel['type']}: {panel['title']} ({panel['query']})" for panel in panels)
+        return self.store.propose(
+            action="create_dashboard",
+            target=title,
+            role=role,
+            params={"title": title, "panels": panels, "diff": diff, "reason": reason},
+            summary=f"create Grafana dashboard {title} ({len(panels)} panels)",
+        )
+
+    def _execute_dashboard(self, claimed: PendingAction) -> PendingAction:
+        try:
+            result = grafana_api.create_dashboard(
+                self.config.grafana_base_url,
+                self.config.grafana_token,
+                title=claimed.params.get("title", claimed.target),
+                panels=claimed.params.get("panels") or [],
+                folder_uid=self.config.grafana_folder_uid,
+                datasource_uid=self.config.grafana_datasource_uid,
+                message=str(claimed.params.get("reason") or claimed.summary),
+            )
+        except GrafanaClientError as exc:
+            return self._finish(claimed, False, f"failed:{exc.category}", {"detail": exc.detail[:200]})
+        except ValueError as exc:
+            return self._finish(claimed, False, "failed:invalid", {"detail": str(exc)[:200]})
         return self._finish(claimed, True, "ok", result)
 
     def _restart_target(self, target: str) -> None:
