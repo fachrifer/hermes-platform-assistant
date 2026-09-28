@@ -81,3 +81,18 @@ Findings:
 - cluster-gpu cannot read GPU, MIG or k8s: `OFFICE_KUBECONFIG` points to the empty `kubeconfig.absent`, the gateway still holds an old kubeconfig copy in its data volume, and Rancher (`c-w86wr`) treats that token, and the one in `~/.kube/config`, as `system:unauthenticated`. Needs a fresh read-only Rancher token.
 - The supervisor summarised `fleet_status` as "all systems healthy"; `fleet_status` is agent health only, not domain health. The skill now says "agent ok".
 - The operator's first chat was a new session, not "Bot Chat"; Hermes only grants `message_agent` when the session title is exactly "Bot Chat" (`message_agent_authorized`, no config switch). The supervisor told the user to "enable Bot Mode" and run `docker ps`. The skill now answers from `fleet_status` and points to the "Bot Chat" session; re-tested: normal session → pointer, Bot Chat → 1 `message_agent`, 19.3 s.
+
+### Follow-up hotfixes (2026-09-28)
+
+Gateway code-only ships (bind-mounted `office_gateway/`, restart `office-gateway`); backup `~/hermes-assistant-pre-hotfix-20260928-100448.tar`.
+
+- Kubeconfig: the operator added `.kubeconfig.local`, but `.env` said `./kubeconfig.local`. Fixed the path (file mode 600). cluster-gpu now reads the cluster: `mig_map` ok (7/2/2/1 as expected), `gpu_usage` 4 GPUs.
+- `k8s_get nodes` returned `items: []`, `omitted: 1`: the generic projection kept ~100 node-feature labels, over the 1500-char item budget. Nodes now get a compact summary (roles, Ready, pressure, IP, kubelet, cpu/memory, `nvidia.com/*` allocatable, GPU product, MIG config, taints). Pod `node`/`podIP`/`restartCount` were empty on the kubernetes-client path (snake_case `to_dict()`); both key styles are read now.
+- milvus-dev admin visibility (read-only): `milvus_databases`, `milvus_collections`, `milvus_collection` (rows, load state, fields, indexes), `milvus_users` (with roles), `milvus_roles` (grants across all DBs), vector role only, over Milvus REST v2 (`OFFICE_MILVUS_DEV_URL`, optional `OFFICE_MILVUS_DEV_TOKEN`). No write tools; access changes would need a propose/approve action.
+- Approver password: the operator changed `approver_password` in `.local-login` only. `ensure-approver.sh` now re-hashes into `edge/approvers.htpasswd` in place (same inode, bind mount) when the password or user differs, leaves hand-made non-apr1 hashes alone, never prints the password. Applied, then `office-edge` restarted.
+
+| Real turn after the hotfixes | Result |
+|---|---|
+| cluster-gpu: GPU nodes, Ready, MIG layout | `k8s_get` + `mig_map`, 0 errors, 16.8 s |
+| vector: milvus-dev users and roles | 1 `milvus_users`, 13.8 s |
+| vector: `uat_gpu.rag_docs` rows, load, index | 1 `milvus_collection`, 13.0 s |
