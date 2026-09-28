@@ -72,7 +72,7 @@ Shipped with `ship-phase1b.ps1` (SHA-256 of tree, gateway and image archives mat
 | Restart request to lab-host | 1 `propose_restart`, action `pending`, nothing restarted |
 | Approvals page | HTTP → HTTPS redirect; no auth 401; approver login 200 |
 | Operator approve in the browser | PASS: action `succeeded`, approver `timai`, `office-www` restarted, `docker exec` still works afterwards |
-| Operator web Dashboard Bot Chat (S2), Desktop connected (S3) | pending |
+| Operator web Dashboard Bot Chat (S2), Desktop connected (S3) | PASS, operator confirmed 2026-09-28. Web Bot Chat delegated and the reply arrived. Desktop connected to the gateways, closed mid-delivery, and the reply still arrived in the web Dashboard |
 
 Findings:
 
@@ -96,3 +96,5 @@ Gateway code-only ships (bind-mounted `office_gateway/`, restart `office-gateway
 | cluster-gpu: GPU nodes, Ready, MIG layout | `k8s_get` + `mig_map`, 0 errors, 16.8 s |
 | vector: milvus-dev users and roles | 1 `milvus_users`, 13.8 s |
 | vector: `uat_gpu.rag_docs` rows, load, index | 1 `milvus_collection`, 13.0 s |
+
+S2 and S3 passed on the Lab VM (operator, 2026-09-28). A stuck dashboard TUI had been holding the canonical Bot Chat; the approvals page can release that TUI without deleting the session. Credential snapshot copies from 2026-09-24 were removed afterwards. Working keys were left as they are.
