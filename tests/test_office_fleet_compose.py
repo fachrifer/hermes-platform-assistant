@@ -50,6 +50,11 @@ def test_services_and_volumes(compose):
     assert set(compose["volumes"]) == VOLUMES
 
 
+def test_gateway_reaches_host_services(compose):
+    # Default vector-dev instances (Milvus, Qdrant) live on the Lab host.
+    assert "host.docker.internal:host-gateway" in compose["services"]["office-gateway"]["extra_hosts"]
+
+
 @pytest.mark.parametrize("service,role", sorted(AGENTS.items()))
 def test_agent_service_shape(compose, service, role):
     svc = compose["services"][service]

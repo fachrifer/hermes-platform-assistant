@@ -200,7 +200,7 @@ def test_ensure_approver_creates_login_once(tmp_path):
     assert password not in first.stdout + first.stderr
     assert stat.S_IMODE((deploy / ".local-login").stat().st_mode) == 0o600
     salt = hashed.split("$")[2]
-    check = _run(["openssl", "passwd", "-apr1", "-salt", salt, password])
+    check = _run(["openssl", "passwd", "-apr1", "-salt", salt, "-stdin"], input=password + "\n")
     assert check.stdout.strip() == hashed
 
     second = _run(["bash", str(script)])

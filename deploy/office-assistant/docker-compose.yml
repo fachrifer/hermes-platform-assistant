@@ -98,6 +98,8 @@ services:
       - "${DOCKER_GID:-998}"
     networks:
       - office
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     expose:
