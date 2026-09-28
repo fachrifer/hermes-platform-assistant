@@ -9,6 +9,14 @@ web or browser tools. They read, and they **propose** writes. A person approves
 or rejects each proposal on the Approvals page; nothing restarts or changes
 before that click.
 
+The fleet has been running on the Lab VM (`10.216.4.80`) since 2026-09-28.
+Day-to-day use is the Dashboard, Desktop, and Approvals sections below.
+The first-time ship at the bottom already ran; do not run it again.
+
+Architecture and the rollout record live in
+`docs/superpowers/specs/2026-09-24-office-fleet-redesign-design.md` and
+`docs/superpowers/specs/2026-09-24-office-fleet-redesign-spike-results.md`.
+
 ## Prerequisites
 
 - Docker Compose v2
@@ -21,7 +29,7 @@ before that click.
 |---|---|---|---|---|
 | Athena | `hermes-agent` | `supervisor` | 9119 | none; asks specialists via Bot Chat peers |
 | Hephaestus | `hermes-lab-host` | `lab-host` | 9121 | restart a lab container or host service |
-| Mnemosyne | `hermes-vector` | `vector` | 9122 | none |
+| Mnemosyne | `hermes-vector` | `vector` | 9122 | none; can inspect milvus-dev (databases, collections, users, roles) |
 | Surtr | `hermes-cluster-gpu` | `cluster-gpu` | 9123 | none |
 | Iris | `hermes-llm` | `llm` | 9124 | none |
 | Argus | `hermes-obs` | `obs` | 9125 | none |
@@ -30,7 +38,7 @@ before that click.
 Configs: `hermes/<role>/config.yaml` (mounted read-only). Skills: `skills/<role>/SKILL.md`
 (one short skill per role). Secrets: gitignored `hermes/<role>/.env`.
 
-## Deploy to the Lab VM (from the Windows PC)
+## First rollout (already done on 2026-09-28)
 
 The PC ships committed files only, so env files, certs and rendered secrets never
 leave it. Install the SSH key on the VM once (you type your own password):
@@ -98,6 +106,14 @@ is set); the password is in `.local-login` as `approver_password`. The page list
 pending requests with their diff, asks for confirmation, and shows recent
 decisions. Requests expire after `OFFICE_ACTION_TTL_SECONDS` (default 600).
 
+**Release Bot Chat lock** on that page stops a stuck dashboard TUI that is
+holding Athena's Bot Chat. The session and its history stay. Use it from the
+VPN when the chat says it is open in another window. It does not create a
+missing Bot Chat session.
+
+To change the approver password: edit `approver_password` in `.local-login`,
+run `./scripts/ensure-approver.sh`, then `docker compose restart office-edge`.
+
 Typing "approve" in chat does nothing.
 
 ## Hermes Desktop and the web Dashboard
@@ -114,7 +130,10 @@ Extra headers empty; do not use OAuth. Use HTTP `:9119`, not `https://…/dash`
 `http://10.216.4.80/bots/…` in Desktop; `/api/ws` fails behind Traefik there.
 
 Outside the office (VPN): open the web Dashboard at `https://10.216.4.80/dash/`
-and use Athena's **Bot Chat**.
+and use the session titled exactly **Bot Chat**. Only that session can ask
+specialists. Any other session can only say which agents are up. If Bot Chat
+says it is open in another window, release the lock on the Approvals page
+(above). Do not delete the session.
 
 ## Laptop functionality check
 

@@ -1,8 +1,9 @@
 # Office Fleet Redesign — Anti-Loop Core, Approvals, Reporting
 
 Date: 2026-09-24  
-Status: Draft (awaiting user review)  
-Supersedes (partially): `docs/superpowers/specs/2026-08-20-office-multi-agent-fleet-design.md` — topology, tool boundary, live handoff, writes, and scheduled checks are replaced by this spec. Everything not mentioned here (Compose packaging, air-gapped image shipping, console avatars) stays as in v1.
+Status: Implemented on the Lab VM, 2026-09-28. Operator guide: `deploy/office-assistant/README.md`. What happened, including S2 and S3, is in `2026-09-24-office-fleet-redesign-spike-results.md`. Where this design and those two disagree, the README and the results win.
+
+Packaging, air-gapped image shipping, and console avatars are in the README. The August 2026 design and the phase plans were removed after the rollout; they described an earlier fleet and unfinished checklists.
 
 Baseline: branch `fleet/sync-vm-20260924` (commit `cb3bbb3`), which mirrors the Lab VM (`10.216.4.80:/home/timai/hermes-assistant`, Compose project `office`) as of 2026-09-24.
 
