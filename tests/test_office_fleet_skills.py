@@ -57,6 +57,7 @@ def test_supervisor_routing_and_rules():
         assert f"peer-{role}" in text
     assert "at most two" in text.lower() and "never re-send" in text.lower()
     assert "/approvals/" in text
+    assert "buka sesi **Bot Chat**" in text and "agent ok" in text
 
 
 @pytest.mark.parametrize("role", ROLES[1:])
