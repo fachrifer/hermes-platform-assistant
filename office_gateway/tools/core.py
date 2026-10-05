@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
@@ -11,11 +12,13 @@ from office_gateway.actions import ActionError
 from office_gateway.edge_ops import AdapterNotConfigured as EdgeAdapterNotConfigured
 from office_gateway.k8s_ops import AdapterNotConfigured
 
-RESULT_CAP = 2000
+_OBJECT_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+_OBJECT_VALUE = re.compile(r"^[A-Za-z0-9_.:/*|+-]{1,128}$")
+RESULT_CAP = 14000
 TOOL_TIMEOUT_SECONDS = 12.0
 UPSTREAM_TIMEOUT_SECONDS = 10.0
 ERROR_CATEGORIES = frozenset(
-    {"unreachable", "timeout", "forbidden", "invalid_argument", "no_metrics", "not_configured"}
+    {"unreachable", "timeout", "forbidden", "invalid_argument", "no_metrics", "not_configured", "not_found"}
 )
 
 
@@ -157,6 +160,26 @@ def validate_args(tool: Tool, args: Any) -> dict:
         elif p.type == "boolean":
             if not isinstance(value, bool):
                 raise ToolError("invalid_argument", f"{name} must be true or false")
+        elif p.type == "object":
+            if isinstance(value, str):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError as exc:
+                    raise ToolError("invalid_argument", f"{name} must be an object") from exc
+            if not isinstance(value, dict):
+                raise ToolError("invalid_argument", f"{name} must be an object")
+            if len(value) > 20:
+                raise ToolError("invalid_argument", f"{name} has too many keys")
+            cleaned: dict[str, str] = {}
+            for key, item in value.items():
+                if not isinstance(key, str) or not _OBJECT_KEY.fullmatch(key):
+                    raise ToolError("invalid_argument", f"{name} has an invalid key")
+                if isinstance(item, (int, float)) and not isinstance(item, bool):
+                    item = str(item)
+                if not isinstance(item, str) or not _OBJECT_VALUE.fullmatch(item):
+                    raise ToolError("invalid_argument", f"{name}.{key} must be a short literal")
+                cleaned[key] = item
+            value = cleaned
         if p.enum and value not in p.enum:
             raise ToolError("invalid_argument", f"{name} must be one of the valid values", p.enum)
         out[name] = value

@@ -43,8 +43,18 @@ def action_view(action: PendingAction) -> dict:
         "detail": action.detail,
         "result": action.result,
     }
-    if action.action in ("apply_edge_routes", "rollback_edge_routes", "create_dashboard"):
+    if action.action in (
+        "apply_edge_routes",
+        "rollback_edge_routes",
+        "create_dashboard",
+        "add_mcp_tool",
+        "archive_dashboard",
+        "restart_gateway",
+        "add_script",
+    ):
         view["diff"] = params.get("diff", [])
+    if action.action in ("add_mcp_tool", "add_script"):
+        view["source"] = params.get("source", "")
     return view
 
 
@@ -56,6 +66,12 @@ def _adapter_endpoints() -> dict[str, str]:
         if separator and _SERVICE_NAME_RE.fullmatch(name) and url.startswith(("http://", "https://")):
             endpoints[name] = url
     return endpoints
+
+
+def _builtin_tools() -> set[str]:
+    from office_gateway.tools import REGISTRY
+
+    return set(REGISTRY)
 
 
 def _is_office_gateway_target(target: str) -> bool:
@@ -85,10 +101,21 @@ class ActionService:
         return sorted(str(c.get("name") or "") for c in listing.get("containers", []))
 
     def propose(self, role: str, action: str, target: str, params: dict | None = None) -> PendingAction:
-        if not can_propose(role, action):
-            raise ActionError("action not allowed for role", "forbidden")
         params = dict(params or {})
         reason = str(params.get("reason") or "").strip()[:_REASON_MAX]
+        plugin = self._plugin_action(action)
+        if plugin is not None:
+            from office_gateway.mcp_plugins import PluginError
+            if plugin.role != role:
+                raise ActionError("action not allowed for role", "forbidden")
+            try:
+                return plugin.propose(self, role, target, params, reason)
+            except ActionError:
+                raise
+            except PluginError as exc:
+                raise ActionError(exc.detail, exc.category) from exc
+        if not can_propose(role, action):
+            raise ActionError("action not allowed for role", "forbidden")
         if action == "restart_service":
             return self._propose_restart(role, target, reason)
         if action == "apply_edge_routes":
@@ -97,6 +124,14 @@ class ActionService:
             return self._propose_rollback(role, target, params.get("backup"), reason)
         if action == "create_dashboard":
             return self._propose_dashboard(role, target, params, reason)
+        if action == "add_mcp_tool":
+            return self._propose_mcp_tool(role, target, params, reason)
+        if action == "restart_gateway":
+            return self._propose_gateway_restart(role, reason)
+        if action == "add_script":
+            return self._propose_script(role, target, params, reason)
+        if action == "archive_dashboard":
+            return self._propose_archive(role, target, params, reason)
         raise ActionError("unknown action", "invalid_argument")
 
     def _propose_restart(self, role: str, target: str, reason: str) -> PendingAction:
@@ -185,6 +220,28 @@ class ActionService:
             return self._execute_edge(claimed, lambda: self.edge_ops.restore(claimed.params.get("backup")))
         if claimed.action == "create_dashboard":
             return self._execute_dashboard(claimed)
+        if claimed.action == "archive_dashboard":
+            return self._execute_archive(claimed)
+        if claimed.action == "add_mcp_tool":
+            return self._execute_mcp_tool(claimed)
+        if claimed.action == "add_script":
+            return self._execute_script(claimed)
+        if claimed.action == "restart_gateway":
+            done = self._finish(claimed, True, "ok", {"note": "gateway restarts itself"})
+            self._restart_gateway()
+            return done
+        plugin = self._plugin_action(claimed.action)
+        if plugin is not None:
+            from office_gateway.mcp_plugins import PluginError
+            try:
+                done = plugin.execute(self, claimed)
+            except PluginError as exc:
+                return self._finish(claimed, False, "failed:invalid", {"detail": exc.detail[:200]})
+            except Exception as exc:
+                return self._finish(claimed, False, "failed:invalid", {"detail": f"{type(exc).__name__}: {exc}"[:200]})
+            if done is None:
+                return self._finish(claimed, False, "failed:invalid", {"detail": "plugin execute returned nothing"})
+            return done
         return self._finish(claimed, False, "failed:invalid")
 
     def _finish(self, claimed: PendingAction, ok: bool, detail: str, result: dict | None = None) -> PendingAction:
@@ -259,6 +316,208 @@ class ActionService:
         except ValueError as exc:
             return self._finish(claimed, False, "failed:invalid", {"detail": str(exc)[:200]})
         return self._finish(claimed, True, "ok", result)
+
+    def _propose_archive(self, role: str, target: str, params: dict, reason: str) -> PendingAction:
+        uid = str(params.get("uid") or target).strip()
+        hard_delete = bool(params.get("hard_delete"))
+        try:
+            record = grafana_api.dashboard_record(self.config.grafana_base_url, self.config.grafana_token, uid)
+        except GrafanaClientError as exc:
+            raise ActionError(exc.detail, exc.category) from exc
+        if record["folder"] == grafana_api.ARCHIVED_FOLDER and not hard_delete:
+            raise ActionError(f"dashboard {uid} is already archived", "not_found")
+        title = record["title"]
+        folder = record["folder"]
+        move = (
+            "DELETE the dashboard. This cannot be undone."
+            if hard_delete
+            else f"Move it from folder {folder or 'General'} to {grafana_api.ARCHIVED_FOLDER}."
+        )
+        diff = [
+            f"dashboard: {title}",
+            f"uid: {uid}",
+            f"folder: {folder or 'General'}",
+            "warning: This will remove the dashboard from its current folder",
+            move,
+        ]
+        verb = "delete" if hard_delete else "archive"
+        return self.store.propose(
+            action="archive_dashboard",
+            target=uid,
+            role=role,
+            params={
+                "uid": uid,
+                "title": title,
+                "folder": folder,
+                "reason": reason,
+                "hard_delete": hard_delete,
+                "diff": diff,
+            },
+            summary=f"{verb} Grafana dashboard {title}",
+        )
+
+    def _execute_archive(self, claimed: PendingAction) -> PendingAction:
+        try:
+            result = grafana_api.archive_dashboard(
+                self.config.grafana_base_url,
+                self.config.grafana_token,
+                uid=str(claimed.params.get("uid") or claimed.target),
+                reason=str(claimed.params.get("reason") or claimed.summary),
+                hard_delete=bool(claimed.params.get("hard_delete")),
+            )
+        except GrafanaClientError as exc:
+            detail = "failed:not_found" if exc.category == "not_found" else "failed:invalid"
+            return self._finish(claimed, False, detail, {"detail": exc.detail[:200]})
+        return self._finish(claimed, True, "ok", result)
+
+    def _propose_mcp_tool(self, role: str, target: str, params: dict, reason: str) -> PendingAction:
+        name = str(params.get("name") or target).strip()
+        if not re.fullmatch(r"[a-z][a-z0-9_]{1,63}", name):
+            raise ActionError("tool name must be a short snake_case identifier", "invalid_argument")
+        spec = str(params.get("spec") or "").strip()
+        source = str(params.get("source") or "")
+        if not spec or name not in spec:
+            raise ActionError("spec must describe that tool", "invalid_argument")
+        if len(spec) > 6000:
+            raise ActionError("spec is too long", "invalid_argument")
+        from office_gateway.mcp_plugins import PluginError, validate_source
+
+        try:
+            validate_source(name, source, _builtin_tools(), replace=bool(params.get("replace")))
+        except PluginError as exc:
+            raise ActionError(exc.detail, exc.category) from exc
+        open_same = [
+            item
+            for item in self.store.list_actions(("pending",))
+            if item.action == "add_mcp_tool" and item.target == name
+        ]
+        if open_same:
+            raise ActionError("that tool spec is already pending", "conflict")
+        summary = str(params.get("summary") or f"add MCP tool {name}").strip()[:_REASON_MAX]
+        replacing = bool(params.get("replace"))
+        diff = [
+            f"+ tool: {name}",
+            "+ replaces the built-in tool" if replacing else "+ adds a tool",
+            "+ approval installs this module and restarts the gateway",
+        ]
+        for line in spec.splitlines():
+            if len(diff) >= 40:
+                diff.append("+ …")
+                break
+            diff.append(f"+ {line[:180]}")
+        return self.store.propose(
+            action="add_mcp_tool",
+            target=name,
+            role=role,
+            params={
+                "name": name,
+                "summary": summary,
+                "spec": spec,
+                "source": source,
+                "replace": replacing,
+                "diff": diff,
+                "reason": reason,
+            },
+            summary=summary,
+        )
+
+    def _execute_mcp_tool(self, claimed: PendingAction) -> PendingAction:
+        from office_gateway.mcp_plugins import PluginError, install_plugin, plugin_dir
+
+        name = str(claimed.params.get("name") or claimed.target)
+        source = str(claimed.params.get("source") or "")
+        try:
+            path = install_plugin(
+                plugin_dir(self.config),
+                name,
+                source,
+                _builtin_tools(),
+                replace=bool(claimed.params.get("replace")),
+            )
+        except PluginError as exc:
+            return self._finish(claimed, False, "failed:invalid", {"detail": exc.detail[:200]})
+        done = self._finish(
+            claimed,
+            True,
+            "ok",
+            {
+                "implemented": True,
+                "tool": name,
+                "path": path.name,
+                "note": "module installed; gateway restarts itself",
+            },
+        )
+        self._restart_gateway()
+        return done
+
+    def _propose_script(self, role: str, target: str, params: dict, reason: str) -> PendingAction:
+        from office_gateway.source_view import gateway_roots, script_destination
+
+        rel = str(params.get("path") or target).strip()
+        content = str(params.get("content") or "")
+        replace = bool(params.get("replace"))
+        try:
+            script_destination(gateway_roots(), rel, content, replace)
+        except ValueError as exc:
+            raise ActionError(str(exc), "invalid_argument") from exc
+        verb = "replace" if replace else "add"
+        return self.store.propose(
+            action="add_script",
+            target=rel,
+            role=role,
+            params={
+                "path": rel,
+                "content": content,
+                "source": content,
+                "replace": replace,
+                "reason": reason,
+                "diff": [f"+ {rel}", f"+ {verb} this script"],
+            },
+            summary=f"{verb} script {rel}",
+        )
+
+    def _execute_script(self, claimed: PendingAction) -> PendingAction:
+        from office_gateway.source_view import gateway_roots, write_script
+
+        try:
+            result = write_script(
+                gateway_roots(),
+                str(claimed.params.get("path") or claimed.target),
+                str(claimed.params.get("content") or ""),
+                bool(claimed.params.get("replace")),
+            )
+        except ValueError as exc:
+            return self._finish(claimed, False, "failed:invalid", {"detail": str(exc)[:200]})
+        except OSError as exc:
+            return self._finish(claimed, False, "failed:invalid", {"detail": f"could not write the script: {exc}"[:200]})
+        return self._finish(claimed, True, "ok", result)
+
+    def _propose_gateway_restart(self, role: str, reason: str) -> PendingAction:
+        return self.store.propose(
+            action="restart_gateway",
+            target="office-gateway",
+            role=role,
+            params={"reason": reason, "diff": ["+ restart the office gateway"]},
+            summary="restart the office gateway",
+        )
+
+    def _restart_gateway(self) -> None:
+        try:
+            names = self.container_names()
+        except Exception:
+            return
+        for name in names:
+            if _is_office_gateway_target(name):
+                try:
+                    self._restart_target(name)
+                except Exception:
+                    return
+                return
+
+    def _plugin_action(self, action: str):
+        from office_gateway.mcp_plugins import load_plugins, plugin_dir
+
+        return load_plugins(plugin_dir(self.config), _builtin_tools()).actions.get(action)
 
     def _restart_target(self, target: str) -> None:
         endpoints = _adapter_endpoints()

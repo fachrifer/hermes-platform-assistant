@@ -25,7 +25,8 @@ READ_ROUTES: dict[str, frozenset[str]] = {
 WRITE_ACTIONS: dict[str, frozenset[str]] = {
     "lab-host": frozenset({"restart_service"}),
     "ingress": frozenset({"apply_edge_routes", "rollback_edge_routes"}),
-    "obs": frozenset({"create_dashboard"}),
+    "supervisor": frozenset({"add_mcp_tool", "restart_gateway", "add_script"}),
+    "obs": frozenset({"create_dashboard", "archive_dashboard"}),
 }
 
 WRITE_ROLES = frozenset(role for role, actions in WRITE_ACTIONS.items() if actions)

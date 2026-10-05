@@ -42,11 +42,18 @@ def test_write_actions_per_role():
     assert can_propose("ingress", "apply_edge_routes")
     assert can_propose("ingress", "rollback_edge_routes")
     assert not can_propose("ingress", "restart_service")
-    for role in ("vector", "supervisor", "approver", "llm", "cluster-gpu"):
+    for role in ("vector", "approver", "llm", "cluster-gpu"):
         assert not can_propose(role, "restart_service")
         assert not can_write(role)
-    assert WRITE_ACTIONS["obs"] == frozenset({"create_dashboard"})
+    assert not can_propose("supervisor", "restart_service")
+    assert WRITE_ACTIONS["supervisor"] == frozenset({"add_mcp_tool", "restart_gateway", "add_script"})
+    assert can_propose("supervisor", "add_mcp_tool")
+    assert can_propose("supervisor", "restart_gateway")
+    assert WRITE_ACTIONS["obs"] == frozenset({"create_dashboard", "archive_dashboard"})
     assert can_propose("obs", "create_dashboard")
+    assert can_propose("obs", "archive_dashboard")
+    assert not can_propose("supervisor", "archive_dashboard")
+    assert not can_propose("obs", "add_mcp_tool")
     assert not can_propose("lab-host", "create_dashboard")
 
 
@@ -126,6 +133,16 @@ def test_vector_instances_default_and_override(monkeypatch, tmp_path):
     _env(monkeypatch, tmp_path, OFFICE_MILVUS_DEV_URL="http://milvus:19530/", OFFICE_MILVUS_DEV_TOKEN=" root:pw ")
     cfg = GatewayConfig.from_env()
     assert cfg.milvus_dev_url == "http://milvus:19530" and cfg.milvus_dev_token == "root:pw"
+    assert cfg.milvus_prod_url == "" and cfg.milvus_prod_credentials == ""
+    _env(
+        monkeypatch,
+        tmp_path,
+        OFFICE_MILVUS_PROD_URL=" http://10.216.203.132:19530/ ",
+        OFFICE_MILVUS_PROD_CREDENTIALS=" root:p#ss%w ",
+    )
+    cfg = GatewayConfig.from_env()
+    assert cfg.milvus_prod_url == "http://10.216.203.132:19530"
+    assert cfg.milvus_prod_credentials == "root:p#ss%w"
 
 
 def test_console_url_and_backup_dir(monkeypatch, tmp_path):

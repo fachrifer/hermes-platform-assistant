@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+import urllib.parse
 from typing import Optional
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 from office_gateway.actions import ActionError, ActionService, _check_approver, action_view
-from office_gateway.bot_chat_lock import SessionLockError, release_bot_chat
+from office_gateway.bot_chat_lock import SessionLockError, bot_chat_info, release_bot_chat
 from office_gateway.brief import build_brief
 from office_gateway.chat import fetch_chat_bubble
 from office_gateway.collectors import HttpServiceCollector
@@ -383,6 +385,28 @@ def create_app(
             return action_view(actions.status(role, action_id))
         except ActionError as exc:
             raise HTTPException(status_code=404, detail="action not found") from exc
+
+    @app.get("/v1/approvals/bot-chat")
+    async def bot_chat_status(role: str = Depends(_role_from_request)) -> dict:
+        _require_approver(role)
+        try:
+            return await asyncio.to_thread(bot_chat_info, ops)
+        except SessionLockError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    @app.get("/v1/approvals/bot-chat/open")
+    async def open_bot_chat(role: str = Depends(_role_from_request)) -> RedirectResponse:
+        """A bookmarkable door: the Dashboard hides Bot Chat, so send the browser to it by id."""
+        _require_approver(role)
+        try:
+            info = await asyncio.to_thread(bot_chat_info, ops)
+        except SessionLockError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        if not info["session_id"]:
+            raise HTTPException(status_code=404, detail="no session titled Bot Chat")
+        return RedirectResponse(
+            f"/dash/chat?resume={urllib.parse.quote(info['session_id'], safe='')}", status_code=302
+        )
 
     @app.post("/v1/approvals/bot-chat/release")
     async def release_bot_chat_lock(

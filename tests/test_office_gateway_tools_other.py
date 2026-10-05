@@ -44,14 +44,21 @@ def _call(ctx, role, name, args=None):
 
 
 def test_role_catalogs():
-    assert {t.name for t in tools_for_role("supervisor")} == {"fleet_status"}
+    assert {t.name for t in tools_for_role("supervisor")} == {
+        "fleet_status",
+        "propose_mcp_change",
+        "read_gateway_file",
+        "propose_gateway_restart",
+        "propose_script",
+        "action_status",
+    }
     assert {t.name for t in tools_for_role("llm")} == {"llm_status", "list_models"}
     assert {t.name for t in tools_for_role("cluster-gpu")} == {"k8s_get", "mig_map", "gpu_usage"}
     assert {t.name for t in tools_for_role("vector")} == {
         "vector_status", "milvus_databases", "milvus_collections", "milvus_collection", "milvus_users", "milvus_roles",
     }
     assert {t.name for t in tools_for_role("obs")} == {
-        "metrics_query", "grafana_dashboards", "grafana_links", "propose_dashboard", "action_status",
+        "metrics_query", "grafana_dashboards", "grafana_dashboard", "grafana_panel", "grafana_links", "propose_dashboard", "propose_archive_dashboard", "action_status",
     }
     assert tools_for_role("approver") == []
 

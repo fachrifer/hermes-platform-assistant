@@ -6,8 +6,8 @@ from typing import Any, Callable
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
+from office_gateway.mcp_plugins import active_registry
 from office_gateway.roles import AGENT_ROLES
-from office_gateway.tools import REGISTRY, tools_for_role
 from office_gateway.tools.core import ToolContext, call_tool
 
 SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", "2025-11-25", "2025-03-26", "2024-11-05")
@@ -60,14 +60,16 @@ def build_router(ctx: ToolContext, role_dependency: Callable[..., str]) -> APIRo
         if method == "ping":
             return _reply(id_, {})
         if method == "tools/list":
+            registry = active_registry(ctx.config)
             tools = [
                 {"name": t.name, "description": t.description, "inputSchema": t.input_schema()}
-                for t in tools_for_role(role)
+                for t in registry.values()
+                if role in t.roles
             ]
             return _reply(id_, {"tools": tools})
         if method == "tools/call":
             name = str(params.get("name") or "")
-            envelope = await call_tool(ctx, REGISTRY, role, name, params.get("arguments") or {})
+            envelope = await call_tool(ctx, active_registry(ctx.config), role, name, params.get("arguments") or {})
             text = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"), default=str)
             return _reply(id_, {"content": [{"type": "text", "text": text}], "isError": not envelope["ok"]})
         return _error(id_, -32601, f"method not found: {method}")

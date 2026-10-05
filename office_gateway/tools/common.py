@@ -41,7 +41,7 @@ async def _action_status(ctx, args, role):
 
 ACTION_STATUS = Tool(
     name="action_status",
-    roles=frozenset({"lab-host", "ingress", "obs"}),
+    roles=frozenset({"supervisor", "lab-host", "ingress", "obs"}),
     description=(
         "Status of an action you proposed: pending, executing, succeeded, failed, rejected or expired. "
         "Only a human can approve; call this at most once per user request."

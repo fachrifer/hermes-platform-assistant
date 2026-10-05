@@ -38,7 +38,14 @@ def test_notifications_get_202(tmp_path):
 def test_tools_list_is_role_filtered(tmp_path):
     client = _client(tmp_path)
     sup = {t["name"] for t in _rpc(client, "supervisor", "tools/list").json()["result"]["tools"]}
-    assert sup == {"fleet_status"}
+    assert sup == {
+        "fleet_status",
+        "action_status",
+        "read_gateway_file",
+        "propose_script",
+        "propose_mcp_change",
+        "propose_gateway_restart",
+    }
     lab = _rpc(client, "lab-host", "tools/list").json()["result"]["tools"]
     names = {t["name"] for t in lab}
     assert "propose_restart" in names and "fleet_status" not in names

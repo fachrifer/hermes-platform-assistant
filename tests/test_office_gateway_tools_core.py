@@ -26,7 +26,7 @@ async def _action_error(ctx, args, role):
 
 
 async def _huge(ctx, args, role):
-    return {"blob": "x" * 5000}
+    return {"blob": "x" * (RESULT_CAP + 1000)}
 
 
 async def _slow(ctx, args, role):
