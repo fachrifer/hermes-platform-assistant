@@ -32,7 +32,7 @@ Architecture and the rollout record live in
 | Mnemosyne | `hermes-vector` | `vector` | 9122 | none; can inspect milvus-dev (databases, collections, users, roles) |
 | Surtr | `hermes-cluster-gpu` | `cluster-gpu` | 9123 | none |
 | Iris | `hermes-llm` | `llm` | 9124 | none |
-| Argus | `hermes-obs` | `obs` | 9125 | propose a new Grafana dashboard (created only after approval) |
+| Argus | `hermes-obs` | `obs` | 9125 | inspect Grafana panels and report their current values; propose a new dashboard (created only after approval) |
 | Janus | `hermes-ingress` | `ingress` | 9126 | apply or roll back HTTPS routes |
 
 Configs: `hermes/<role>/config.yaml` (mounted read-only). Skills: `skills/<role>/SKILL.md`
@@ -74,6 +74,10 @@ names only.
 login exists, then runs `docker compose down` / `up -d`.
 
 Do not use `scripts/deploy.sh` for the Lab: it copies laptop env files over the Lab's.
+It now refuses to run unless `OFFICE_ALLOW_LAB_OVERWRITE=1` (throwaway hosts only).
+The old `ship-to-vm.sh` / `build-and-ship.sh` (`rsync --delete` onto the Lab dir) were
+removed after they overwrote the fleet layout from a stale checkout. Agent rules live
+in the repo root `AGENTS.md` and `.cursor/rules/lab-vm-protected.mdc`.
 
 **Rollback:** `docker compose down`, restore the `~/hermes-assistant-pre-phase1b-<ts>.tgz`
 backup over the directory, and run `./scripts/deploy-and-start.sh images/does-not-exist`.
@@ -106,10 +110,16 @@ is set); the password is in `.local-login` as `approver_password`. The page list
 pending requests with their diff, asks for confirmation, and shows recent
 decisions. Requests expire after `OFFICE_ACTION_TTL_SECONDS` (default 600).
 
-**Release Bot Chat lock** on that page stops a stuck dashboard TUI that is
-holding Athena's Bot Chat. The session and its history stay. Use it from the
-VPN when the chat says it is open in another window. It does not create a
-missing Bot Chat session.
+**Release Bot Chat lock** on that page frees Athena's Bot Chat from whatever
+holds it. A stuck dashboard TUI is a `tui_gateway` child process and is
+stopped. A Desktop connection lives inside the dashboard process itself, which
+is never killed: its lease entry is removed from the active-session registry
+instead. The session and its history stay. Use it from the VPN when the chat
+says it is open in another window. Close Bot Chat in the other window first if
+you are still using it there, otherwise two windows can write to one chat. It
+does not create a missing Bot Chat session. Specialists are reachable only from
+the session titled exactly "Bot Chat", so open that one rather than New chat or
+the last session.
 
 To change the approver password: edit `approver_password` in `.local-login`,
 run `./scripts/ensure-approver.sh`, then `docker compose restart office-edge`.
@@ -122,18 +132,34 @@ Typing "approve" in chat does nothing.
 ./scripts/desktop-connect.sh --lab
 ```
 
-Then open gitignored `.local-login`. Hermes Desktop → Remote gateway → **Gateway URL**
+Then open gitignored `.local-login`. Hermes Desktop â†’ Remote gateway â†’ **Gateway URL**
 = `url=` (`http://10.216.4.80:9119`) and **Session token** = `session_token=`.
-Extra headers empty; do not use OAuth. Use HTTP `:9119`, not `https://…/dash`
+Extra headers empty; do not use OAuth. Use HTTP `:9119`, not `https://â€¦/dash`
 (Electron rejects the Lab Internal CA). Specialists are extra Remote gateways on
-`:9121`–`:9126` (table above) with the same session token. Do not use
-`http://10.216.4.80/bots/…` in Desktop; `/api/ws` fails behind Traefik there.
+`:9121`â€“`:9126` (table above) with the same session token. Do not use
+`http://10.216.4.80/bots/â€¦` in Desktop; `/api/ws` fails behind Traefik there.
 
-Outside the office (VPN): open the web Dashboard at `https://10.216.4.80/dash/`
-and use the session titled exactly **Bot Chat**. Only that session can ask
-specialists. Any other session can only say which agents are up. If Bot Chat
-says it is open in another window, release the lock on the Approvals page
-(above). Do not delete the session.
+Outside the office (VPN): Bot Chat does not appear in the Dashboard's session
+list, because Hermes keeps the canonical Bot Chat hidden (`hidden = 1`; the
+Desktop reaches it through the bot row). Bookmark
+`https://10.216.4.80/approvals/api/bot-chat/open`: after the approver login it
+redirects to the Dashboard chat for the current Bot Chat id (the Dashboard login
+keeps the target). The Approvals page has the same door as **Open Bot Chat
+(web)**. Not listing it in the Sessions panel is deliberate: Hermes uses the
+`hidden` flag to recognise the canonical chat. To open it by hand,
+`https://10.216.4.80/dash/chat?resume=<Bot Chat session id>` works; find the id with:
+
+```bash
+docker exec -u hermes office-hermes-agent-1 /opt/hermes/.venv/bin/python3 -c \
+ "import sqlite3;print(sqlite3.connect('/opt/data/state.db').execute(\"select id from sessions where title='Bot Chat'\").fetchone()[0])"
+```
+
+Inside the Dashboard chat, typing `/resume Bot Chat` also works and needs no link: `session.resume` accepts an exact session title (hidden sessions included) and follows Bot Chat to its newest continuation. Use it after moving between Dashboard menus, because the sidebar Chat entry opens `/chat` without `resume` and so starts a new chat.
+
+Only the session titled exactly **Bot Chat** can ask specialists. Any other
+session, including New chat and the Dashboard's last session, can only say which
+agents are up. If Bot Chat says it is open in another window, release the lock on
+the Approvals page (above). Do not delete the session or unhide it.
 
 ## Laptop functionality check
 
@@ -170,9 +196,9 @@ key stays on the host in `ca/` and is **not** mounted into Traefik.
 
 ```bash
 ./scripts/init-lab-ca.sh          # once; creates ca/ca.crt + ca/ca.key
-./scripts/issue-edge-cert.sh      # leaf + chain → certs/tls.crt (FORCE=1 to reissue)
+./scripts/issue-edge-cert.sh      # leaf + chain â†’ certs/tls.crt (FORCE=1 to reissue)
 ./scripts/render-traefik-core.sh  # injects supervisor + approver tokens into core.yml
-./scripts/render-edge-traefik.py  # edge-routes → traefik-dynamic/routes.yml
+./scripts/render-edge-traefik.py  # edge-routes â†’ traefik-dynamic/routes.yml
 ```
 
 `edge/traefik-dynamic/core.yml` is rendered on the host and gitignored because it
@@ -190,7 +216,7 @@ Lab HTTP UIs/APIs behind path prefixes (`edge/edge-routes`):
 | Path | Upstream (host) | Notes |
 |---|---|---|
 | `/attu/` | `127.0.0.1:8000` | prefix stripped |
-| `/toolbox/` | `127.0.0.1:555` (`common-service-frontend`) | keep prefix — rebuild with `BASE_PATH=/toolbox` |
+| `/toolbox/` | `127.0.0.1:555` (`common-service-frontend`) | keep prefix â€” rebuild with `BASE_PATH=/toolbox` |
 
 Optional 5th column on `edge/edge-routes`: `strip_prefix` (`1` default; `0` keeps
 path for Next.js `basePath`). Milvus gRPC (`:19530`) is not an HTTP path on Traefik.

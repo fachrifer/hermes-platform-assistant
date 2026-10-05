@@ -88,6 +88,17 @@ button.approve { background: var(--ok); }
 button.release { background: var(--gold); }
 button.reject { background: var(--critical); color: var(--text); }
 button:disabled { opacity: 0.5; cursor: default; }
+a.button-link {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 16px;
+  background: var(--ok);
+  color: var(--bg);
+  text-decoration: none;
+  cursor: pointer;
+}
+a.button-link[aria-disabled="true"] { opacity: 0.5; cursor: default; }
 
 .recent { width: 100%; border-collapse: collapse; }
 .recent th, .recent td {

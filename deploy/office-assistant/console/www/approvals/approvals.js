@@ -4,6 +4,7 @@
   const API = "/approvals/api";
   const POLL_MS = 10000;
   const AGENT_NAMES = {
+    supervisor: "Athena",
     "lab-host": "Hephaestus",
     ingress: "Janus",
     obs: "Argus",
@@ -13,6 +14,10 @@
     apply_edge_routes: "Apply HTTPS routes",
     rollback_edge_routes: "Roll back HTTPS routes",
     create_dashboard: "Create Grafana dashboard",
+    archive_dashboard: "Archive Grafana dashboard",
+    add_mcp_tool: "Ship MCP tool",
+    restart_gateway: "Restart office gateway",
+    add_script: "Add script",
   };
 
   const els = {
@@ -86,6 +91,12 @@
     field(dl, "Expires", when(item.expires_at));
     field(dl, "Id", item.action_id);
     card.appendChild(dl);
+
+    if (item.source) {
+      const source = el("pre", "diff");
+      source.textContent = String(item.source);
+      card.appendChild(source);
+    }
 
     if (Array.isArray(item.diff) && item.diff.length) {
       const pre = el("pre", "diff");
@@ -179,11 +190,36 @@
     }
   }
 
+  async function loadBotChat() {
+    const link = document.getElementById("open-bot-chat");
+    const state = document.getElementById("bot-chat-state");
+    try {
+      const info = await api("/bot-chat");
+      if (!info || !info.session_id) {
+        link.removeAttribute("href");
+        link.setAttribute("aria-disabled", "true");
+        state.textContent =
+          "There is no session titled Bot Chat. Open Bot Chat once from the Desktop to create it.";
+        return;
+      }
+      link.href = `/dash/chat?resume=${encodeURIComponent(info.session_id)}`;
+      link.removeAttribute("aria-disabled");
+      const holders = Array.isArray(info.holders) ? info.holders : [];
+      state.textContent = holders.length
+        ? `Bot Chat is open in: ${holders.map((holder) => holder.surface || "unknown").join(", ")}. If the web chat is refused, release the lock.`
+        : "Bot Chat is free.";
+    } catch (error) {
+      link.removeAttribute("href");
+      link.setAttribute("aria-disabled", "true");
+      state.textContent = `Could not read Bot Chat: ${error.message}`;
+    }
+  }
+
   async function releaseBotChat() {
     const release = document.getElementById("release-bot-chat");
     if (
       !window.confirm(
-        "Release the stuck TUI holding Athena's Bot Chat?\nThe chat and its history stay. Reopen Bot Chat in the dashboard afterwards."
+        "Release whatever holds Athena's Bot Chat (a stuck dashboard TUI or a Desktop window)?\nThe chat and its history stay. Close Bot Chat in the other window first if you are still using it there, then reopen it here."
       )
     ) {
       return;
@@ -194,26 +230,39 @@
     try {
       const result = await api("/bot-chat/release", { method: "POST" });
       if (result && result.released) {
-        const count = Array.isArray(result.stopped) ? result.stopped.length : 0;
+        const stopped = Array.isArray(result.stopped) ? result.stopped.length : 0;
+        const cleared = Array.isArray(result.cleared) ? result.cleared.length : 0;
         setStatus(
-          `Released Bot Chat. Stopped ${count} stuck TUI process${count === 1 ? "" : "es"}. Reopen Bot Chat in the dashboard.`,
+          `Released Bot Chat. Stopped ${stopped} stuck TUI process${stopped === 1 ? "" : "es"}, cleared ${cleared} lease${cleared === 1 ? "" : "s"}. Reopen the session titled Bot Chat.`,
           "ok"
         );
       } else if (result && result.reason === "no_session") {
-        setStatus("There is no Bot Chat session. This button only releases a lock.", "error");
+        setStatus(
+          "There is no session titled Bot Chat. Open Bot Chat from the Desktop or the dashboard to create it.",
+          "error"
+        );
       } else {
-        setStatus("Bot Chat is not held by a TUI.", "ok");
+        setStatus(
+          "Nothing holds Bot Chat. If Athena still cannot reach specialists, open the session titled Bot Chat, not New chat or the last session.",
+          "ok"
+        );
       }
     } catch (error) {
       setStatus(`Release failed: ${error.message}`, "error");
     } finally {
       busy = false;
       release.disabled = false;
+      loadBotChat();
       refresh();
     }
   }
 
   document.getElementById("release-bot-chat").addEventListener("click", releaseBotChat);
+  document.getElementById("open-bot-chat").addEventListener("click", (event) => {
+    if (event.currentTarget.getAttribute("aria-disabled") === "true") event.preventDefault();
+  });
+  loadBotChat();
   refresh();
   window.setInterval(refresh, POLL_MS);
+  window.setInterval(loadBotChat, 30000);
 })();

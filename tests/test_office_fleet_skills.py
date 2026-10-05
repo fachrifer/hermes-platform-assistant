@@ -7,13 +7,13 @@ SKILLS = Path(__file__).resolve().parents[1] / "deploy" / "office-assistant" / "
 ROLES = ("supervisor", "lab-host", "ingress", "llm", "cluster-gpu", "vector", "obs")
 BANNED = re.compile(r"curl|office-gw|terminal|AUTOHEAL|auto_execute|a2a_call|kanban|OFFICE_GATEWAY_URL|SNAPSHOT:|FAST:", re.I)
 TOOLS = {
-    "supervisor": ["fleet_status", "message_agent"],
+    "supervisor": ["fleet_status", "message_agent", "read_gateway_file", "propose_mcp_change", "propose_script", "propose_gateway_restart", "action_status"],
     "lab-host": ["list_containers", "inspect_container", "tail_logs", "host_resources", "list_host_services", "propose_restart", "action_status"],
     "ingress": ["list_routes", "edge_status", "tls_status", "tail_traefik_logs", "validate_route_change", "propose_route_change", "propose_route_rollback", "action_status"],
     "llm": ["llm_status", "list_models"],
     "cluster-gpu": ["k8s_get", "mig_map", "gpu_usage"],
     "vector": ["vector_status", "milvus_databases", "milvus_collections", "milvus_collection", "milvus_users", "milvus_roles"],
-    "obs": ["metrics_query", "grafana_dashboards", "grafana_links", "propose_dashboard", "action_status"],
+    "obs": ["metrics_query", "grafana_dashboards", "grafana_dashboard", "grafana_panel", "grafana_links", "propose_dashboard", "propose_archive_dashboard", "action_status"],
 }
 
 

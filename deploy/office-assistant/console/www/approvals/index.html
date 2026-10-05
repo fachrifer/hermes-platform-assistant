@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Approvals - Agent Specialist Fleet</title>
-  <link rel="stylesheet" href="/approvals/approvals.css?v=2" />
+  <link rel="stylesheet" href="/approvals/approvals.css?v=3" />
 </head>
 <body>
   <header class="top">
@@ -23,10 +23,14 @@
     <section aria-labelledby="bot-chat-title">
       <h2 id="bot-chat-title">Athena session</h2>
       <p class="note">
-        If Bot Chat says it is open in another window, this stops that stuck TUI.
-        The chat and its history stay.
+        The web Dashboard hides Bot Chat, so open it from here. If it says it is open in
+        another window, release the lock first. The chat and its history stay.
       </p>
-      <button class="release" id="release-bot-chat" type="button">Release Bot Chat lock</button>
+      <p class="note" id="bot-chat-state" aria-live="polite">Checking Bot Chat...</p>
+      <div class="buttons">
+        <a class="button-link" id="open-bot-chat" aria-disabled="true" target="_blank" rel="noopener">Open Bot Chat (web)</a>
+        <button class="release" id="release-bot-chat" type="button">Release Bot Chat lock</button>
+      </div>
     </section>
 
     <section aria-labelledby="pending-title">
@@ -45,6 +49,6 @@
     </section>
   </main>
 
-  <script src="/approvals/approvals.js?v=3"></script>
+  <script src="/approvals/approvals.js?v=4"></script>
 </body>
 </html>
