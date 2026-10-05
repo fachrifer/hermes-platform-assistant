@@ -17,7 +17,11 @@ deploy/office-assistant/*_exporter-*/
 deploy/office-assistant/*_exporter-*.tar.gz
 .DS_Store
 .superpowers/
+.pytest_cache/
+.smoke/
 graphify-out/
+# Generated from ARCHITECTURE.md
+deploy/office-assistant/ARCHITECTURE.pdf
 
 deploy/office-assistant/spike/.env.spike
 deploy/office-assistant/spike/capture/

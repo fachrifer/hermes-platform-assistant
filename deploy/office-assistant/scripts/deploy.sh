@@ -18,6 +18,16 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+# Guard: this script rsyncs a tree and copies laptop env files onto the target.
+# On the live Lab (/home/timai/hermes-assistant) that destroys VM-only state
+# (.env, certs, approver login, gateway-owned routes). The Lab is updated with
+# scripts/ship-phase1b.ps1 + scripts/unpack-phase1b.sh. Read the README first.
+if [[ "${OFFICE_ALLOW_LAB_OVERWRITE:-0}" != "1" ]]; then
+  echo "refusing to run: deploy.sh overwrites the target directory (see README, 'Do not use scripts/deploy.sh for the Lab')." >&2
+  echo "Use scripts/ship-phase1b.ps1 for the Lab. Only for a throwaway host: OFFICE_ALLOW_LAB_OVERWRITE=1." >&2
+  exit 2
+fi
+
 OFFICE_DEPLOY_HOST="${OFFICE_DEPLOY_HOST:-10.216.4.80}"
 OFFICE_DEPLOY_USER="${OFFICE_DEPLOY_USER:-timai}"
 OFFICE_DEPLOY_DIR="${OFFICE_DEPLOY_DIR:-/home/timai/hermes-assistant}"

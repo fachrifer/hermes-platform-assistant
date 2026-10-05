@@ -41,6 +41,13 @@ RETIRED_SCRIPTS = (
     "apply-office-llm-config.py",
     "hermes-office-llm-cont-init.sh",
     "hermes-supervisor-cron-init.sh",
+    # August-layout shippers: `rsync --delete` of a stale tree over the live Lab dir.
+    "ship-to-vm.sh",
+    "build-and-ship.sh",
+    "export-images.sh",
+    "load-images.sh",
+    "gen-self-signed-cert.sh",
+    "stabilize-athena-vtuber.py",
 )
 
 
@@ -558,3 +565,18 @@ def test_local_up_writes_new_env_keys_only():
     assert '"OFFICE_GATEWAY_CONTEXT": "../.."' in text
     for stale in ("OPENAI_", "A2A_", "llm-edge"):
         assert stale not in text
+
+def test_deploy_sh_refuses_without_explicit_override():
+    result = _run(["bash", str(_script("deploy.sh"))], env={**os.environ, "OFFICE_ALLOW_LAB_OVERWRITE": "0"})
+    assert result.returncode == 2
+    assert "ship-phase1b.ps1" in result.stderr
+
+
+def test_no_script_deletes_on_the_lab_with_rsync():
+    # An `rsync --delete` of a stale tree over /home/timai/hermes-assistant caused an outage.
+    offenders = [
+        path.name
+        for path in SCRIPTS.iterdir()
+        if path.is_file() and path.suffix in (".sh", ".ps1") and "--delete" in path.read_text(errors="ignore")
+    ]
+    assert offenders == []

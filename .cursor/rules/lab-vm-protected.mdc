@@ -1,0 +1,14 @@
+---
+description: Protect the live Lab VM (10.216.4.80) fleet directory from destructive deploys
+alwaysApply: true
+---
+
+# Lab VM is production
+
+`/home/timai/hermes-assistant` on `10.216.4.80` is the live Hermes office fleet. Full rules: `AGENTS.md`.
+
+- Update it only with `deploy/office-assistant/scripts/ship-phase1b.ps1` + `unpack-phase1b.sh` (backup first).
+- Never `rsync --delete`, `rm -rf`, `docker compose down -v` or `docker volume rm` against it or the `office_*` volumes unless the user asks in this conversation.
+- Never ship from `hermes-platform-assistant`, `main` or any older checkout. The VM layout wins; pull from it, do not overwrite it.
+- Do not bump `HERMES_IMAGE`, rotate working keys, or touch `.env`/certs. Never print secrets.
+- Take a backup and announce the plan before any VM write; prefer read-only checks first.
