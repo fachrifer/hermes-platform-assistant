@@ -83,7 +83,8 @@ def _build(uids=("t1",)):
     (0.5, "percentunit", "50%"),
     (868678057, "decbytes", "869 MB"),
     (144099508224, "bytes", "134 GiB"),
-    (38287, "short", "38.3K"),
+    (38287, "short", "38,287"),
+    (2500000000, "short", "2.5B"),
     (4, "short", "4"),
     (0.2, "reqps", "0.2 req/s"),
     (36, "celsius", "36°C"),
@@ -221,6 +222,7 @@ def test_fleet_status_tiles_report_down_and_no_data_from_the_real_dashboard(graf
     assert levels["Rancher 10.216.78.129"] == ("NO DATA", "warning")
     assert levels["Lab-host 10.216.4.80"] == ("DOWN", "critical")
     assert levels["GPU node dc141f0601srv"][1] == "ok"
+    assert {s["min"] for s in hosts["series"]} == {"-"}, "a status tile must not print raw 1 / -1 as min and max"
 
 
 # ------------------------------------------------------------------------------ the tool
@@ -290,3 +292,15 @@ def test_html_escapes_panel_titles(grafana, tmp_path):
     grafana["dashboards"]["t1"] = _dash([_panel(1, "<script>alert(1)</script>")])
     page = grafana_report.render_html(_build())
     assert "<script>alert" not in page and "&lt;script&gt;" in page
+
+
+def test_row_titles_resolve_their_variables(grafana):
+    raw = json.loads((GRAFANA_DIR / "milvus-monitor.json").read_text(encoding="utf-8"))
+    grafana["dashboards"]["t1"] = raw
+    rows = {p["row"] for p in _build()["dashboards"][0]["panels"]}
+    assert "Status - milvus-production" in rows and not any("$" in row for row in rows)
+
+
+def test_a_flat_trend_is_drawn_in_the_middle():
+    svg = grafana_report._spark_svg([5.0, 5.0, 5.0, 5.0, 5.0], "ok")
+    assert {point.split(",")[1] for point in svg.split('points="')[1].split('"')[0].split()} == {"11.0"}

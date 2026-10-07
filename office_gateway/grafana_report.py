@@ -109,6 +109,9 @@ def format_value(value: float | None, unit: str = "", decimals: int | None = Non
     if unit in ("dtdhms", "dtdurations"):
         return _duration(value)
     if unit in ("", "short", "none"):
+        # Counts read better whole ("37,889") than rounded ("38K"); only huge or fractional numbers are scaled.
+        if float(value).is_integer() and abs(value) < 1e9:
+            return f"{int(value):,}"
         return _scaled(value, 1000, ("", "K", "M", "B"), decimals).replace(" ", "")
     return f"{_num(value, decimals)} {unit}"
 
@@ -359,7 +362,8 @@ def build_dashboard(base: str, token: str, uid: str, time_from: str, time_to: st
     for panel, row in found:
         record = {
             "id": panel.get("id"), "title": str(panel.get("title") or "")[:90], "type": str(panel.get("type") or ""),
-            "row": row[:60], "level": "info", "series": [], "state": "", "note": "",
+            # A row title can carry a variable ("Status - $server").
+            "row": grafana_api.substitute(row, bound)[:60], "level": "info", "series": [], "state": "", "note": "",
         }
         records.append(record)
         if panel.get("type") in SKIP_TYPES:
@@ -431,14 +435,16 @@ def _absorb(panel: dict, record: dict, position: int, answer: dict) -> None:
         values = item["values"]
         last = values[-1]
         text, level = judge(panel, last, unit, decimals)
+        # Min/max/avg of a value-mapped status (UP = 1, NO DATA = -1) would print raw codes, so leave them out.
+        mapped = bool(defaults.get("mappings"))
         record["series"].append({
             "name": _legend(legend, item["labels"], record["title"])[:80],
             "text": text,
             "level": level,
             "last": last,
-            "min": format_value(min(values), unit, decimals),
-            "max": format_value(max(values), unit, decimals),
-            "avg": format_value(sum(values) / len(values), unit, decimals),
+            "min": "-" if mapped else format_value(min(values), unit, decimals),
+            "max": "-" if mapped else format_value(max(values), unit, decimals),
+            "avg": "-" if mapped else format_value(sum(values) / len(values), unit, decimals),
             "spark": _spark(values) if len(values) > 3 else [],
         })
 
@@ -573,8 +579,11 @@ def _spark_svg(values: list[float], level: str) -> str:
     low, high = min(values), max(values)
     span = (high - low) or 1.0
     width, height = 110, 22
+    # A flat series sits in the middle instead of hugging the bottom edge.
     points = " ".join(
-        f"{i * width / (len(values) - 1):.1f},{height - 2 - (v - low) / span * (height - 4):.1f}" for i, v in enumerate(values)
+        f"{i * width / (len(values) - 1):.1f},"
+        f"{height / 2 if high == low else height - 2 - (v - low) / span * (height - 4):.1f}"
+        for i, v in enumerate(values)
     )
     color = {"critical": "#c53030", "warning": "#d69e2e"}.get(level, "#4361ee")
     return (f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">'
