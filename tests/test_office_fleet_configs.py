@@ -7,6 +7,7 @@ HERMES = Path(__file__).resolve().parents[1] / "deploy" / "office-assistant" / "
 ROLES = ("supervisor", "lab-host", "ingress", "llm", "cluster-gpu", "vector", "obs")
 SPECIALISTS = ROLES[1:]
 SURFACES = ("cli", "tui", "api_server", "gui", "desktop", "dashboard", "web")
+MODELS = ("qwen3.8-fast", "qwen3.8-reasoning", "qwen3.8-reasoning-xhigh")
 MUST_DISABLE = {"terminal", "file", "web", "browser", "code_execution", "delegation", "memory",
                 "session_search", "todo", "kanban", "clarify", "a2a"}
 
@@ -30,7 +31,10 @@ def test_brakes_and_thinking(role):
     assert provider["api"] == "${OFFICE_LLM_BASE_URL}"
     assert provider["request_timeout_seconds"] == 60
     assert provider["extra_body"]["chat_template_kwargs"]["enable_thinking"] is False
-    assert cfg["model"] == {"default": "qwen3.8-fast", "provider": "office-litellm"}
+    # The model is switched at runtime (/model) and the choice is saved back to config.yaml.
+    assert cfg["model"]["default"] in MODELS
+    assert cfg["model"]["provider"] == "office-litellm"
+    assert set(cfg["model"]) <= {"default", "provider", "thinking_level"}
     guard = cfg["tool_loop_guardrails"]
     assert guard["hard_stop_enabled"] is True
     assert set(guard["hard_stop_after"].values()) == {2}

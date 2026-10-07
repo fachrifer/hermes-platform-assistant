@@ -114,6 +114,7 @@ services:
       - ${OFFICE_DBUS_SOCKET:-/run/dbus/system_bus_socket}:/run/dbus/system_bus_socket:ro
       - ./edge:/edge:rw
       - ./certs:/certs:ro
+      - /home/timai/hermes-assistant/reports:/reports
     environment:
       OFFICE_GATEWAY_BIND_HOST: 0.0.0.0
       OFFICE_GATEWAY_PORT: "8080"
@@ -148,6 +149,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_DASHBOARD_PUBLISH:-10.216.4.80:9119}
     volumes:
       - hermes_supervisor_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/opt/data/reports
       - ./hermes/supervisor/config.yaml:/opt/data/config.yaml:ro
       - ./skills/supervisor:/opt/data/skills/office-supervisor:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
@@ -165,6 +167,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9121
     volumes:
       - hermes_lab_host_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/reports
       - ./hermes/lab-host/config.yaml:/opt/data/config.yaml:ro
       - ./skills/lab-host:/opt/data/skills/office-lab-host:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
@@ -182,6 +185,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9122
     volumes:
       - hermes_vector_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/reports
       - ./hermes/vector/config.yaml:/opt/data/config.yaml:ro
       - ./skills/vector:/opt/data/skills/office-vector:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
@@ -199,6 +203,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9123
     volumes:
       - hermes_cluster_gpu_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/reports
       - ./hermes/cluster-gpu/config.yaml:/opt/data/config.yaml:ro
       - ./skills/cluster-gpu:/opt/data/skills/office-cluster-gpu:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
@@ -216,6 +221,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9124
     volumes:
       - hermes_llm_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/reports
       - ./hermes/llm/config.yaml:/opt/data/config.yaml:ro
       - ./skills/llm:/opt/data/skills/office-llm:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
@@ -233,6 +239,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9125
     volumes:
       - hermes_obs_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/reports
       - ./hermes/obs/config.yaml:/opt/data/config.yaml:ro
       - ./skills/obs:/opt/data/skills/office-obs:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro
@@ -250,6 +257,7 @@ services:
       HERMES_DASHBOARD_PUBLIC_URL: http://${HERMES_BOT_BIND:-10.216.4.80}:9126
     volumes:
       - hermes_ingress_v2:/opt/data
+      - /home/timai/hermes-assistant/reports:/reports
       - ./hermes/ingress/config.yaml:/opt/data/config.yaml:ro
       - ./skills/ingress:/opt/data/skills/office-ingress:ro
       - ./scripts/hermes-cli-symlink-cont-init.sh:/etc/cont-init.d/08-hermes-cli:ro

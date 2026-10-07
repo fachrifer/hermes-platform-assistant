@@ -9,7 +9,8 @@ agent:
   disabled_toolsets: [terminal, file, web, browser, code_execution, delegation, memory, session_search, todo, kanban, clarify, a2a, vision, image_gen, tts, cronjob]
 
 model:
-  default: qwen3.8-fast
+  default: qwen3.8-reasoning
+  thinking_level: medium
   provider: office-litellm
 
 providers:

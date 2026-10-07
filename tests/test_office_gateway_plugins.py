@@ -1,3 +1,4 @@
+from pathlib import Path
 import asyncio
 
 from office_gateway.actions import ActionService
@@ -137,3 +138,17 @@ def test_a_broken_plugin_file_does_not_hide_builtin_tools(tmp_path):
     assert loaded.tools == ()
     registry = active_registry(make_config(tmp_path))
     assert "fleet_status" in registry
+
+def test_live_mcp_plugin_snapshot_loads_and_has_no_secrets():
+    # deploy/office-assistant/mcp_plugins mirrors the plugin volume on the Lab VM.
+    from office_gateway import mcp_plugins
+    from office_gateway.tools import REGISTRY
+
+    directory = Path(__file__).resolve().parents[1] / "deploy" / "office-assistant" / "mcp_plugins"
+    files = sorted(directory.glob("*.py"))
+    assert files, "plugin snapshot is empty"
+    for path in files:
+        source = path.read_text(encoding="utf-8")
+        assert "\r" not in source
+        loaded = mcp_plugins._load_file(path, path.stem, set(REGISTRY), replace=True)
+        assert loaded.tools or loaded.actions, f"{path.name} registers nothing"
