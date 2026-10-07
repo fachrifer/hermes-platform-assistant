@@ -5,7 +5,7 @@ set -euo pipefail
 # Default: print planned rules and exit 0 (dry-run).
 # Apply:    LAB_FIREWALL_APPLY=1 ./scripts/lab-firewall-https-edge.sh
 #
-# Keeps SSH :22 and HTTP/HTTPS :80/:443 reachable.
+# Keeps SSH :22, HTTP/HTTPS :80/:443 (AI platform) and the Hermes console :9443 reachable.
 # Rejects NEW inbound TCP to common Lab raw publish ports so services
 # are only reached via https://10.216.4.80/<path>/.
 
@@ -16,7 +16,7 @@ APPLY="${LAB_FIREWALL_APPLY:-0}"
 RAW_PORTS=(555 8000 3001 8001 8010 9119 19530 2379 6333 6334 9091)
 
 echo "Lab HTTPS edge firewall plan"
-echo "  allow: TCP 22, 80, 443"
+echo "  allow: TCP 22, 80, 443, 9443"
 echo "  reject NEW: TCP ${RAW_PORTS[*]}"
 echo "  apply: LAB_FIREWALL_APPLY=1 (currently APPLY=${APPLY})"
 
@@ -62,10 +62,11 @@ ensure_allow() {
 ensure_allow 22
 ensure_allow 80
 ensure_allow 443
+ensure_allow 9443
 
 for port in "${RAW_PORTS[@]}"; do
   reject_port "$port"
 done
 
-echo "applied: raw Lab ports rejected for NEW connections; 22/80/443 allowed"
+echo "applied: raw Lab ports rejected for NEW connections; 22/80/443/9443 allowed"
 echo "verify from another host: curl -vk https://10.216.4.80/ and curl --connect-timeout 2 http://10.216.4.80:555/ || true"

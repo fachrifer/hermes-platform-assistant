@@ -95,12 +95,12 @@ def test_approvals_routers_are_https_only_and_authenticated(rendered):
     doc, _, _ = rendered
     routers = doc["http"]["routers"]
     api = routers["approvals-api"]
-    assert api["entryPoints"] == ["websecure"]
+    assert api["entryPoints"] == ["hermes"]
     assert "tls" in api
     assert api["middlewares"] == ["approver-auth", "approver-token", "approvals-api-rewrite"]
     assert api["service"] == "office-gateway"
     page = routers["approvals-page"]
-    assert page["entryPoints"] == ["websecure"]
+    assert page["entryPoints"] == ["hermes"]
     assert page["middlewares"] == ["approver-auth"]
     assert page["service"] == "office-www"
     assert api["priority"] > page["priority"]
@@ -157,3 +157,43 @@ def test_console_links_to_approvals():
     html = (DEPLOY_ROOT / "console" / "www" / "index.html").read_text(encoding="utf-8")
     assert 'href="/approvals/"' in html
     assert "APPROVE &lt;id&gt;" not in html
+
+def test_public_https_belongs_to_the_ai_platform(rendered):
+    # :443/:80 are the AI platform's; the Athena console lives on its own :9443 entry point.
+    doc, _, _ = rendered
+    routers = doc["http"]["routers"]
+    public = {name: r for name, r in routers.items() if "websecure" in r.get("entryPoints", [])}
+    assert set(public) == {"aiplatform"}
+    root = public["aiplatform"]
+    assert root["rule"] == "PathPrefix(`/`)"
+    assert root["priority"] == 1 and root["service"] == "aiplatform"
+    assert doc["http"]["services"]["aiplatform"]["loadBalancer"]["servers"] == [
+        {"url": "http://host.docker.internal:3001"}
+    ]
+    for name, router in routers.items():
+        entries = router["entryPoints"]
+        assert entries in (["websecure"], ["hermes"], ["web"]), name
+        if name.startswith("bots-") and name.endswith("-http"):
+            assert entries == ["web"]  # plain-HTTP /bots/ stays reachable for Desktop
+    assert routers["athena"]["entryPoints"] == ["hermes"]
+    assert routers["dash"]["entryPoints"] == ["hermes"]
+    assert routers["fleet"]["entryPoints"] == ["hermes"]
+
+
+def test_traefik_entry_points_and_compose_publish_9443():
+    static = yaml.safe_load((DEPLOY_ROOT / "edge" / "traefik.yml").read_text(encoding="utf-8"))
+    assert {k: v["address"] for k, v in static["entryPoints"].items()} == {
+        "web": ":80", "websecure": ":443", "hermes": ":9443",
+    }
+    compose = yaml.safe_load((DEPLOY_ROOT / "docker-compose.yml").read_text(encoding="utf-8"))
+    edge_ports = compose["services"]["office-edge"]["ports"]
+    assert any(p.endswith(":9443") and "HERMES_CONSOLE_HERMES_PUBLISH" in p for p in edge_ports)
+    assert any(p.endswith(":443") and "HERMES_CONSOLE_TLS_PUBLISH" in p for p in edge_ports)
+    assert compose["services"]["office-gateway"]["environment"]["OFFICE_CONSOLE_URL"].endswith(":9443}")
+
+
+def test_edge_routes_never_shadow_the_ai_platform_root():
+    lines = (DEPLOY_ROOT / "edge" / "edge-routes").read_text(encoding="utf-8").splitlines()
+    paths = [line.split()[1] for line in lines if line.strip() and not line.lstrip().startswith("#")]
+    assert paths and "/aiplatform/" not in paths
+    assert "/" not in paths

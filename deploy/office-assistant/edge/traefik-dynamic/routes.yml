@@ -1,4 +1,4 @@
-# Generated from edge-routes — do not edit by hand.
+# Generated from edge-routes â€” do not edit by hand.
 http:
   routers:
     attu:
@@ -17,11 +17,24 @@ http:
       tls: {}
       service: toolbox
       priority: 20
+    inference:
+      rule: "PathPrefix(`/inference`)"
+      entryPoints:
+        - websecure
+      tls: {}
+      service: inference
+      priority: 20
+      middlewares:
+        - inference-strip
   middlewares:
     attu-strip:
       stripPrefix:
         prefixes:
           - "/attu"
+    inference-strip:
+      stripPrefix:
+        prefixes:
+          - "/inference"
   services:
     attu:
       loadBalancer:
@@ -31,3 +44,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:555"
+    inference:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8010"

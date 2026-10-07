@@ -102,7 +102,7 @@ into the role files and rewrites `.local-login`.
 
 ## Approvals
 
-`https://10.216.4.80/approvals/` (HTTPS only, basic auth from
+`https://10.216.4.80:9443/approvals/` (HTTPS only, basic auth from
 `edge/approvers.htpasswd`). Traefik sets `X-Approver` to the login name and adds
 the approver bearer, so the audit log records who clicked. The login is created
 once by `./scripts/ensure-approver.sh` (user `timai` unless `OFFICE_APPROVER_USER`
@@ -142,12 +142,12 @@ Extra headers empty; do not use OAuth. Use HTTP `:9119`, not `https://â€¦/da
 Outside the office (VPN): Bot Chat does not appear in the Dashboard's session
 list, because Hermes keeps the canonical Bot Chat hidden (`hidden = 1`; the
 Desktop reaches it through the bot row). Bookmark
-`https://10.216.4.80/approvals/api/bot-chat/open`: after the approver login it
+`https://10.216.4.80:9443/approvals/api/bot-chat/open`: after the approver login it
 redirects to the Dashboard chat for the current Bot Chat id (the Dashboard login
 keeps the target). The Approvals page has the same door as **Open Bot Chat
 (web)**. Not listing it in the Sessions panel is deliberate: Hermes uses the
 `hidden` flag to recognise the canonical chat. To open it by hand,
-`https://10.216.4.80/dash/chat?resume=<Bot Chat session id>` works; find the id with:
+`https://10.216.4.80:9443/dash/chat?resume=<Bot Chat session id>` works; find the id with:
 
 ```bash
 docker exec -u hermes office-hermes-agent-1 /opt/hermes/.venv/bin/python3 -c \
@@ -190,7 +190,17 @@ LAB_FIREWALL_APPLY=1 ./scripts/lab-firewall-https-edge.sh   # Lab only (optional
 ## HTTPS edge (Traefik)
 
 `office-edge` (Traefik) terminates TLS on `:443` with a **Lab Internal CA** leaf
-(IP SAN `10.216.4.80` and `127.0.0.1`, 90 days). HTTP `:80` redirects to HTTPS.
+(IP SAN `10.216.4.80` and `127.0.0.1`, 90 days). HTTP `:80` redirects to HTTPS
+except plain-HTTP `/bots/`.
+
+**Ports.** `:80`/`:443` belong to the AI platform: Traefik sends `/` to `aiplatform-dashboard`
+(host `:3001`), and edge-routes such as `/attu/`, `/toolbox/` and `/inference/` still win because
+they are more specific. The Athena console, `/approvals/`, `/api/fleet` and HTTPS `/bots/` live on
+`https://10.216.4.80:9443` (Traefik entry point `hermes`, published by `HERMES_CONSOLE_HERMES_PUBLISH`).
+Hermes uses root paths (`/assets/`, `/api/`, `/auth/`), which collide with the AI platform, so it cannot
+share a host port under a sub-path. Do not add an edge route for `/aiplatform/`: it would shadow
+the app's own `/aiplatform` pages. Desktop is unchanged (HTTP `:9119` and `:9121`-`:9126`).
+`lab-firewall-https-edge.sh` allows `:9443`; open it for VPN users as well.
 Static files are served by internal `office-www` (no host ports). The CA private
 key stays on the host in `ca/` and is **not** mounted into Traefik.
 

@@ -125,7 +125,7 @@ services:
       OFFICE_EDGE_LOCATIONS_PATH: /edge/traefik-dynamic/routes.yml
       OFFICE_EDGE_BACKUP_DIR: /edge/backups
       OFFICE_EDGE_TLS_CERT_PATH: /certs/tls.crt
-      OFFICE_CONSOLE_URL: https://${HERMES_CONSOLE_TLS_HOST:-10.216.4.80}
+      OFFICE_CONSOLE_URL: https://${HERMES_CONSOLE_TLS_HOST:-10.216.4.80:9443}
 
   hermes-agent:
     <<: *hermes-agent
@@ -292,6 +292,7 @@ services:
     ports:
       - "${HERMES_CONSOLE_PUBLISH:-10.216.4.80:80}:80"
       - "${HERMES_CONSOLE_TLS_PUBLISH:-10.216.4.80:443}:443"
+      - "${HERMES_CONSOLE_HERMES_PUBLISH:-10.216.4.80:9443}:9443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

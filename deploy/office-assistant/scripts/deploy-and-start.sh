@@ -85,6 +85,7 @@ export OFFICE_GATEWAY_CONTEXT="${OFFICE_GATEWAY_CONTEXT:-.}"
 DASHBOARD="$(office_env_value HERMES_DASHBOARD_PUBLISH 10.216.4.80:9119)"
 CONSOLE="$(office_env_value HERMES_CONSOLE_PUBLISH 10.216.4.80:80)"
 TLS="$(office_env_value HERMES_CONSOLE_TLS_PUBLISH 10.216.4.80:443)"
+HERMES_TLS="$(office_env_value HERMES_CONSOLE_HERMES_PUBLISH 10.216.4.80:9443)"
 
 TLS_IP="${TLS_IP:-10.216.4.80}" "$SCRIPT_DIR/init-lab-ca.sh"
 TLS_IP="${TLS_IP:-10.216.4.80}" "$SCRIPT_DIR/issue-edge-cert.sh"
@@ -98,6 +99,7 @@ docker compose down --remove-orphans
 office_stop_port_holders "$DASHBOARD"
 office_stop_port_holders "$CONSOLE"
 office_stop_port_holders "$TLS"
+office_stop_port_holders "$HERMES_TLS"
 
 if docker image inspect "$OFFICE_GW_IMAGE" >/dev/null 2>&1; then
   echo "docker compose up -d (using existing $OFFICE_GW_IMAGE)"
@@ -107,7 +109,8 @@ else
   docker compose up -d --build
 fi
 
-echo "Athena console (HTTPS): https://${TLS}"
+echo "Athena console (HTTPS): https://${HERMES_TLS}"
+echo "AI platform (HTTPS): https://${TLS}"
 echo "HTTP redirect: http://${CONSOLE}"
 echo "Dashboard (raw): http://${DASHBOARD}"
 echo "Status: $SCRIPT_DIR/status.sh"

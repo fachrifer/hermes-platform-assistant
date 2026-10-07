@@ -106,7 +106,7 @@ password = (
     (supervisor.get("HERMES_DASHBOARD_PASSWORD") or "").strip()
     or (root.get("HERMES_DASHBOARD_PASSWORD") or "").strip()
 )
-tls = (root.get("HERMES_CONSOLE_TLS_PUBLISH") or "10.216.4.80:443").strip()
+tls = (root.get("HERMES_CONSOLE_HERMES_PUBLISH") or "10.216.4.80:9443").strip()
 host, _, port = tls.partition(":")
 console = f"https://{host}" if port in {"", "443"} else f"https://{host}:{port}"
 login_path = deploy / ".local-login"

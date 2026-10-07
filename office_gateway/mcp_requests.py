@@ -42,7 +42,7 @@ def archive_dashboard_spec() -> dict:
             "payload": ["uid", "title", "folder", "reason", "hard_delete"],
             "soft_archive_folder": "_archived",
             "hard_delete_endpoint": "DELETE /api/dashboards/uid/{uid}",
-            "approval_url": "https://10.216.4.80/approvals/",
+            "approval_url": "https://10.216.4.80:9443/approvals/",
         },
         "dashboards": list(ARCHIVE_DASHBOARD_UIDS),
         "reason": ARCHIVE_DASHBOARD_REASON,

@@ -19,6 +19,14 @@ entryPoints:
         readTimeout: 0s
         writeTimeout: 0s
         idleTimeout: 86400s
+  # Athena console, approvals and fleet API. Kept off :443 so the AI platform can own it.
+  hermes:
+    address: ":9443"
+    transport:
+      respondingTimeouts:
+        readTimeout: 0s
+        writeTimeout: 0s
+        idleTimeout: 86400s
 
 providers:
   file:

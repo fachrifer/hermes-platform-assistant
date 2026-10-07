@@ -45,7 +45,7 @@ BOT_ROLES = (
 def bot_routers(role: str, svc: str, *, http: bool) -> str:
     prefix = f"/bots/{role}"
     tag = f"bots-{role}-http" if http else f"bots-{role}"
-    entry = "[web]" if http else "[websecure]"
+    entry = "[web]" if http else "[hermes]"
     tls = "" if http else "      tls: {}\n"
     return f"""    {tag}-ws:
       rule: "PathPrefix(`{prefix}/api/ws`)"

@@ -1,6 +1,7 @@
 # name | public_path | upstream | websocket | strip_prefix (optional, default 1)
 # strip_prefix=0 keeps the public path (needed for Next.js basePath apps).
-# Edit this file to add HTTP services behind https://10.216.4.80/<path>/
+# Edit this file to add HTTP services behind https://10.216.4.80/<path>/ (public :443).
+# / itself belongs to the AI platform (core.yml router), so never add a route for /aiplatform/.
 # Then: python3 scripts/render-edge-traefik.py && docker compose up -d office-edge
 # (or let Janus apply_edge_routes via office-gateway)
 #
@@ -10,3 +11,4 @@
 # Raw :555/:8000 are unchanged by this stack (firewall not modified here).
 attu        /attu/        127.0.0.1:8000   0
 toolbox     /toolbox/     127.0.0.1:555    0  0
+inference   /inference/   127.0.0.1:8010  0  1

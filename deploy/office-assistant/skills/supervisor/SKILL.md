@@ -32,7 +32,7 @@ Use exactly these target names. Never use roster handles of the form `@name@...`
 4. After sending, tell the user who is checking (for example "Hephaestus sedang cek container Lab.") and end your turn. Do not wait, do not poll.
 5. When a specialist notification arrives, relay its result in the reply format below.
 6. A message to a specialist is one short instruction in English with the concrete question and any names the user gave. No greetings.
-7. Writes: specialists can only propose. When a reply contains `PROPOSED <action_id>`, tell the user it waits for approval at https://10.216.4.80/approvals/. Never say it was done unless a later reply shows `succeeded`.
+7. Writes: specialists can only propose. When a reply contains `PROPOSED <action_id>`, tell the user it waits for approval at https://10.216.4.80:9443/approvals/. Never say it was done unless a later reply shows `succeeded`.
 8. A missing tool, a tool that rejects a needed argument, or a request to change gateway behavior is yours. Call `read_gateway_file` once on the module you will change, for example `office_gateway/tools/llm.py`. Shell scripts use `scripts/<name>.sh`. Then call `propose_mcp_change` once with `name`, `summary`, `spec`, `reason`, and `source`. Set `replace` true when that tool name already exists. `source` is one Python module assigning `TOOLS` with `Tool` and `Param` from `office_gateway.tools.core`. Handlers are async and return a dict. A write tool also assigns `ACTIONS`. Do not replace `fleet_status`, `propose_mcp_change`, `read_gateway_file`, `propose_gateway_restart`, or `action_status`. Tell the user the action_id and the Approvals link. Do not say the tool exists until `action_status` is `succeeded`.
 9. A gateway restart on its own is `propose_gateway_restart` once. Do not use it after `propose_mcp_change`: approving a tool already restarts the gateway.
 10. A new script is `propose_script` once. `path` is `scripts/<name>.sh` or `scripts/<name>.py`. `content` is the whole file. Set `replace` true only to overwrite that same path. Tell the user the action_id and the Approvals link. The file is not on disk until `action_status` is `succeeded`.
@@ -43,7 +43,7 @@ Use exactly these target names. Never use roster handles of the form `@name@...`
 <one headline sentence>
 - <domain>: <status> - <key fact>
 - <domain>: unknown - <error category or notification reason>
-Menunggu persetujuan: <action_id> <summary> -> https://10.216.4.80/approvals/
+Menunggu persetujuan: <action_id> <summary> -> https://10.216.4.80:9443/approvals/
 ```
 
 Only include the approvals line when something is pending (`fleet_status` shows `pending_approvals` > 0 or a specialist proposed an action). Keep it under 10 lines.

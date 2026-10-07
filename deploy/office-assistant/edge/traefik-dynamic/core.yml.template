@@ -1,4 +1,7 @@
 # Template for Traefik core routers (Athena, Dashboard, fleet).
+# Entry points: websecure (:443) is the public front door and belongs to the AI platform
+# (catch-all / -> aiplatform-dashboard, plus edge-routes). hermes (:9443) carries the Athena
+# console, /approvals, /api/fleet and /bots/. web (:80) redirects to HTTPS except plain-HTTP /bots/.
 # Render with: scripts/render-traefik-core.sh (injects the supervisor and approver gateway tokens).
 # Do not put real tokens in git — core.yml is generated on the host.
 
@@ -47,9 +50,18 @@ http:
 __BOT_MIDDLEWARES__
 
   routers:
+    # AI platform (Next.js, host :3001) owns / on the public HTTPS port. Priority 1 so every
+    # path-scoped edge route (attu, toolbox, ...) still wins.
+    aiplatform:
+      rule: "PathPrefix(`/`)"
+      entryPoints: [websecure]
+      tls: {}
+      priority: 1
+      service: aiplatform
+
     fleet:
       rule: "PathPrefix(`/api/fleet`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 100
       middlewares: [fleet-auth, fleet-rewrite]
@@ -59,7 +71,7 @@ __BOT_MIDDLEWARES__
     # name and injects the approver bearer (never held by any agent).
     approvals-api:
       rule: "PathPrefix(`/approvals/api`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 120
       middlewares: [approver-auth, approver-token, approvals-api-rewrite]
@@ -67,7 +79,7 @@ __BOT_MIDDLEWARES__
 
     approvals-page:
       rule: "PathPrefix(`/approvals`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 115
       middlewares: [approver-auth]
@@ -75,7 +87,7 @@ __BOT_MIDDLEWARES__
 
     api:
       rule: "PathPrefix(`/api/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
@@ -83,49 +95,49 @@ __BOT_MIDDLEWARES__
     # Dashboard chat WS is /api/ws (not under /dash/). Keep above edge-routes (priority 20).
     api-ws:
       rule: "PathPrefix(`/api/ws`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 110
       service: hermes-agent
 
     auth:
       rule: "PathPrefix(`/auth/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
 
     fonts:
       rule: "PathPrefix(`/fonts/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
 
     fonts-terminal:
       rule: "PathPrefix(`/fonts-terminal/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
 
     assets:
       rule: "PathPrefix(`/assets/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
 
     dashboard-plugins:
       rule: "PathPrefix(`/dashboard-plugins/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
 
     login:
       rule: "Path(`/login`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       middlewares: [dash-login-next]
@@ -133,14 +145,14 @@ __BOT_MIDDLEWARES__
 
     favicon:
       rule: "Path(`/favicon.ico`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 90
       service: hermes-agent
 
     dash:
       rule: "PathPrefix(`/dash/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 80
       middlewares: [dash-strip]
@@ -159,20 +171,25 @@ __BOT_ROUTERS__
 
     avatars:
       rule: "PathPrefix(`/avatars/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 50
       service: office-www
 
     athena:
       rule: "PathPrefix(`/`)"
-      entryPoints: [websecure]
+      entryPoints: [hermes]
       tls: {}
       priority: 1
       middlewares: [village-off]
       service: hermes-agent
 
   services:
+    aiplatform:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://host.docker.internal:3001"
     office-gateway:
       loadBalancer:
         servers:
