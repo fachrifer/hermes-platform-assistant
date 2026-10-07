@@ -29,6 +29,11 @@ http:
         regex: "^https://([^/]+)/?$"
         replacement: "https://${1}/dash/"
         permanent: false
+    hermes-redirect:
+      redirectRegex:
+        regex: "^https?://([^/:]+)(:\\d+)?/hermes(/.*)?$"
+        replacement: "https://${1}:9443/"
+        permanent: false
     aiplatform-root-redirect:
       redirectRegex:
         regex: "^https://([^/]+)/?$"
@@ -62,6 +67,14 @@ __BOT_MIDDLEWARES__
       entryPoints: [websecure]
       tls: {}
       priority: 30
+      service: aiplatform
+    # /hermes is only a pointer: the dashboard SPA uses root-absolute paths, so it lives on :9443.
+    hermes-pointer:
+      rule: "PathPrefix(`/hermes`)"
+      entryPoints: [websecure]
+      tls: {}
+      priority: 30
+      middlewares: [hermes-redirect]
       service: aiplatform
     aiplatform-root:
       rule: "Path(`/`)"
