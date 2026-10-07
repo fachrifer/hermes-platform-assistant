@@ -193,12 +193,12 @@ LAB_FIREWALL_APPLY=1 ./scripts/lab-firewall-https-edge.sh   # Lab only (optional
 (IP SAN `10.216.4.80` and `127.0.0.1`, 90 days). HTTP `:80` redirects to HTTPS
 except plain-HTTP `/bots/`.
 
-**Ports.** `:80`/`:443` belong to the AI platform: Traefik sends `/` to `aiplatform-dashboard`
+**Ports.** +
 (host `:3001`), and edge-routes such as `/attu/`, `/toolbox/` and `/inference/` still win because
 they are more specific. The Athena console, `/approvals/`, `/api/fleet` and HTTPS `/bots/` live on
 `https://10.216.4.80:9443` (Traefik entry point `hermes`, published by `HERMES_CONSOLE_HERMES_PUBLISH`).
 Hermes uses root paths (`/assets/`, `/api/`, `/auth/`), which collide with the AI platform, so it cannot
-share a host port under a sub-path. Do not add an edge route for `/aiplatform/`: it would shadow
+share a host port under a sub-path. +
 the app's own `/aiplatform` pages. Desktop is unchanged (HTTP `:9119` and `:9121`-`:9126`).
 `lab-firewall-https-edge.sh` allows `:9443`; open it for VPN users as well.
 Static files are served by internal `office-www` (no host ports). The CA private

@@ -1,6 +1,6 @@
 # Template for Traefik core routers (Athena, Dashboard, fleet).
 # Entry points: websecure (:443) is the public front door and belongs to the AI platform
-# (catch-all / -> aiplatform-dashboard, plus edge-routes). hermes (:9443) carries the Athena
+# (/aiplatform/* -> aiplatform-dashboard, / redirects there, plus edge-routes). hermes (:9443) carries the Athena
 # console, /approvals, /api/fleet and /bots/. web (:80) redirects to HTTPS except plain-HTTP /bots/.
 # Render with: scripts/render-traefik-core.sh (injects the supervisor and approver gateway tokens).
 # Do not put real tokens in git — core.yml is generated on the host.
@@ -29,6 +29,11 @@ http:
         regex: "^https://([^/]+)/?$"
         replacement: "https://${1}/dash/"
         permanent: false
+    aiplatform-root-redirect:
+      redirectRegex:
+        regex: "^https://([^/]+)/?$"
+        replacement: "https://${1}/aiplatform/"
+        permanent: false
     https-redirect:
       redirectScheme:
         scheme: https
@@ -50,13 +55,20 @@ http:
 __BOT_MIDDLEWARES__
 
   routers:
-    # AI platform (Next.js, host :3001) owns / on the public HTTPS port. Priority 1 so every
-    # path-scoped edge route (attu, toolbox, ...) still wins.
+    # AI platform (Next.js, host :3001) is built with basePath /aiplatform, so it is served at
+    # /aiplatform/* with the path kept, and / on the public HTTPS port redirects there.
     aiplatform:
-      rule: "PathPrefix(`/`)"
+      rule: "PathPrefix(`/aiplatform`)"
       entryPoints: [websecure]
       tls: {}
-      priority: 1
+      priority: 30
+      service: aiplatform
+    aiplatform-root:
+      rule: "Path(`/`)"
+      entryPoints: [websecure]
+      tls: {}
+      priority: 10
+      middlewares: [aiplatform-root-redirect]
       service: aiplatform
 
     fleet:

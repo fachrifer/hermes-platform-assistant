@@ -163,10 +163,14 @@ def test_public_https_belongs_to_the_ai_platform(rendered):
     doc, _, _ = rendered
     routers = doc["http"]["routers"]
     public = {name: r for name, r in routers.items() if "websecure" in r.get("entryPoints", [])}
-    assert set(public) == {"aiplatform"}
-    root = public["aiplatform"]
-    assert root["rule"] == "PathPrefix(`/`)"
-    assert root["priority"] == 1 and root["service"] == "aiplatform"
+    assert set(public) == {"aiplatform", "aiplatform-root"}
+    # The app is built with basePath /aiplatform: keep the path, and send `/` there.
+    assert public["aiplatform"]["rule"] == "PathPrefix(`/aiplatform`)"
+    assert public["aiplatform"]["service"] == "aiplatform"
+    root = public["aiplatform-root"]
+    assert root["rule"] == "Path(`/`)" and root["middlewares"] == ["aiplatform-root-redirect"]
+    redirect = doc["http"]["middlewares"]["aiplatform-root-redirect"]["redirectRegex"]
+    assert redirect["replacement"] == "https://${1}/aiplatform/"
     assert doc["http"]["services"]["aiplatform"]["loadBalancer"]["servers"] == [
         {"url": "http://host.docker.internal:3001"}
     ]
@@ -192,7 +196,7 @@ def test_traefik_entry_points_and_compose_publish_9443():
     assert compose["services"]["office-gateway"]["environment"]["OFFICE_CONSOLE_URL"].endswith(":9443}")
 
 
-def test_edge_routes_never_shadow_the_ai_platform_root():
+def test_edge_routes_do_not_duplicate_the_ai_platform_route():
     lines = (DEPLOY_ROOT / "edge" / "edge-routes").read_text(encoding="utf-8").splitlines()
     paths = [line.split()[1] for line in lines if line.strip() and not line.lstrip().startswith("#")]
     assert paths and "/aiplatform/" not in paths
