@@ -116,17 +116,32 @@ def template_variables(dashboard: dict) -> list[dict[str, Any]]:
         current = item.get("current") if isinstance(item.get("current"), dict) else {}
         text = current.get("text") if isinstance(current, dict) else ""
         value = current.get("value") if isinstance(current, dict) else ""
-        chosen = _variable_text(text) or _variable_text(value)
-        if chosen in _SKIP_CURRENT:
-            chosen = ""
-        rows.append(
-            {
-                "name": name[:64],
-                "current": chosen[:128],
-                "all_value": str(item.get("allValue") or "").strip()[:128],
-                "include_all": bool(item.get("includeAll")),
-            }
-        )
+        kind = str(item.get("type") or "").strip().lower()[:32]
+        plugin = ""
+        if kind == "datasource":
+            # Grafana stores the display name in current.text and the uid in current.value.
+            # Binding the name makes /api/ds/query answer "Data source not found".
+            chosen = _variable_text(value)
+            if chosen in _SKIP_CURRENT or not _UID_RE.fullmatch(chosen):
+                chosen = ""
+            query = item.get("query")
+            if isinstance(query, str):
+                plugin = query.strip().lower()[:64]
+        else:
+            chosen = _variable_text(text) or _variable_text(value)
+            if chosen in _SKIP_CURRENT:
+                chosen = ""
+        row = {
+            "name": name[:64],
+            "current": chosen[:128],
+            "all_value": str(item.get("allValue") or "").strip()[:128],
+            "include_all": bool(item.get("includeAll")),
+        }
+        if kind:
+            row["kind"] = kind
+        if plugin:
+            row["plugin"] = plugin
+        rows.append(row)
     return rows
 
 
@@ -149,9 +164,43 @@ def parse_time_range(raw: str | None) -> tuple[str, str]:
     return start, end
 
 
+def apply_datasource_defaults(base: str, token: str, variables: list[dict]) -> None:
+    """Fill a datasource variable that has no saved uid when exactly one datasource of that type exists.
+
+    Insightface-prod-v2's ``loki`` variable is type ``datasource`` with an empty current value, so
+    LogQL never reached Loki. Two datasources of the same type are left empty for the caller to pass.
+    """
+    pending = [
+        item for item in variables or []
+        if item.get("kind") == "datasource" and not item.get("current") and item.get("plugin")
+    ]
+    if not pending:
+        return
+    try:
+        with _client(base, token) as client:
+            payload = _request(client, "GET", "/api/datasources", token)
+    except GrafanaClientError:
+        return
+    if not isinstance(payload, list):
+        return
+    by_type: dict[str, list[str]] = {}
+    for source in payload:
+        if not isinstance(source, dict):
+            continue
+        uid = str(source.get("uid") or "").strip()
+        kind = str(source.get("type") or "").strip().lower()
+        if kind and _UID_RE.fullmatch(uid):
+            by_type.setdefault(kind, []).append(uid)
+    for item in pending:
+        matches = by_type.get(str(item.get("plugin")), [])
+        if len(matches) == 1:
+            item["current"] = matches[0]
+
+
 def bind_variables(variables: list[dict], caller: dict[str, str] | None, time_from: str) -> dict[str, str]:
     duration = time_from[4:] if time_from.startswith("now-") else "1h"
-    bound = {"__range": duration, "__rate_interval": "2m", "__interval": "1m"}
+    # $__auto is Grafana's step. Log panels on Insightface-prod-v2 use it inside rate().
+    bound = {"__range": duration, "__rate_interval": "2m", "__interval": "1m", "__auto": "1m"}
     for item in variables or []:
         name = str(item.get("name") or "").strip()
         if not name:
@@ -254,13 +303,15 @@ def get_dashboard(base: str, token: str, uid: str) -> dict[str, Any]:
     url = str(meta.get("url") or f"/d/{uid}")
     if url.startswith("/"):
         url = base.rstrip("/") + url
+    variables = template_variables(dashboard)
+    apply_datasource_defaults(base, token, variables)
     return {
         "title": str(dashboard.get("title") or ""),
         "uid": str(dashboard.get("uid") or uid),
         "folder": str(meta.get("folderTitle") or "General"),
         "url": url,
         "panels": summarize_panels(dashboard),
-        "variables": template_variables(dashboard),
+        "variables": variables,
     }
 
 

@@ -346,6 +346,63 @@ def test_summarize_panels_reads_queries_nested_under_a_row():
     assert panels == [{"id": 2, "title": "Up", "type": "stat", "queries": ["up"], "row": "Nodes"}]
 
 
+def test_datasource_variable_binds_the_uid_not_the_display_name():
+    rows = grafana_api.template_variables(
+        {
+            "templating": {
+                "list": [
+                    {
+                        "name": "datasource",
+                        "type": "datasource",
+                        "query": "prometheus",
+                        "current": {"text": "prometheus", "value": "prom-uid"},
+                    },
+                    {
+                        "name": "loki",
+                        "type": "datasource",
+                        "query": "loki",
+                        "current": {"text": None, "value": None},
+                    },
+                    {
+                        "name": "namespace",
+                        "type": "query",
+                        "current": {"text": "insightface-prod", "value": "insightface-prod"},
+                    },
+                ]
+            }
+        }
+    )
+    by_name = {row["name"]: row for row in rows}
+    assert by_name["datasource"]["current"] == "prom-uid"
+    assert by_name["loki"]["current"] == "" and by_name["loki"]["plugin"] == "loki"
+    assert by_name["namespace"]["current"] == "insightface-prod"
+
+
+def test_empty_datasource_variable_uses_the_only_datasource_of_that_type(monkeypatch):
+    def request(_client, _method, url, _token, body=None):
+        assert url == "/api/datasources"
+        return [
+            {"type": "prometheus", "uid": "prom1"},
+            {"type": "loki", "uid": "loki1"},
+            {"type": "loki", "uid": "loki2"},
+        ]
+
+    monkeypatch.setattr(grafana_api, "_request", request)
+    variables = [
+        {"name": "datasource", "kind": "datasource", "plugin": "prometheus", "current": ""},
+        {"name": "loki", "kind": "datasource", "plugin": "loki", "current": ""},
+    ]
+    grafana_api.apply_datasource_defaults("http://grafana.test", "tok", variables)
+    assert variables[0]["current"] == "prom1"
+    assert variables[1]["current"] == ""
+
+
+def test_auto_interval_is_substituted_into_log_queries():
+    bound = grafana_api.bind_variables([], None, "now-6h")
+    assert bound["__range"] == "6h" and bound["__auto"] == "1m"
+    assert grafana_api.substitute('rate({ns="a"}[$__auto])', bound) == 'rate({ns="a"}[1m])'
+
+
 def test_propose_mcp_change_files_the_archive_spec_without_touching_grafana(tmp_path, monkeypatch):
     def forbidden(*_args, **_kwargs):
         raise AssertionError("grafana must stay unchanged")
