@@ -39,6 +39,11 @@ http:
         regex: "^https://([^/]+)/?$"
         replacement: "https://${1}/aiplatform/"
         permanent: false
+    # The app links rel=icon to /favicon.ico (not under its basePath). Serve its own icon there
+    # so the tab does not keep the Hermes icon cached from when the console lived on :443.
+    aiplatform-favicon-rewrite:
+      replacePath:
+        path: "/aiplatform/favicon.ico"
     https-redirect:
       redirectScheme:
         scheme: https
@@ -67,6 +72,13 @@ __BOT_MIDDLEWARES__
       entryPoints: [websecure]
       tls: {}
       priority: 30
+      service: aiplatform
+    aiplatform-favicon:
+      rule: "Path(`/favicon.ico`)"
+      entryPoints: [websecure]
+      tls: {}
+      priority: 40
+      middlewares: [aiplatform-favicon-rewrite]
       service: aiplatform
     # /hermes is only a pointer: the dashboard SPA uses root-absolute paths, so it lives on :9443.
     hermes-pointer:

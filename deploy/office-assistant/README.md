@@ -195,6 +195,7 @@ except plain-HTTP `/bots/`.
 
 **Ports.** `:80`/`:443` belong to the AI platform: Traefik sends `/aiplatform/*` to `aiplatform-dashboard`
 (host `:3001`, built with `basePath: "/aiplatform"`, so the path is kept) and redirects `/` there.
+`/favicon.ico` on `:443` is rewritten to the app's own icon; the Hermes icon stays on `:9443`.
 Edge-routes such as `/attu/`, `/toolbox/` and `/inference/` (`aiplatform-agent-inference`, host `:8010`)
 sit beside it; the `/aiplatform` route lives in `core.yml.template`, so do not add a second one to
 `edge-routes`. The Athena console, `/approvals/`, `/api/fleet` and HTTPS `/bots/` live on

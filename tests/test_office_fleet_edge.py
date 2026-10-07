@@ -163,7 +163,7 @@ def test_public_https_belongs_to_the_ai_platform(rendered):
     doc, _, _ = rendered
     routers = doc["http"]["routers"]
     public = {name: r for name, r in routers.items() if "websecure" in r.get("entryPoints", [])}
-    assert set(public) == {"aiplatform", "aiplatform-root", "hermes-pointer"}
+    assert set(public) == {"aiplatform", "aiplatform-root", "aiplatform-favicon", "hermes-pointer"}
     # The app is built with basePath /aiplatform: keep the path, and send `/` there.
     assert public["aiplatform"]["rule"] == "PathPrefix(`/aiplatform`)"
     assert public["aiplatform"]["service"] == "aiplatform"
@@ -171,6 +171,11 @@ def test_public_https_belongs_to_the_ai_platform(rendered):
     assert root["rule"] == "Path(`/`)" and root["middlewares"] == ["aiplatform-root-redirect"]
     redirect = doc["http"]["middlewares"]["aiplatform-root-redirect"]["redirectRegex"]
     assert redirect["replacement"] == "https://${1}/aiplatform/"
+    # /favicon.ico on :443 is the AI platform's icon, not the Hermes one on :9443.
+    fav = public["aiplatform-favicon"]
+    assert fav["rule"] == "Path(`/favicon.ico`)" and fav["service"] == "aiplatform"
+    assert fav["middlewares"] == ["aiplatform-favicon-rewrite"]
+    assert doc["http"]["middlewares"]["aiplatform-favicon-rewrite"]["replacePath"]["path"] == "/aiplatform/favicon.ico"
     # /hermes only points at the console; the SPA cannot live under a prefix.
     pointer = public["hermes-pointer"]
     assert pointer["rule"] == "PathPrefix(`/hermes`)" and pointer["middlewares"] == ["hermes-redirect"]
