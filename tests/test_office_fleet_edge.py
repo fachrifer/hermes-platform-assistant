@@ -163,7 +163,7 @@ def test_public_https_belongs_to_the_ai_platform(rendered):
     doc, _, _ = rendered
     routers = doc["http"]["routers"]
     public = {name: r for name, r in routers.items() if "websecure" in r.get("entryPoints", [])}
-    assert set(public) == {"aiplatform", "aiplatform-root", "hermes-pointer"}
+    assert set(public) == {"aiplatform", "aiplatform-root", "hermes-mount"}
     # The app is built with basePath /aiplatform: keep the path, and send `/` there.
     assert public["aiplatform"]["rule"] == "PathPrefix(`/aiplatform`)"
     assert public["aiplatform"]["service"] == "aiplatform"
@@ -171,10 +171,10 @@ def test_public_https_belongs_to_the_ai_platform(rendered):
     assert root["rule"] == "Path(`/`)" and root["middlewares"] == ["aiplatform-root-redirect"]
     redirect = doc["http"]["middlewares"]["aiplatform-root-redirect"]["redirectRegex"]
     assert redirect["replacement"] == "https://${1}/aiplatform/"
-    # /hermes only points at the console; the SPA cannot live under a prefix.
-    pointer = public["hermes-pointer"]
-    assert pointer["rule"] == "PathPrefix(`/hermes`)" and pointer["middlewares"] == ["hermes-redirect"]
-    assert doc["http"]["middlewares"]["hermes-redirect"]["redirectRegex"]["replacement"] == "https://${1}:9443/"
+    # /hermes/ serves the dashboard itself; stripPrefix adds X-Forwarded-Prefix for the SPA.
+    mount = public["hermes-mount"]
+    assert mount["service"] == "hermes-agent" and mount["middlewares"] == ["hermes-strip"]
+    assert doc["http"]["middlewares"]["hermes-strip"]["stripPrefix"]["prefixes"] == ["/hermes"]
     assert doc["http"]["services"]["aiplatform"]["loadBalancer"]["servers"] == [
         {"url": "http://host.docker.internal:3001"}
     ]

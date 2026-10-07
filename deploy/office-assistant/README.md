@@ -199,9 +199,9 @@ Edge-routes such as `/attu/`, `/toolbox/` and `/inference/` (`aiplatform-agent-i
 sit beside it; the `/aiplatform` route lives in `core.yml.template`, so do not add a second one to
 `edge-routes`. The Athena console, `/approvals/`, `/api/fleet` and HTTPS `/bots/` live on
 `https://10.216.4.80:9443` (Traefik entry point `hermes`, published by `HERMES_CONSOLE_HERMES_PUBLISH`).
-Hermes uses root paths (`/assets/`, `/api/`, `/auth/`), which collide with the AI platform, so it cannot
-share a host port under a sub-path; `https://10.216.4.80/hermes` therefore only redirects to the console
-on `:9443`. Desktop is unchanged (HTTP `:9119` and `:9121`-`:9126`).
+The Hermes dashboard is also reachable at `https://10.216.4.80/hermes/` (Traefik `stripPrefix` sends
+`X-Forwarded-Prefix: /hermes`, which Hermes uses for SPA assets, cookies and redirects); `:9443` keeps working.
+Desktop is unchanged (HTTP `:9119` and `:9121`-`:9126`).
 `lab-firewall-https-edge.sh` allows `:9443`; open it for VPN users as well.
 Static files are served by internal `office-www` (no host ports). The CA private
 key stays on the host in `ca/` and is **not** mounted into Traefik.

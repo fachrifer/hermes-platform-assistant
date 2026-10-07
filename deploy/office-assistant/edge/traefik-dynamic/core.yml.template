@@ -29,11 +29,10 @@ http:
         regex: "^https://([^/]+)/?$"
         replacement: "https://${1}/dash/"
         permanent: false
-    hermes-redirect:
-      redirectRegex:
-        regex: "^https?://([^/:]+)(:\\d+)?/hermes(/.*)?$"
-        replacement: "https://${1}:9443/"
-        permanent: false
+    hermes-strip:
+      stripPrefix:
+        prefixes:
+          - "/hermes"
     aiplatform-root-redirect:
       redirectRegex:
         regex: "^https://([^/]+)/?$"
@@ -68,14 +67,16 @@ __BOT_MIDDLEWARES__
       tls: {}
       priority: 30
       service: aiplatform
-    # /hermes is only a pointer: the dashboard SPA uses root-absolute paths, so it lives on :9443.
-    hermes-pointer:
-      rule: "PathPrefix(`/hermes`)"
+    # Hermes dashboard also mounted at /hermes/ on the public port. stripPrefix sends
+    # X-Forwarded-Prefix: /hermes, which hermes_cli.dashboard_auth.prefix uses for SPA assets,
+    # cookies and redirects. The console on :9443 keeps working unchanged.
+    hermes-mount:
+      rule: "Path(`/hermes`) || PathPrefix(`/hermes/`)"
       entryPoints: [websecure]
       tls: {}
       priority: 30
-      middlewares: [hermes-redirect]
-      service: aiplatform
+      middlewares: [hermes-strip]
+      service: hermes-agent
     aiplatform-root:
       rule: "Path(`/`)"
       entryPoints: [websecure]
