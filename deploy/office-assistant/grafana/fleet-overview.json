@@ -762,7 +762,7 @@
       "id": 27,
       "type": "stat",
       "title": "Fullest filesystem",
-      "description": "Highest usage across every real mount, including /boot. The old Disk panel only looked at /.",
+      "description": "Highest usage across every real mount, including /boot and every GPU node partition. The old Disk panel only looked at /.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -824,7 +824,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\"}) * 100",
+          "expr": "max((1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\"}) or (max by (instance, device) (container_fs_usage_bytes{device=~\"/dev/(nvme|sd|mapper).*\",id=\"/\"}) / max by (instance, device) (container_fs_limit_bytes{device=~\"/dev/(nvme|sd|mapper).*\",id=\"/\"}))) * 100",
           "refId": "A",
           "instant": true,
           "range": false
@@ -1127,7 +1127,7 @@
       "id": 111,
       "type": "bargauge",
       "title": "Fullest mounts (now)",
-      "description": "Every real mount per host, fullest first. /boot is included on purpose: a full /boot blocks kernel updates.",
+      "description": "Every real mount on every host, and every GPU node partition. /boot is included on purpose: a full /boot blocks kernel updates. GPU node partitions come from cAdvisor: its node-exporter runs inside the Alloy pod and sees only one partition. Partitions that no container touches (for example the EFI partition) and the other six NVMe disks report no usage anywhere in Prometheus.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1191,7 +1191,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(12, max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"}))",
+          "expr": "max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"})",
           "refId": "A",
           "legendFormat": "{{instance}} {{mountpoint}}",
           "instant": true,
@@ -1202,7 +1202,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max by (instance, device) (1 - node_filesystem_avail_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"})",
+          "expr": "max by (instance, device) (container_fs_usage_bytes{device=~\"/dev/(nvme|sd|mapper).*\",id=\"/\"}) / max by (instance, device) (container_fs_limit_bytes{device=~\"/dev/(nvme|sd|mapper).*\",id=\"/\"})",
           "refId": "B",
           "legendFormat": "{{instance}} {{device}}",
           "instant": true,
@@ -1213,15 +1213,15 @@
     {
       "id": 112,
       "type": "timeseries",
-      "title": "Disk usage over time (all mounts)",
-      "description": "",
+      "title": "Disk usage over time (all partitions)",
+      "description": "GPU node partitions come from cAdvisor: its node-exporter runs inside the Alloy pod and sees only one partition. Partitions that no container touches (for example the EFI partition) and the other six NVMe disks report no usage anywhere in Prometheus.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 6,
         "x": 12,
         "y": 18
       },
@@ -1302,9 +1302,98 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max by (instance, device) (1 - node_filesystem_avail_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"})",
+          "expr": "max by (instance, device) (container_fs_usage_bytes{device=~\"/dev/(nvme|sd|mapper).*\",id=\"/\"}) / max by (instance, device) (container_fs_limit_bytes{device=~\"/dev/(nvme|sd|mapper).*\",id=\"/\"})",
           "refId": "B",
           "legendFormat": "{{instance}} {{device}}"
+        }
+      ]
+    },
+    {
+      "id": 113,
+      "type": "timeseries",
+      "title": "GPU node NVMe disks busy",
+      "description": "Share of time each of the 7 NVMe disks was busy. This is the only per-disk signal Prometheus has for the disks that report no partition usage. Near 100% means a saturated disk.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 18
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "red",
+                "value": 0.9
+              }
+            ]
+          },
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "rate(node_disk_io_time_seconds_total{instance=~\"dc141f.*\",device=~\"nvme[0-9]+n1\"}[$__rate_interval])",
+          "refId": "A",
+          "legendFormat": "{{device}}"
         }
       ]
     },

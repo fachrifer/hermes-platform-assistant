@@ -23,7 +23,14 @@ _MOUNT_NOISE = (
 )
 FS_REAL = f"{_FS},{_MOUNT_NOISE},instance=~\"$host\""
 FS_ANY = _FS
-GPU_NODE = 'instance=~"dc141f.*",device=~"/dev/(nvme|sd|mapper).*",fstype!~"tmpfs|overlay|squashfs"'
+# The GPU node's node-exporter runs inside the Alloy pod, so it only sees that pod's bind mounts (one partition).
+# cAdvisor reports usage per block-device partition for the whole node (id="/"), so the GPU node's partitions
+# come from there. Verified: nvme2n1p3 = 79.4% in both sources.
+_GPU_PART = 'device=~"/dev/(nvme|sd|mapper).*",id="/"'
+GPU_PART_RATIO = (
+    f"max by (instance, device) (container_fs_usage_bytes{{{_GPU_PART}}}) / "
+    f"max by (instance, device) (container_fs_limit_bytes{{{_GPU_PART}}})"
+)
 
 UP = {
     "type": "value",
@@ -177,10 +184,12 @@ def panels():
         15, 4, 3, th=steps("green", ("red", 1)), desc="Deployments with fewer available replicas than desired."))
     p.append(stat(26, "GPUs online", [target("count(count by (gpu) (DCGM_FI_DEV_GPU_TEMP))", instant=True)], 18, 4, 3,
                   th=steps("red", ("green", 1)), desc="GPUs reporting DCGM metrics."))
-    p.append(stat(27, "Fullest filesystem", [target(f"max(1 - node_filesystem_avail_bytes{{{FS_ANY}}} / "
-                  f"node_filesystem_size_bytes{{{FS_ANY}}}) * 100", instant=True)], 21, 4, 3, unit="percent",
-                  th=steps("green", ("yellow", 80), ("red", 90)), decimals=1,
-                  desc="Highest usage across every real mount, including /boot. The old Disk panel only looked at /."))
+    p.append(stat(27, "Fullest filesystem", [target(
+        f"max((1 - node_filesystem_avail_bytes{{{FS_ANY}}} / node_filesystem_size_bytes{{{FS_ANY}}}) or "
+        f"({GPU_PART_RATIO})) * 100", instant=True)], 21, 4, 3, unit="percent",
+        th=steps("green", ("yellow", 80), ("red", 90)), decimals=1,
+        desc="Highest usage across every real mount, including /boot and every GPU node partition. "
+             "The old Disk panel only looked at /."))
 
     # Hosts
     p.append(row(100, "Hosts", 8))
@@ -201,19 +210,28 @@ def panels():
 
     # Disk
     p.append(row(110, "Disk", 17))
+    gpu_note = ("GPU node partitions come from cAdvisor: its node-exporter runs inside the Alloy pod and sees only one "
+                "partition. Partitions that no container touches (for example the EFI partition) and the other six NVMe "
+                "disks report no usage anywhere in Prometheus.")
     p.append(bargauge(111, "Fullest mounts (now)", [
-        target(f"topk(12, max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{{{FS_REAL}}} / "
-               f"node_filesystem_size_bytes{{{FS_REAL}}}))", "{{instance}} {{mountpoint}}", "A", instant=True),
-        target(f"max by (instance, device) (1 - node_filesystem_avail_bytes{{{GPU_NODE}}} / "
-               f"node_filesystem_size_bytes{{{GPU_NODE}}})", "{{instance}} {{device}}", "B", instant=True),
+        target(f"max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{{{FS_REAL}}} / "
+               f"node_filesystem_size_bytes{{{FS_REAL}}})", "{{instance}} {{mountpoint}}", "A", instant=True),
+        target(GPU_PART_RATIO, "{{instance}} {{device}}", "B", instant=True),
     ], 0, 18, 12, th=steps("green", ("yellow", 0.8), ("red", 0.9)),
-        desc="Every real mount per host, fullest first. /boot is included on purpose: a full /boot blocks kernel updates."))
-    p.append(timeseries(112, "Disk usage over time (all mounts)", [
+        desc="Every real mount on every host, and every GPU node partition. /boot is included on purpose: a full /boot "
+             "blocks kernel updates. " + gpu_note))
+    p.append(timeseries(112, "Disk usage over time (all partitions)", [
         target(f"max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{{{FS_REAL}}} / "
                f"node_filesystem_size_bytes{{{FS_REAL}}})", "{{instance}} {{mountpoint}}", "A"),
-        target(f"max by (instance, device) (1 - node_filesystem_avail_bytes{{{GPU_NODE}}} / "
-               f"node_filesystem_size_bytes{{{GPU_NODE}}})", "{{instance}} {{device}}", "B"),
-    ], 12, 18, 12, unit="percentunit", th=steps("green", ("yellow", 0.8), ("red", 0.9)), th_style="dashed", minimum=0, maximum=1))
+        target(GPU_PART_RATIO, "{{instance}} {{device}}", "B"),
+    ], 12, 18, 6, unit="percentunit", th=steps("green", ("yellow", 0.8), ("red", 0.9)), th_style="dashed", minimum=0,
+        maximum=1, desc=gpu_note))
+    p.append(timeseries(113, "GPU node NVMe disks busy", [target(
+        'rate(node_disk_io_time_seconds_total{instance=~"dc141f.*",device=~"nvme[0-9]+n1"}[$__rate_interval])',
+        "{{device}}")], 18, 18, 6, unit="percentunit", th=steps("green", ("yellow", 0.7), ("red", 0.9)), th_style="dashed",
+        minimum=0, maximum=1,
+        desc="Share of time each of the 7 NVMe disks was busy. This is the only per-disk signal Prometheus has for the "
+             "disks that report no partition usage. Near 100% means a saturated disk."))
 
     # GPU
     p.append(row(120, "GPU (H200)", 26))
