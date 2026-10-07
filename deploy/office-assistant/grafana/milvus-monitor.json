@@ -551,8 +551,8 @@
     {
       "id": 23,
       "type": "stat",
-      "title": "Search latency p95 (5m)",
-      "description": "95th percentile search latency. Idle when nobody searched in the last 5 minutes.",
+      "title": "Search latency p95 (10m)",
+      "description": "95th percentile search latency over 10 minutes. Idle when nobody searched in that time.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -568,7 +568,7 @@
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 0,
+          "decimals": 1,
           "mappings": [],
           "noValue": "idle",
           "thresholds": {
@@ -614,7 +614,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[10m])))",
           "refId": "A",
           "instant": true,
           "range": false
@@ -1450,7 +1450,7 @@
       "id": 42,
       "type": "timeseries",
       "title": "Search and query latency",
-      "description": "Gaps mean no requests in that window, not a failure.",
+      "description": "Latency uses a 10 minute window. The dashed line (right axis) is search traffic: when it is 0 there is nothing to measure, so the latency lines stop. That is not a failure, and with only a few requests p95 jumps around.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -1503,7 +1503,49 @@
           },
           "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "E"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "searches/s"
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
@@ -1527,7 +1569,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[10m])))",
           "refId": "A",
           "legendFormat": "search p50"
         },
@@ -1536,7 +1578,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[10m])))",
           "refId": "B",
           "legendFormat": "search p95"
         },
@@ -1545,7 +1587,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[10m])))",
           "refId": "C",
           "legendFormat": "search p99"
         },
@@ -1554,9 +1596,18 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"query\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"query\"}[10m])))",
           "refId": "D",
           "legendFormat": "query p95"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(milvus_proxy_sq_latency_count{job=\"milvus\",server=\"$server\",query_type=\"search\"}[10m]))",
+          "refId": "E",
+          "legendFormat": "searches/s (right axis)"
         }
       ]
     },

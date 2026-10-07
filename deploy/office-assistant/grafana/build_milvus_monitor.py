@@ -65,10 +65,10 @@ def panels():
         f'sum(increase(milvus_proxy_req_count{{{MILVUS},status="total"}}[1h])) * 100', instant=True)], 18, 1, 3, 4,
         unit="percent", decimals=2, th=steps("green", ("yellow", 1), ("red", 5)), no_value="idle",
         desc="Share of API requests that failed in the last hour. Idle when there were no requests."))
-    p.append(stat(23, "Search latency p95 (5m)", [target(
-        f'histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="search"}}[5m])))',
-        instant=True)], 21, 1, 3, 4, unit="ms", decimals=0, th=steps("green", ("yellow", 100), ("red", 500)),
-        no_value="idle", desc="95th percentile search latency. Idle when nobody searched in the last 5 minutes."))
+    p.append(stat(23, "Search latency p95 (10m)", [target(
+        f'histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="search"}}[10m])))',
+        instant=True)], 21, 1, 3, 4, unit="ms", decimals=1, th=steps("green", ("yellow", 100), ("red", 500)),
+        no_value="idle", desc="95th percentile search latency over 10 minutes. Idle when nobody searched in that time."))
 
     # Server
     p.append(row(30, "Server (host)", 5))
@@ -114,17 +114,26 @@ def panels():
         f'sum by (function_name, status) (rate(milvus_proxy_req_count{{{MILVUS},status=~"fail|abandon"}}[$__rate_interval]))',
         "{{function_name}} {{status}}")], 9, 19, 6, minimum=0, unit="reqps",
         desc="Should stay empty. A line here means requests are failing."))
+    # 10m window: with only a handful of requests a shorter window makes p95 jump around.
+    lat = f'histogram_quantile(%s, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="%s"}}[10m])))'
     p.append(timeseries(42, "Search and query latency", [
-        target(f'histogram_quantile(0.50, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="search"}}[$__rate_interval])))',
-               "search p50", "A"),
-        target(f'histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="search"}}[$__rate_interval])))',
-               "search p95", "B"),
-        target(f'histogram_quantile(0.99, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="search"}}[$__rate_interval])))',
-               "search p99", "C"),
-        target(f'histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{{{MILVUS},query_type="query"}}[$__rate_interval])))',
-               "query p95", "D"),
+        target(lat % ("0.50", "search"), "search p50", "A"),
+        target(lat % ("0.95", "search"), "search p95", "B"),
+        target(lat % ("0.99", "search"), "search p99", "C"),
+        target(lat % ("0.95", "query"), "query p95", "D"),
+        target(f'sum(rate(milvus_proxy_sq_latency_count{{{MILVUS},query_type="search"}}[10m]))', "searches/s (right axis)", "E"),
     ], 15, 19, 9, unit="ms", minimum=0, th=steps("green", ("yellow", 100), ("red", 500)), th_style="dashed",
-        desc="Gaps mean no requests in that window, not a failure."))
+        overrides=[{"matcher": {"id": "byFrameRefID", "options": "E"}, "properties": [
+            {"id": "unit", "value": "reqps"},
+            {"id": "custom.axisPlacement", "value": "right"},
+            {"id": "custom.axisLabel", "value": "searches/s"},
+            {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}},
+            {"id": "custom.fillOpacity", "value": 0},
+            {"id": "color", "value": {"mode": "fixed", "fixedColor": "text"}},
+        ]}],
+        desc="Latency uses a 10 minute window. The dashed line (right axis) is search traffic: when it is 0 there is "
+             "nothing to measure, so the latency lines stop. That is not a failure, and with only a few requests "
+             "p95 jumps around."))
 
     # Data
     p.append(row(50, "Data", 27))
