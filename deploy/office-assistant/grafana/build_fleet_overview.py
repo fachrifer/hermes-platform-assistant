@@ -94,8 +94,9 @@ def status_tiles(pid, title, items, x, y, w, desc):
 
 
 def timeseries(pid, title, targets, x, y, w, h=8, unit="short", th=None, th_style="off", desc="",
-               minimum=None, maximum=None, stack=False, overrides=None):
+               minimum=None, maximum=None, stack=False, overrides=None, axis_label=""):
     custom = {
+        "axisLabel": axis_label,
         "drawStyle": "line", "lineInterpolation": "linear", "lineWidth": 2, "fillOpacity": 10,
         "gradientMode": "none", "showPoints": "never", "spanNulls": True,
         "stacking": {"group": "A", "mode": "normal" if stack else "none"},
@@ -191,9 +192,12 @@ def panels():
         8, 9, 8, unit="percentunit", th=steps("green", ("yellow", 0.7), ("red", 0.9)), th_style="dashed", minimum=0, maximum=1))
     p.append(timeseries(103, "Load per core (1m)", [target(
         'node_load1{instance=~"$host"} / on(instance) group_left count by (instance) (node_cpu_seconds_total{mode="idle",instance=~"$host"})',
-        "{{instance}}")], 16, 9, 8, th=steps("green", ("yellow", 0.7), ("red", 1)), th_style="dashed", minimum=0,
-        desc="Load divided by core count. Above 1.0 means runnable processes outnumber cores. Replaces the raw load panel, "
-             "which needed the core counts typed into its description."))
+        "{{instance}}")], 16, 9, 8, unit="none", th=steps("green", ("yellow", 0.7), ("red", 1)), th_style="dashed", minimum=0,
+        axis_label="load per core (ratio, no unit)",
+        desc="No unit: a ratio. It is the 1 minute load average divided by the number of CPU cores, i.e. how many "
+             "runnable processes wait for each core on average. 0.5 = half the cores' worth of work, 1.0 = every core "
+             "busy, above 1.0 = work is queueing. Compare hosts directly: a 256-core GPU node at load 5.8 is 0.02 per core, "
+             "a 4-core VM at 1.6 is 0.4."))
 
     # Disk
     p.append(row(110, "Disk", 17))
@@ -229,11 +233,43 @@ def panels():
     # Kubernetes
     p.append(row(130, "Kubernetes", 35))
     p.append(timeseries(131, "Pods by phase", [target("sum by (phase) (kube_pod_status_phase)", "{{phase}}")],
-                        0, 36, 12, h=7, minimum=0))
-    p.append(bargauge(132, "Container restarts (last 1h) by namespace", [target(
-        "topk(10, sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h])))", "{{namespace}}", instant=True)],
-        12, 36, 12, h=7, unit="short", maximum=10, th=steps("green", ("yellow", 1), ("red", 5)),
-        desc="Namespaces whose containers restarted in the last hour."))
+                        0, 36, 6, h=7, minimum=0))
+    p.append(bargauge(132, "Restarts (last 1h) by namespace", [target(
+        "sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h]))", "{{namespace}}", instant=True)],
+        6, 36, 6, h=7, unit="short", maximum=5, th=steps("green", ("yellow", 1), ("red", 5)),
+        desc="Every namespace on the GPU cluster, not just the top few (a top-10 of all zeros picked 10 of 17 at random). "
+             "A full bar means 5 or more container restarts in the last hour."))
+    key = 'label_join(%s, "key", "/", "namespace", "pod", "container")'
+    by_container = "sum by (namespace, pod, container) (%s)"
+    p.append({
+        "id": 133, "type": "table", "title": "Container restarts (every container)", "datasource": DS,
+        "description": "Every container the cluster reports (kube-state-metrics), with restarts since the pod started and in "
+                       "the last hour. Sorted by the last hour first, then by total.",
+        "gridPos": {"h": 7, "w": 12, "x": 12, "y": 36},
+        "fieldConfig": {
+            "defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": False},
+                         "mappings": [], "thresholds": {"mode": "absolute", "steps": steps("green")}, "unit": "none",
+                         "decimals": 0},
+            "overrides": [{"matcher": {"id": "byName", "options": "Last 1h"}, "properties": [
+                {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}},
+                {"id": "thresholds", "value": {"mode": "absolute", "steps": steps("green", ("yellow", 1), ("red", 5))}},
+            ]}]},
+        "options": {"cellHeight": "sm", "showHeader": True,
+                    "footer": {"show": False, "reducer": ["sum"], "fields": "", "countRows": False},
+                    "sortBy": [{"displayName": "Last 1h", "desc": True}, {"displayName": "Since start", "desc": True}]},
+        "targets": [
+            target(key % by_container % "kube_pod_container_status_restarts_total", "{{key}}", "A", instant=True, fmt="table"),
+            target(key % by_container % "increase(kube_pod_container_status_restarts_total[1h])", "{{key}}", "B",
+                   instant=True, fmt="table"),
+        ],
+        "transformations": [
+            {"id": "joinByField", "options": {"byField": "key", "mode": "outer"}},
+            {"id": "filterFieldsByName", "options": {"include": {"names": ["key", "Value #A", "Value #B"]}}},
+            {"id": "organize", "options": {
+                "indexByName": {"key": 0, "Value #A": 1, "Value #B": 2},
+                "renameByName": {"key": "Namespace / pod / container", "Value #A": "Since start", "Value #B": "Last 1h"}}},
+        ],
+    })
 
     # Traffic
     p.append(row(140, "Traffic (Traefik)", 43))
