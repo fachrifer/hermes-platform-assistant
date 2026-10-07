@@ -15,275 +15,40 @@
       }
     ]
   },
-  "description": "Platform overview: hosts, services, Kubernetes, GPU, traffic and data services. Red or yellow tiles at the top mean something needs a person.",
+  "description": "Milvus (API, query nodes, storage) and the host it runs on. Pick the server in the dropdown.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 33,
+  "id": 28,
   "links": [
     {
-      "title": "Milvus & Server Monitor",
+      "title": "Fleet Overview",
       "type": "link",
       "icon": "dashboard",
       "targetBlank": false,
-      "url": "/d/de68d706-4a90-4ad8-b338-fb5d94b09af0"
-    },
-    {
-      "title": "Insightface prod",
-      "type": "link",
-      "icon": "dashboard",
-      "targetBlank": false,
-      "url": "/d/Insightface-prod-v2"
+      "url": "/d/fleet-overview"
     }
   ],
   "liveNow": false,
   "panels": [
     {
-      "id": 10,
-      "type": "stat",
-      "title": "Hosts",
-      "description": "node-exporter up per host. NO DATA = the target is not scraped at all (Rancher today).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
+      "type": "row",
+      "id": 14,
+      "title": "Status - $server",
+      "collapsed": false,
       "gridPos": {
-        "h": 4,
-        "w": 14,
+        "h": 1,
+        "w": 24,
         "x": 0,
         "y": 0
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "NO DATA",
-                  "color": "yellow",
-                  "index": 2
-                },
-                "0": {
-                  "text": "DOWN",
-                  "color": "red",
-                  "index": 1
-                },
-                "1": {
-                  "text": "UP",
-                  "color": "green",
-                  "index": 0
-                }
-              }
-            }
-          ],
-          "noValue": "NO DATA",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value_and_name",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(up{instance=\"10.216.4.80:9100\"}) or vector(-1)",
-          "refId": "A",
-          "legendFormat": "Lab-host 10.216.4.80"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(up{instance=\"dc141f0601srv.kemenkeu.go.id\",job=\"integrations/unix\"}) or vector(-1)",
-          "refId": "B",
-          "legendFormat": "GPU node dc141f0601srv"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(up{instance=\"10.216.203.132:9100\"}) or vector(-1)",
-          "refId": "C",
-          "legendFormat": "Milvus PROD host 10.216.203.132"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(up{instance=\"10.216.78.130:9100\"}) or vector(-1)",
-          "refId": "D",
-          "legendFormat": "Grafana VM 10.216.78.130"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(up{instance=\"10.216.78.129:9100\"}) or vector(-1)",
-          "refId": "E",
-          "legendFormat": "Rancher 10.216.78.129"
-        }
-      ]
+      "panels": []
     },
     {
-      "id": 11,
+      "id": 6,
       "type": "stat",
-      "title": "Services",
-      "description": "1 = up. Milvus PROD is the only Milvus scraped (server=milvus-production, 10.216.203.132:9091); there is no dev Milvus in Prometheus. K8s is the minimum Ready flag across nodes.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 10,
-        "x": 14,
-        "y": 0
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "NO DATA",
-                  "color": "yellow",
-                  "index": 2
-                },
-                "0": {
-                  "text": "DOWN",
-                  "color": "red",
-                  "index": 1
-                },
-                "1": {
-                  "text": "UP",
-                  "color": "green",
-                  "index": 0
-                }
-              }
-            }
-          ],
-          "noValue": "NO DATA",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "none"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value_and_name",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(litellm_up) or vector(-1)",
-          "refId": "A",
-          "legendFormat": "LiteLLM"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(min(kube_node_status_condition{condition=\"Ready\",status=\"true\"})) or vector(-1)",
-          "refId": "B",
-          "legendFormat": "K8s (RKE2)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(up{job=\"milvus\"}) or vector(-1)",
-          "refId": "C",
-          "legendFormat": "Milvus PROD (API)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max(pg_up{job=\"postgres-lab\"}) or vector(-1)",
-          "refId": "D",
-          "legendFormat": "PostgreSQL"
-        }
-      ]
-    },
-    {
-      "id": 20,
-      "type": "stat",
-      "title": "Targets down",
-      "description": "Scrape targets with up == 0.",
+      "title": "Milvus status",
+      "description": "Scrape of the Milvus metrics endpoint. NO DATA = not scraped at all.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -292,7 +57,7 @@
         "h": 4,
         "w": 3,
         "x": 0,
-        "y": 4
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
@@ -300,22 +65,43 @@
             "mode": "thresholds"
           },
           "decimals": 0,
-          "mappings": [],
-          "noValue": "N/A",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "NO DATA",
+                  "color": "yellow",
+                  "index": 2
+                },
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 1
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "NO DATA",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "red",
                 "value": null
               },
               {
-                "color": "red",
+                "color": "green",
                 "value": 1
               }
             ]
           },
-          "unit": "short"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -341,7 +127,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "count(up == 0) or vector(0)",
+          "expr": "max(up{job=\"milvus\",server=\"$server\"}) or vector(-1)",
           "refId": "A",
           "instant": true,
           "range": false
@@ -349,10 +135,10 @@
       ]
     },
     {
-      "id": 21,
+      "id": 2,
       "type": "stat",
-      "title": "Firing alerts",
-      "description": "Alerts in firing state.",
+      "title": "Server uptime",
+      "description": "Time since the host booted.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -361,7 +147,7 @@
         "h": 4,
         "w": 3,
         "x": 3,
-        "y": 4
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
@@ -377,9 +163,74 @@
               {
                 "color": "green",
                 "value": null
-              },
+              }
+            ]
+          },
+          "unit": "dtdhms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "time() - max(node_boot_time_seconds{server=\"$server\"})",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Query nodes",
+      "description": "Active query nodes. 0 means nothing can be searched.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
                 "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
                 "value": 1
               }
             ]
@@ -410,7 +261,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)",
+          "expr": "sum(milvus_querycoord_querynode_num{server=\"$server\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -418,10 +269,10 @@
       ]
     },
     {
-      "id": 22,
+      "id": 8,
       "type": "stat",
-      "title": "Pods running",
-      "description": "",
+      "title": "Collections loaded / total",
+      "description": "Loaded = collections held in memory and searchable. Total = all collections that exist. A collection that exists but is not loaded cannot be searched until it is loaded.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -429,8 +280,85 @@
       "gridPos": {
         "h": 4,
         "w": 3,
-        "x": 6,
-        "y": 4
+        "x": 9,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "mappings": [],
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(milvus_querycoord_collection_num{server=\"$server\"})",
+          "refId": "A",
+          "legendFormat": "loaded",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(milvus_rootcoord_collection_num{server=\"$server\"})",
+          "refId": "B",
+          "legendFormat": "total",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Searchable vectors",
+      "description": "Entities (vectors) in memory on the query nodes, sealed and growing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
@@ -475,7 +403,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(kube_pod_status_phase{phase=\"Running\"})",
+          "expr": "sum(milvus_querynode_entity_num{server=\"$server\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -483,148 +411,10 @@
       ]
     },
     {
-      "id": 23,
+      "id": 10,
       "type": "stat",
-      "title": "Pods pending",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 9,
-        "y": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(kube_pod_status_phase{phase=\"Pending\"}) or vector(0)",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 24,
-      "type": "stat",
-      "title": "Pod problems",
-      "description": "Failed pods plus containers stuck in CrashLoopBackOff, ImagePullBackOff or ErrImagePull.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 12,
-        "y": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "(sum(kube_pod_status_phase{phase=\"Failed\"}) or vector(0)) + (sum(kube_pod_container_status_waiting_reason{reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull\"}) or vector(0))",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 25,
-      "type": "stat",
-      "title": "Deployments not ready",
-      "description": "Deployments with fewer available replicas than desired.",
+      "title": "Segments loaded",
+      "description": "Segments loaded by the query nodes.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -633,7 +423,7 @@
         "h": 4,
         "w": 3,
         "x": 15,
-        "y": 4
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
@@ -647,12 +437,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
               }
             ]
           },
@@ -682,7 +468,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "count(kube_deployment_spec_replicas > kube_deployment_status_replicas_available) or vector(0)",
+          "expr": "sum(milvus_querynode_segment_num{server=\"$server\"})",
           "refId": "A",
           "instant": true,
           "range": false
@@ -690,10 +476,10 @@
       ]
     },
     {
-      "id": 26,
+      "id": 22,
       "type": "stat",
-      "title": "GPUs online",
-      "description": "GPUs reporting DCGM metrics.",
+      "title": "Failed requests (1h)",
+      "description": "Share of API requests that failed in the last hour. Idle when there were no requests.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -702,85 +488,16 @@
         "h": 4,
         "w": 3,
         "x": 18,
-        "y": 4
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 0,
+          "decimals": 2,
           "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "count(count by (gpu) (DCGM_FI_DEV_GPU_TEMP))",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 27,
-      "type": "stat",
-      "title": "Fullest filesystem",
-      "description": "Highest usage across every real mount, including /boot. The old Disk panel only looked at /.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 3,
-        "x": 21,
-        "y": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 1,
-          "mappings": [],
-          "noValue": "N/A",
+          "noValue": "idle",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -790,11 +507,11 @@
               },
               {
                 "color": "yellow",
-                "value": 80
+                "value": 1
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 5
               }
             ]
           },
@@ -824,7 +541,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max(1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\"}) * 100",
+          "expr": "sum(increase(milvus_proxy_req_count{job=\"milvus\",server=\"$server\",status=\"fail\"}[1h])) / sum(increase(milvus_proxy_req_count{job=\"milvus\",server=\"$server\",status=\"total\"}[1h])) * 100",
           "refId": "A",
           "instant": true,
           "range": false
@@ -832,56 +549,28 @@
       ]
     },
     {
-      "type": "row",
-      "id": 100,
-      "title": "Hosts",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "panels": []
-    },
-    {
-      "id": 101,
-      "type": "timeseries",
-      "title": "CPU usage",
-      "description": "",
+      "id": 23,
+      "type": "stat",
+      "title": "Search latency p95 (5m)",
+      "description": "95th percentile search latency. Idle when nobody searched in the last 5 minutes.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 9
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 1
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
+          "decimals": 0,
           "mappings": [],
-          "unit": "percentunit",
+          "noValue": "idle",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -891,33 +580,118 @@
               },
               {
                 "color": "yellow",
-                "value": 0.7
+                "value": 100
               },
               {
                 "color": "red",
-                "value": 0.9
+                "value": 500
               }
             ]
           },
-          "min": 0,
-          "max": 1
+          "unit": "ms"
         },
         "overrides": []
       },
       "options": {
-        "legend": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
           "calcs": [
-            "lastNotNull",
-            "max"
+            "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
+        "textMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[5m])))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 30,
+      "title": "Server (host)",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "id": 3,
+      "type": "gauge",
+      "title": "CPU usage",
+      "description": "Whole host, averaged over all cores.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         }
       },
       "targets": [
@@ -926,15 +700,16 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\",instance=~\"$host\"}[$__rate_interval]))",
+          "expr": "100 - avg(rate(node_cpu_seconds_total{mode=\"idle\",server=\"$server\"}[5m])) * 100",
           "refId": "A",
-          "legendFormat": "{{instance}}"
+          "instant": true,
+          "range": false
         }
       ]
     },
     {
-      "id": 102,
-      "type": "timeseries",
+      "id": 4,
+      "type": "gauge",
       "title": "RAM usage",
       "description": "",
       "datasource": {
@@ -942,34 +717,167 @@
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * (1 - max(node_memory_MemAvailable_bytes{server=\"$server\"}) / max(node_memory_MemTotal_bytes{server=\"$server\"}))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "gauge",
+      "title": "Root disk (/)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
         "x": 8,
-        "y": 9
+        "y": 6
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
+          "decimals": 1,
           "mappings": [],
-          "unit": "percentunit",
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 90
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * (1 - max(node_filesystem_avail_bytes{mountpoint=\"/\",server=\"$server\"}) / max(node_filesystem_size_bytes{mountpoint=\"/\",server=\"$server\"}))",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "gauge",
+      "title": "Fullest mount",
+      "description": "Highest usage across every real mount, including /boot.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 1,
+          "mappings": [],
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -979,33 +887,30 @@
               },
               {
                 "color": "yellow",
-                "value": 0.7
+                "value": 80
               },
               {
                 "color": "red",
-                "value": 0.9
+                "value": 90
               }
             ]
-          },
-          "min": 0,
-          "max": 1
+          }
         },
         "overrides": []
       },
       "options": {
-        "legend": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto",
+        "reduceOptions": {
           "calcs": [
-            "lastNotNull",
-            "max"
+            "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
+          "fields": "",
+          "values": false
         }
       },
       "targets": [
@@ -1014,50 +919,109 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "1 - (node_memory_MemAvailable_bytes{instance=~\"$host\"} / node_memory_MemTotal_bytes{instance=~\"$host\"})",
+          "expr": "100 * max(1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",server=\"$server\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",server=\"$server\"})",
           "refId": "A",
-          "legendFormat": "{{instance}}"
+          "instant": true,
+          "range": false
         }
       ]
     },
     {
-      "id": 103,
-      "type": "timeseries",
-      "title": "Load per core (1m)",
-      "description": "Load divided by core count. Above 1.0 means runnable processes outnumber cores. Replaces the raw load panel, which needed the core counts typed into its description.",
+      "id": 21,
+      "type": "stat",
+      "title": "Root disk free",
+      "description": "Free space on /. Red under about 10% of the disk, yellow under 20%.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
+        "h": 5,
+        "w": 4,
         "x": 16,
-        "y": 9
+        "y": 6
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
+          "decimals": 1,
           "mappings": [],
-          "unit": "short",
+          "noValue": "N/A",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 32000000000.0
+              },
+              {
+                "color": "green",
+                "value": 63000000000.0
+              }
+            ]
+          },
+          "unit": "decbytes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "max(node_filesystem_avail_bytes{mountpoint=\"/\",server=\"$server\"})",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "Load per core (1m)",
+      "description": "Load divided by core count. Above 1.0 means more runnable processes than cores.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [],
+          "noValue": "N/A",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1075,112 +1039,25 @@
               }
             ]
           },
-          "min": 0
+          "unit": "short"
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "node_load1{instance=~\"$host\"} / on(instance) group_left count by (instance) (node_cpu_seconds_total{mode=\"idle\",instance=~\"$host\"})",
-          "refId": "A",
-          "legendFormat": "{{instance}}"
-        }
-      ]
-    },
-    {
-      "type": "row",
-      "id": 110,
-      "title": "Disk",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 17
-      },
-      "panels": []
-    },
-    {
-      "id": 111,
-      "type": "bargauge",
-      "title": "Fullest mounts (now)",
-      "description": "Every real mount per host, fullest first. /boot is included on purpose: a full /boot blocks kernel updates.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 18
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "min": 0,
-          "unit": "percentunit",
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 0.8
-              },
-              {
-                "color": "red",
-                "value": 0.9
-              }
-            ]
-          },
-          "mappings": [],
-          "max": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "namePlacement": "auto",
-        "showUnfilled": true,
-        "valueMode": "color",
-        "minVizHeight": 16,
-        "minVizWidth": 8,
-        "sizing": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        }
+        },
+        "textMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
       },
       "targets": [
         {
@@ -1188,494 +1065,17 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(12, max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"}))",
+          "expr": "max(node_load1{server=\"$server\"}) / count(node_cpu_seconds_total{mode=\"idle\",server=\"$server\"})",
           "refId": "A",
-          "legendFormat": "{{instance}} {{mountpoint}}",
-          "instant": true,
-          "range": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (instance, device) (1 - node_filesystem_avail_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"})",
-          "refId": "B",
-          "legendFormat": "{{instance}} {{device}}",
           "instant": true,
           "range": false
         }
       ]
     },
     {
-      "id": 112,
+      "id": 33,
       "type": "timeseries",
-      "title": "Disk usage over time (all mounts)",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 18
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "mappings": [],
-          "unit": "percentunit",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 0.8
-              },
-              {
-                "color": "red",
-                "value": 0.9
-              }
-            ]
-          },
-          "min": 0,
-          "max": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (instance, mountpoint) (1 - node_filesystem_avail_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"} / node_filesystem_size_bytes{device=~\"/dev/.*\",fstype!~\"tmpfs|overlay|squashfs|ramfs|devtmpfs|fuse.*|nsfs|iso9660\",mountpoint!~\"/etc/.*|/usr/.*|/opt/.*|/var/lib/.*|/var/log/.*|/run/.*|/host/.*|/snap/.*|/proc.*|/sys.*|/dev/.*\",instance=~\"$host\"})",
-          "refId": "A",
-          "legendFormat": "{{instance}} {{mountpoint}}"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (instance, device) (1 - node_filesystem_avail_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{instance=~\"dc141f.*\",device=~\"/dev/(nvme|sd|mapper).*\",fstype!~\"tmpfs|overlay|squashfs\"})",
-          "refId": "B",
-          "legendFormat": "{{instance}} {{device}}"
-        }
-      ]
-    },
-    {
-      "type": "row",
-      "id": 120,
-      "title": "GPU (H200)",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 26
-      },
-      "panels": []
-    },
-    {
-      "id": 121,
-      "type": "timeseries",
-      "title": "VRAM used %",
-      "description": "Replaces the 0/1 active-idle panel: it shows how full each GPU actually is.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 0,
-        "y": 27
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "mappings": [],
-          "unit": "percentunit",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 0.85
-              },
-              {
-                "color": "red",
-                "value": 0.95
-              }
-            ]
-          },
-          "min": 0,
-          "max": 1
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (gpu) (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE))",
-          "refId": "A",
-          "legendFormat": "GPU {{gpu}}"
-        }
-      ]
-    },
-    {
-      "id": 122,
-      "type": "timeseries",
-      "title": "VRAM used / free",
-      "description": "DCGM reports MiB; converted to bytes. H200 is about 141 GB.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 6,
-        "y": 27
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "unit": "bytes",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (gpu) (DCGM_FI_DEV_FB_USED) * 1024 * 1024",
-          "refId": "A",
-          "legendFormat": "GPU {{gpu}} used"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (gpu) (DCGM_FI_DEV_FB_FREE) * 1024 * 1024",
-          "refId": "B",
-          "legendFormat": "GPU {{gpu}} free"
-        }
-      ]
-    },
-    {
-      "id": 123,
-      "type": "timeseries",
-      "title": "GPU temperature",
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 12,
-        "y": 27
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "mappings": [],
-          "unit": "celsius",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 75
-              },
-              {
-                "color": "red",
-                "value": 85
-              }
-            ]
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (gpu) (DCGM_FI_DEV_GPU_TEMP)",
-          "refId": "A",
-          "legendFormat": "GPU {{gpu}}"
-        }
-      ]
-    },
-    {
-      "id": 124,
-      "type": "timeseries",
-      "title": "GPU power",
-      "description": "Split from temperature: the two shared one axis before.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 6,
-        "x": 18,
-        "y": 27
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "unit": "watt",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "max by (gpu) (DCGM_FI_DEV_POWER_USAGE)",
-          "refId": "A",
-          "legendFormat": "GPU {{gpu}}"
-        }
-      ]
-    },
-    {
-      "type": "row",
-      "id": 130,
-      "title": "Kubernetes",
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 35
-      },
-      "panels": []
-    },
-    {
-      "id": 131,
-      "type": "timeseries",
-      "title": "Pods by phase",
+      "title": "Host CPU and RAM",
       "description": "",
       "datasource": {
         "type": "prometheus",
@@ -1685,7 +1085,104 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 - avg(rate(node_cpu_seconds_total{mode=\"idle\",server=\"$server\"}[$__rate_interval])) * 100",
+          "refId": "A",
+          "legendFormat": "CPU %"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "100 * (1 - max(node_memory_MemAvailable_bytes{server=\"$server\"}) / max(node_memory_MemTotal_bytes{server=\"$server\"}))",
+          "refId": "B",
+          "legendFormat": "RAM %"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "type": "timeseries",
+      "title": "Host network and disk I/O",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 11
       },
       "fieldConfig": {
         "defaults": {
@@ -1709,7 +1206,7 @@
             }
           },
           "mappings": [],
-          "unit": "short",
+          "unit": "Bps",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1745,115 +1242,66 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (phase) (kube_pod_status_phase)",
+          "expr": "sum(rate(node_network_receive_bytes_total{server=\"$server\",device!~\"lo|veth.*|docker.*|br-.*\"}[$__rate_interval]))",
           "refId": "A",
-          "legendFormat": "{{phase}}"
-        }
-      ]
-    },
-    {
-      "id": 132,
-      "type": "bargauge",
-      "title": "Container restarts (last 1h) by namespace",
-      "description": "Namespaces whose containers restarted in the last hour.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 36
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "min": 0,
-          "unit": "short",
-          "decimals": 1,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
-            ]
-          },
-          "mappings": [],
-          "max": 10
+          "legendFormat": "network in"
         },
-        "overrides": []
-      },
-      "options": {
-        "displayMode": "gradient",
-        "orientation": "horizontal",
-        "namePlacement": "auto",
-        "showUnfilled": true,
-        "valueMode": "color",
-        "minVizHeight": 16,
-        "minVizWidth": 8,
-        "sizing": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(10, sum by (namespace) (increase(kube_pod_container_status_restarts_total[1h])))",
-          "refId": "A",
-          "legendFormat": "{{namespace}}",
-          "instant": true,
-          "range": false
+          "expr": "sum(rate(node_network_transmit_bytes_total{server=\"$server\",device!~\"lo|veth.*|docker.*|br-.*\"}[$__rate_interval]))",
+          "refId": "B",
+          "legendFormat": "network out"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(node_disk_read_bytes_total{server=\"$server\"}[$__rate_interval]))",
+          "refId": "C",
+          "legendFormat": "disk read"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(rate(node_disk_written_bytes_total{server=\"$server\"}[$__rate_interval]))",
+          "refId": "D",
+          "legendFormat": "disk write"
         }
       ]
     },
     {
       "type": "row",
-      "id": 140,
-      "title": "Traffic (Traefik)",
+      "id": 40,
+      "title": "API activity",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 18
       },
       "panels": []
     },
     {
-      "id": 141,
+      "id": 17,
       "type": "timeseries",
-      "title": "Requests per second by path",
-      "description": "Real requests per second reaching Traefik, health checks filtered out. High is normal traffic, not a fault.",
+      "title": "Requests per second by function",
+      "description": "Replaces the old panel that plotted success and total as separate lines for every function.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 9,
         "x": 0,
-        "y": 44
+        "y": 19
       },
       "fieldConfig": {
         "defaults": {
@@ -1913,123 +1361,26 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "topk(8, sum by (url_path) (rate(traces_spanmetrics_calls_total{job=\"traefik\",url_path!~\"/ping|/llm/health.*\"}[5m])))",
+          "expr": "sum by (function_name) (rate(milvus_proxy_req_count{job=\"milvus\",server=\"$server\",status=\"total\"}[$__rate_interval]))",
           "refId": "A",
-          "legendFormat": "{{url_path}}"
+          "legendFormat": "{{function_name}}"
         }
       ]
     },
     {
-      "id": 142,
+      "id": 41,
       "type": "timeseries",
-      "title": "HTTP error rate",
-      "description": "4xx includes scanner 404s and is normal. 5xx is our own errors and should stay at 0%.",
+      "title": "Failed or abandoned per second",
+      "description": "Should stay empty. A line here means requests are failing.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 44
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "mappings": [],
-          "unit": "percent",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 5
-              },
-              {
-                "color": "red",
-                "value": 20
-              }
-            ]
-          },
-          "min": 0,
-          "max": 100
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc",
-          "hideZeros": false
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(traces_spanmetrics_calls_total{job=\"traefik\",http_response_status_code=~\"4..|5..\"}[5m])) / sum(rate(traces_spanmetrics_calls_total{job=\"traefik\"}[5m])) * 100",
-          "refId": "A",
-          "legendFormat": "Total error % (4xx+5xx)"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(rate(traces_spanmetrics_calls_total{job=\"traefik\",http_response_status_code=~\"5..\"}[5m])) / sum(rate(traces_spanmetrics_calls_total{job=\"traefik\"}[5m])) * 100",
-          "refId": "B",
-          "legendFormat": "5xx (server) %"
-        }
-      ]
-    },
-    {
-      "id": 143,
-      "type": "timeseries",
-      "title": "Response latency",
-      "description": "LLM chat streams, so thousands of ms is normal. Non-LLM p50 should stay under about 100 ms.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 44
+        "w": 6,
+        "x": 9,
+        "y": 19
       },
       "fieldConfig": {
         "defaults": {
@@ -2053,7 +1404,7 @@
             }
           },
           "mappings": [],
-          "unit": "ms",
+          "unit": "reqps",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2089,353 +1440,192 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(rate(traces_spanmetrics_duration_milliseconds_sum{job=\"traefik\",url_path=~\"/llm/v1/chat.*\"}[5m])) / sum(rate(traces_spanmetrics_duration_milliseconds_count{job=\"traefik\",url_path=~\"/llm/v1/chat.*\"}[5m]))",
+          "expr": "sum by (function_name, status) (rate(milvus_proxy_req_count{job=\"milvus\",server=\"$server\",status=~\"fail|abandon\"}[$__rate_interval]))",
           "refId": "A",
-          "legendFormat": "LLM chat (avg)"
+          "legendFormat": "{{function_name}} {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "type": "timeseries",
+      "title": "Search and query latency",
+      "description": "Gaps mean no requests in that window, not a failure.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 9,
+        "x": 15,
+        "y": 19
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "mappings": [],
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "red",
+                "value": 500
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[$__rate_interval])))",
+          "refId": "A",
+          "legendFormat": "search p50"
         },
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(traces_spanmetrics_duration_milliseconds_bucket{job=\"traefik\",url_path!~\"/llm/v1/chat.*|/ping\"}[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[$__rate_interval])))",
           "refId": "B",
-          "legendFormat": "Non-LLM (p50)"
+          "legendFormat": "search p95"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"search\"}[$__rate_interval])))",
+          "refId": "C",
+          "legendFormat": "search p99"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(milvus_proxy_sq_latency_bucket{job=\"milvus\",server=\"$server\",query_type=\"query\"}[$__rate_interval])))",
+          "refId": "D",
+          "legendFormat": "query p95"
         }
       ]
     },
     {
       "type": "row",
-      "id": 150,
-      "title": "Data services",
+      "id": 50,
+      "title": "Data",
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 27
       },
       "panels": []
     },
     {
-      "id": 151,
-      "type": "stat",
-      "title": "Milvus collections",
-      "description": "Collections in Milvus PROD.",
+      "id": 51,
+      "type": "bargauge",
+      "title": "Searchable vectors by database",
+      "description": "Sealed = indexed and settled. Growing = recent inserts not yet sealed.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
+        "h": 7,
+        "w": 8,
         "x": 0,
-        "y": 53
+        "y": 28
       },
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(milvus_datacoord_collection_num)",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 152,
-      "type": "stat",
-      "title": "Milvus stored rows",
-      "description": "Total vectors across all collections.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 4,
-        "y": 53
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(milvus_datacoord_stored_rows_num)",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 153,
-      "type": "stat",
-      "title": "MinIO bucket size",
-      "description": "Milvus object storage (files-server-vector-database).",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 9,
-        "y": 53
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 2,
-          "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(minio_bucket_size_bytes{instance=\"10.216.203.132:9100\"})",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 154,
-      "type": "stat",
-      "title": "MinIO objects",
-      "description": "Objects in the MinIO bucket.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 14,
-        "y": 53
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "decimals": 0,
-          "mappings": [],
-          "noValue": "N/A",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "blue",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "expr": "sum(minio_bucket_objects{instance=\"10.216.203.132:9100\"})",
-          "refId": "A",
-          "instant": true,
-          "range": false
-        }
-      ]
-    },
-    {
-      "id": 155,
-      "type": "stat",
-      "title": "Milvus disk (/)",
-      "description": "Root disk of the Milvus PROD node. Above 90% needs more capacity.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 19,
-        "y": 53
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
+          "min": 0,
+          "unit": "short",
           "decimals": 1,
-          "mappings": [],
-          "noValue": "N/A",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 70
-              },
-              {
-                "color": "red",
-                "value": 90
               }
             ]
           },
-          "unit": "percent"
+          "mappings": [],
+          "max": 1
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "namePlacement": "auto",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "minVizHeight": 16,
+        "minVizWidth": 8,
+        "sizing": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
           ],
           "fields": "",
           "values": false
-        },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
+        }
       },
       "targets": [
         {
@@ -2443,72 +1633,251 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(1 - node_filesystem_avail_bytes{instance=\"10.216.203.132:9100\",mountpoint=\"/\"} / node_filesystem_size_bytes{instance=\"10.216.203.132:9100\",mountpoint=\"/\"}) * 100",
+          "expr": "sum by (db_name, segment_state) (milvus_querynode_entity_num{server=\"$server\"})",
           "refId": "A",
+          "legendFormat": "{{db_name}} ({{segment_state}})",
           "instant": true,
           "range": false
         }
       ]
     },
     {
-      "id": 156,
-      "type": "stat",
-      "title": "PostgreSQL connections",
-      "description": "Active connections. max_connections is 100; above 80 needs attention.",
+      "id": 52,
+      "type": "timeseries",
+      "title": "Searches per second by collection",
+      "description": "",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
       "gridPos": {
-        "h": 6,
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (db_name, collection_name) (rate(milvus_proxy_sq_latency_count{job=\"milvus\",server=\"$server\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{db_name}}/{{collection_name}}"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "type": "timeseries",
+      "title": "Vectors inserted per second by collection",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 28
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (db_name, collection_name) (rate(milvus_proxy_insert_vectors_count{job=\"milvus\",server=\"$server\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{db_name}}/{{collection_name}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "id": 60,
+      "title": "Milvus process and storage",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "panels": []
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Milvus RAM (RSS)",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
         "w": 6,
         "x": 0,
-        "y": 57
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "decimals": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
           "mappings": [],
-          "noValue": "N/A",
+          "unit": "bytes",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "yellow",
-                "value": 80
-              },
-              {
-                "color": "red",
-                "value": 90
               }
             ]
           },
-          "unit": "short"
+          "min": 0
         },
         "overrides": []
       },
       "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
+        "legend": {
           "calcs": [
-            "lastNotNull"
+            "lastNotNull",
+            "max"
           ],
-          "fields": "",
-          "values": false
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "textMode": "auto",
-        "wideLayout": true,
-        "showPercentChange": false
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
       },
       "targets": [
         {
@@ -2516,38 +1885,50 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum(pg_stat_activity_count{job=\"postgres-lab\"})",
+          "expr": "process_resident_memory_bytes{job=\"milvus\",server=\"$server\"}",
           "refId": "A",
-          "instant": true,
-          "range": false
+          "legendFormat": "RAM"
         }
       ]
     },
     {
-      "id": 157,
-      "type": "table",
-      "title": "PostgreSQL databases",
+      "id": 19,
+      "type": "timeseries",
+      "title": "Milvus CPU",
+      "description": "Percent of ONE core: 100 means one full core, 1600 would be all 16.",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
       },
-      "description": "Every database on the lab-host PostgreSQL: size and connections.",
       "gridPos": {
-        "h": 6,
-        "w": 18,
+        "h": 7,
+        "w": 6,
         "x": 6,
-        "y": 57
+        "y": 36
       },
       "fieldConfig": {
         "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
-            "inspect": false
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [],
+          "unit": "percent",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -2557,40 +1938,25 @@
               }
             ]
           },
-          "unit": "decbytes"
+          "min": 0
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Connections"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "short"
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
-        "cellHeight": "sm",
-        "showHeader": true,
-        "footer": {
-          "show": false,
-          "reducer": [
-            "sum"
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
           ],
-          "fields": "",
-          "countRows": false
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "sortBy": [
-          {
-            "displayName": "Size",
-            "desc": true
-          }
-        ]
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
       },
       "targets": [
         {
@@ -2598,66 +1964,178 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "pg_database_size_bytes{job=\"postgres-lab\"}",
+          "expr": "rate(process_cpu_seconds_total{job=\"milvus\",server=\"$server\"}[$__rate_interval]) * 100",
           "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "table"
+          "legendFormat": "CPU"
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "type": "timeseries",
+      "title": "MinIO bucket size",
+      "description": "Object storage used by Milvus. It lives on the root disk, so watch Root disk free above.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0
         },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "sum by (datname) (pg_stat_activity_count{job=\"postgres-lab\"})",
-          "refId": "B",
-          "instant": true,
-          "range": false,
-          "format": "table"
+          "expr": "sum by (bucket) (minio_bucket_size_bytes{server=\"$server\"})",
+          "refId": "A",
+          "legendFormat": "{{bucket}}"
         }
-      ],
-      "transformations": [
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "datname",
-            "mode": "outer"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Time 1": true,
-              "Time 2": true,
-              "__name__": true,
-              "instance": true,
-              "job": true,
-              "service": true
+      ]
+    },
+    {
+      "id": 62,
+      "type": "timeseries",
+      "title": "MinIO objects",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
             },
-            "indexByName": {
-              "datname": 0,
-              "Value #A": 1,
-              "Value #B": 2
-            },
-            "renameByName": {
-              "Value #A": "Size",
-              "Value #B": "Connections",
-              "datname": "Database"
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          }
+          },
+          "mappings": [],
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum by (bucket) (minio_bucket_objects{server=\"$server\"})",
+          "refId": "A",
+          "legendFormat": "{{bucket}}"
         }
       ]
     }
   ],
   "preload": false,
-  "refresh": "1m",
+  "refresh": "30s",
   "schemaVersion": 41,
   "tags": [
-    "fleet",
-    "overview",
-    "monitoring"
+    "milvus",
+    "infrastructure",
+    "production"
   ],
   "templating": {
     "list": [
@@ -2680,8 +2158,8 @@
         }
       },
       {
-        "name": "host",
-        "label": "Host",
+        "name": "server",
+        "label": "Server",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -2690,26 +2168,21 @@
         "refresh": 2,
         "sort": 1,
         "hide": 0,
-        "definition": "label_values(node_uname_info, instance)",
+        "definition": "label_values(up{job=\"milvus\"}, server)",
         "query": {
           "qryType": 1,
-          "query": "label_values(node_uname_info, instance)",
+          "query": "label_values(up{job=\"milvus\"}, server)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
-        "includeAll": true,
-        "allValue": ".*",
-        "multi": true,
+        "includeAll": false,
+        "multi": false,
         "options": [],
         "regex": "",
         "skipUrlSync": false,
         "current": {
           "selected": true,
-          "text": [
-            "All"
-          ],
-          "value": [
-            "$__all"
-          ]
+          "text": "milvus-production",
+          "value": "milvus-production"
         }
       }
     ]
@@ -2720,15 +2193,15 @@
   },
   "timepicker": {
     "refresh_intervals": [
+      "10s",
       "30s",
       "1m",
       "5m",
-      "15m",
-      "1h"
+      "15m"
     ]
   },
   "timezone": "browser",
-  "title": "Fleet Overview — All Hosts & Services",
-  "uid": "fleet-overview",
-  "version": 46
+  "title": "Milvus & Server Monitor",
+  "uid": "de68d706-4a90-4ad8-b338-fb5d94b09af0",
+  "version": 7
 }

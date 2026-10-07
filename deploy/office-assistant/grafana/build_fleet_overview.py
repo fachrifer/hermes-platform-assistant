@@ -126,8 +126,9 @@ def bargauge(pid, title, targets, x, y, w, h=8, unit="percentunit", th=None, des
         "id": pid, "type": "bargauge", "title": title, "description": desc, "datasource": DS,
         "gridPos": {"h": h, "w": w, "x": x, "y": y},
         "fieldConfig": {"defaults": {
-            "color": {"mode": "thresholds"}, "min": 0, "max": maximum, "unit": unit, "decimals": 1,
-            "thresholds": {"mode": "absolute", "steps": th or steps("green")}, "mappings": []},
+            "color": {"mode": "thresholds"}, "min": 0, "unit": unit, "decimals": 1,
+            "thresholds": {"mode": "absolute", "steps": th or steps("green")}, "mappings": [],
+            **({"max": maximum} if maximum is not None else {})},
             "overrides": []},
         "options": {
             "displayMode": "gradient", "orientation": "horizontal", "namePlacement": "auto",
@@ -144,16 +145,17 @@ def panels():
     p.append(status_tiles(10, "Hosts", [
         ("Lab-host 10.216.4.80", 'up{instance="10.216.4.80:9100"}'),
         ("GPU node dc141f0601srv", 'up{instance="dc141f0601srv.kemenkeu.go.id",job="integrations/unix"}'),
-        ("Milvus PROD 10.216.203.132", 'up{instance="10.216.203.132:9100"}'),
+        ("Milvus PROD host 10.216.203.132", 'up{instance="10.216.203.132:9100"}'),
         ("Grafana VM 10.216.78.130", 'up{instance="10.216.78.130:9100"}'),
         ("Rancher 10.216.78.129", 'up{instance="10.216.78.129:9100"}'),
     ], 0, 0, 14, "node-exporter up per host. NO DATA = the target is not scraped at all (Rancher today)."))
     p.append(status_tiles(11, "Services", [
         ("LiteLLM", "litellm_up"),
         ("K8s (RKE2)", 'min(kube_node_status_condition{condition="Ready",status="true"})'),
-        ("Milvus API", 'up{instance="10.216.203.132:9091"}'),
+        ("Milvus PROD (API)", 'up{job="milvus"}'),
         ("PostgreSQL", 'pg_up{job="postgres-lab"}'),
-    ], 14, 0, 10, "1 = up. K8s is the minimum Ready flag across nodes."))
+    ], 14, 0, 10, "1 = up. Milvus PROD is the only Milvus scraped (server=milvus-production, 10.216.203.132:9091); "
+                  "there is no dev Milvus in Prometheus. K8s is the minimum Ready flag across nodes."))
 
     # y4: one-glance KPIs, all red when something needs a person.
     p.append(stat(20, "Targets down", [target("count(up == 0) or vector(0)", instant=True)], 0, 4, 3,
@@ -309,7 +311,13 @@ def dashboard():
                                   "name": "Annotations & Alerts", "type": "dashboard"}]},
         "description": "Platform overview: hosts, services, Kubernetes, GPU, traffic and data services. "
                        "Red or yellow tiles at the top mean something needs a person.",
-        "editable": True, "fiscalYearStartMonth": 0, "graphTooltip": 1, "id": 33, "links": [],
+        "editable": True, "fiscalYearStartMonth": 0, "graphTooltip": 1, "id": 33,
+        "links": [
+            {"title": "Milvus & Server Monitor", "type": "link", "icon": "dashboard", "targetBlank": False,
+             "url": "/d/de68d706-4a90-4ad8-b338-fb5d94b09af0"},
+            {"title": "Insightface prod", "type": "link", "icon": "dashboard", "targetBlank": False,
+             "url": "/d/Insightface-prod-v2"},
+        ],
         "liveNow": False, "panels": panels(), "preload": False, "refresh": "1m", "schemaVersion": 41,
         "tags": ["fleet", "overview", "monitoring"],
         "templating": {"list": [
