@@ -88,7 +88,7 @@ IP lab per alamat (httpx mengabaikan entri CIDR).
 | Mnemosyne | `hermes-vector` | `vector` | 9122 | office-vector | `vector_status`, `milvus_databases`, `milvus_collections`, `milvus_collection`, `milvus_users`, `milvus_roles` | tidak ada (inspeksi saja) |
 | Surtr | `hermes-cluster-gpu` | `cluster-gpu` | 9123 | office-cluster-gpu | `k8s_get`, `mig_map`, `gpu_usage` | tidak ada |
 | Iris | `hermes-llm` | `llm` | 9124 | office-llm | `llm_status`, `list_models` | tidak ada |
-| Argus | `hermes-obs` | `obs` | 9125 | office-obs | `metrics_query`, `grafana_dashboards`, `grafana_dashboard`, `grafana_panel`, `grafana_links`, `propose_dashboard`, `action_status` | dashboard Grafana baru (usulan) |
+| Argus | `hermes-obs` | `obs` | 9125 | office-obs | `metrics_query`, `grafana_dashboards`, `grafana_dashboard`, `grafana_panel`, `grafana_report`, `grafana_links`, `propose_dashboard`, `action_status` | dashboard Grafana baru (usulan); `grafana_report` menulis file HTML ke folder reports bersama |
 | Janus | `hermes-ingress` | `ingress` | 9126 | office-ingress | `list_routes`, `edge_status`, `tls_status`, `tail_traefik_logs`, `validate_route_change`, `propose_route_change`, `propose_route_rollback`, `action_status` | route/rollback Traefik (usulan) |
 
 ### 4.1 Konfigurasi umum agen (`hermes/<role>/config.yaml`)

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime
+from pathlib import Path
 
-from office_gateway import grafana_api
+from office_gateway import grafana_api, grafana_report
 from office_gateway.grafana_api import GrafanaClientError
 from office_gateway.grafana_links import build_links
 from office_gateway.metrics import instant_query
@@ -207,7 +209,73 @@ async def _grafana_links(ctx, args, role):
     return {"links": kept, "omitted": omitted}
 
 
+def _save_report(name: str, content: str) -> dict:
+    """Write the HTML to the first directory that accepts it. A timestamped copy plus a stable ``-latest`` name."""
+    stamp = datetime.now(grafana_report.WIB).strftime("%Y%m%d-%H%M")
+    names = (f"grafana-report-{name}-{stamp}.html", f"grafana-report-{name}-latest.html")
+    last_error: Exception | None = None
+    for directory in grafana_report.REPORT_DIRS:
+        try:
+            folder = Path(directory)
+            folder.mkdir(parents=True, exist_ok=True)
+            for filename in names:
+                target = folder / filename
+                temp = folder / f".{filename}.tmp"
+                temp.write_text(content, encoding="utf-8")
+                temp.replace(target)
+            shared = directory == "/reports"
+            saved = {"file": names[0], "latest": names[1], "path": str(folder / names[0]), "size_bytes": len(content.encode())}
+            if shared:
+                saved["vm_path"] = f"{grafana_report.VM_REPORTS_DIR}/{names[0]}"
+            else:
+                saved["note"] = "not the shared reports folder"
+            return saved
+        except OSError as exc:
+            last_error = exc
+    raise ToolError("unreachable", f"no writable reports folder: {type(last_error).__name__}")
+
+
+async def _grafana_report(ctx, args, role):
+    if not ctx.config.grafana_base_url or not ctx.config.grafana_token:
+        raise ToolError("not_configured", "OFFICE_GRAFANA_BASE_URL and OFFICE_GRAFANA_TOKEN are required")
+    try:
+        time_from, time_to = grafana_api.parse_time_range(args.get("time_range") or "now-6h")
+    except ValueError as exc:
+        raise ToolError("invalid_argument", str(exc)) from exc
+    uid = (args.get("uid") or "").strip()
+    scope = args.get("scope") or "all"
+    if uid:
+        uids, name = [uid], "custom"
+    elif scope == "all":
+        uids, name = list(grafana_report.DASHBOARDS.values()), "all"
+    else:
+        uids, name = [grafana_report.DASHBOARDS[scope]], scope
+    try:
+        report = await asyncio.to_thread(
+            grafana_report.build_report, ctx.config.grafana_base_url, ctx.config.grafana_token, uids, time_from, time_to
+        )
+    except GrafanaClientError as exc:
+        raise ToolError(exc.category, exc.detail) from exc
+    saved = await asyncio.to_thread(_save_report, name, grafana_report.render_html(report))
+    return grafana_report.agent_view(report, saved)
+
+
 TOOLS = (
+    Tool(
+        "grafana_report",
+        OBS,
+        "Write a report from Grafana dashboards. Unlike grafana_panel it reads EVERY panel and EVERY query, "
+        "judges the values against the thresholds saved in the dashboard, and saves an HTML file in the shared "
+        "reports folder. Returns the counts, the panels that need attention, headline values per dashboard and the "
+        "file name. scope: all (Fleet Overview + Milvus & Server Monitor + Insightface-prod-v2), fleet, milvus or "
+        "insightface. uid reports one other dashboard instead. Call it once per request.",
+        {
+            "scope": Param("string", "which dashboards; default all", enum=grafana_report.SCOPES, default="all"),
+            "uid": Param("string", "report this one dashboard uid instead of a scope", max_length=64),
+            "time_range": Param("string", "now-6h (default), now-24h, or from,to such as now-6h,now", max_length=64),
+        },
+        _grafana_report,
+    ),
     Tool(
         "metrics_query",
         OBS,
